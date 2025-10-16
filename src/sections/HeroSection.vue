@@ -62,27 +62,42 @@
             实时扫描预览
           </div>
           <div class="space-y-6">
-            <div class="flex flex-wrap items-center gap-2">
-              <button
-                v-for="mode in modes"
-                :key="mode.value"
-                type="button"
-                :class="[
-                  'inline-flex items-center rounded-full px-4 py-2 text-xs font-semibold transition',
-                  activeMode === mode.value ? 'bg-slate-900 text-white shadow-sm' : 'bg-slate-100 text-slate-600 hover:bg-slate-200',
-                ]"
-                @click="switchMode(mode.value)"
-              >
-                {{ mode.label }}
-              </button>
-            </div>
             <div>
+              <label class="flex items-center justify-between text-sm font-semibold text-slate-700">
+                <span>粘贴或输入文本</span>
+                <button
+                  type="button"
+                  class="inline-flex items-center rounded-full border border-slate-200 px-3 py-1 text-xs font-semibold text-slate-500 transition hover:border-primary-200 hover:text-primary-600"
+                  @click="resetInput"
+                >
+                  一键重置
+                </button>
+              </label>
               <textarea
                 v-model="textModel"
                 rows="10"
                 class="mt-3 w-full rounded-2xl border border-slate-200 bg-slate-50/80 p-4 text-sm text-slate-700 shadow-inner focus:border-primary-400 focus:outline-none focus:ring-2 focus:ring-primary-100"
                 placeholder="粘贴文本或点击下方范例，立即体验 GPTZero 式的 AI 检测界面。"
               ></textarea>
+            </div>
+            <div class="flex flex-wrap items-center justify-between gap-3">
+              <div class="flex flex-wrap items-center gap-2">
+                <button
+                  v-for="option in functionOptions"
+                  :key="option.key"
+                  type="button"
+                  :class="[
+                    'inline-flex items-center rounded-full border px-4 py-2 text-xs font-semibold transition',
+                    isFunctionSelected(option.key)
+                      ? 'border-transparent bg-slate-900 text-white shadow-sm'
+                      : 'border-slate-200 bg-white text-slate-600 hover:border-primary-200 hover:text-primary-600',
+                  ]"
+                  @click="toggleFunction(option.key)"
+                >
+                  <component :is="option.icon" class="mr-2 h-4 w-4" />
+                  {{ option.label }}
+                </button>
+              </div>
             </div>
             <div class="space-y-3 text-xs text-slate-500">
               <div class="flex flex-wrap items-center gap-2">
@@ -104,7 +119,7 @@
               </div>
               <div class="flex flex-wrap items-center gap-3">
                 <span>字数：{{ scanStore.characterCount }}</span>
-                <span>模式：{{ activeModeLabel }}</span>
+                <span>已选功能：{{ selectedFunctionSummary }}</span>
               </div>
               <div v-if="scanStore.uploadError" class="flex items-center space-x-2 rounded-2xl bg-rose-50 px-3 py-2 text-rose-600">
                 <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
@@ -119,26 +134,15 @@
                 <span>已导入：{{ scanStore.lastUploadedFileName }}</span>
               </div>
             </div>
-            <div class="flex flex-wrap items-center justify-between gap-3 text-xs">
-              <div class="flex flex-wrap gap-2">
-                <button
-                  v-for="tool in tools"
-                  :key="tool.key"
-                  type="button"
-                  :class="[
-                    'inline-flex items-center rounded-full border px-4 py-2 font-semibold transition',
-                    tool.primary
-                      ? 'border-transparent bg-primary-600 text-white shadow-glow hover:bg-primary-500'
-                      : 'border-slate-200 bg-white text-slate-600 hover:border-primary-200 hover:text-primary-600',
-                  ]"
-                  @click="handleTool(tool)"
-                >
-                  <component :is="tool.icon" class="mr-2 h-4 w-4" />
-                  {{ tool.label }}
-                </button>
-              </div>
+            <div class="flex flex-wrap items-center justify-between gap-3">
               <div class="flex items-center gap-2">
-                <input ref="fileInput" type="file" class="hidden" accept=".txt,.md,.doc,.docx,.pdf,.json,.csv,.yaml,.yml,.tex,.tax" @change="onFileChange" />
+                <input
+                  ref="fileInput"
+                  type="file"
+                  class="hidden"
+                  accept=".txt,.md,.doc,.docx,.pdf,.json,.csv,.yaml,.yml,.tex,.tax"
+                  @change="onFileChange"
+                />
                 <button
                   type="button"
                   class="inline-flex items-center rounded-full border border-dashed border-slate-300 px-4 py-2 font-semibold text-slate-600 hover:border-primary-300 hover:text-primary-600"
@@ -147,14 +151,14 @@
                   <ArrowUpTrayIcon class="mr-2 h-4 w-4" />
                   {{ scanStore.isUploading ? '正在读取...' : '上传文件' }}
                 </button>
-                <button
-                  type="button"
-                  class="inline-flex items-center rounded-full bg-slate-900 px-6 py-2 font-semibold text-white shadow-sm transition hover:bg-slate-800"
-                  @click="goToScan"
-                >
-                  扫描
-                </button>
               </div>
+              <button
+                type="button"
+                class="inline-flex items-center rounded-full bg-slate-900 px-6 py-2 font-semibold text-white shadow-sm transition hover:bg-slate-800"
+                @click="handleScan"
+              >
+                扫描
+              </button>
             </div>
           </div>
         </div>
@@ -168,7 +172,7 @@ import { computed, onMounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import {
   ArrowUpTrayIcon,
-  DocumentTextIcon,
+  DocumentMagnifyingGlassIcon,
   LanguageIcon,
   PencilSquareIcon,
   ShieldCheckIcon,
@@ -178,19 +182,12 @@ import { useScanStore } from '../store/scan';
 const router = useRouter();
 const scanStore = useScanStore();
 const fileInput = ref(null);
-const activeMode = ref('scan');
 
-const modes = [
-  { label: '扫描检测', value: 'scan' },
-  { label: '润色', value: 'polish' },
-  { label: '翻译', value: 'translate' },
-];
-
-const tools = [
+const functionOptions = [
+  { key: 'scan', label: 'AI 检测', icon: ShieldCheckIcon },
   { key: 'polish', label: '润色', icon: PencilSquareIcon },
   { key: 'translate', label: '翻译', icon: LanguageIcon },
-  { key: 'scan', label: '扫描', icon: ShieldCheckIcon, primary: true },
-  { key: 'upload', label: '上传文件', icon: DocumentTextIcon },
+  { key: 'citation', label: '引用核查', icon: DocumentMagnifyingGlassIcon },
 ];
 
 const textModel = computed({
@@ -198,41 +195,35 @@ const textModel = computed({
   set: (value) => scanStore.setText(value),
 });
 
-const activeModeLabel = computed(() => {
-  const matched = modes.find((mode) => mode.value === activeMode.value);
-  return matched ? matched.label : '扫描检测';
+const selectedFunctionSummary = computed(() => {
+  if (!scanStore.selectedFunctions.length) {
+    return 'AI 检测';
+  }
+
+  const labelMap = functionOptions.reduce((acc, option) => {
+    acc[option.key] = option.label;
+    return acc;
+  }, {});
+
+  return scanStore.selectedFunctions.map((key) => labelMap[key] || key).join('、');
 });
 
 onMounted(() => {
   scanStore.resetError();
 });
 
-const switchMode = (mode) => {
-  activeMode.value = mode;
+const isFunctionSelected = (key) => scanStore.selectedFunctions.includes(key);
+
+const toggleFunction = (key) => {
+  scanStore.toggleFunction(key);
 };
 
 const applyExample = (key) => {
   scanStore.applyExample(key);
 };
 
-const goToScan = () => {
-  router.push({ name: 'scan', query: { mode: activeMode.value } });
-};
-
-const goToDashboard = (focus) => {
-  router.push({ name: 'dashboard', query: { focus } });
-};
-
-const handleTool = (tool) => {
-  if (tool.key === 'upload') {
-    triggerUpload();
-    return;
-  }
-  if (tool.key === 'scan') {
-    goToScan();
-    return;
-  }
-  goToDashboard(tool.key);
+const resetInput = () => {
+  scanStore.resetText();
 };
 
 const triggerUpload = () => {
@@ -245,11 +236,26 @@ const onFileChange = async (event) => {
   if (!file) return;
   try {
     await scanStore.readFile(file);
-    router.push({ name: 'scan', query: { mode: activeMode.value } });
   } catch (error) {
     console.error(error);
   } finally {
     event.target.value = '';
   }
+};
+
+const handleScan = () => {
+  if (!scanStore.selectedFunctions.length) {
+    scanStore.setFunctions(['scan']);
+  }
+  const features = (scanStore.selectedFunctions.length ? scanStore.selectedFunctions : ['scan']).join(',');
+  router.push({ name: 'dashboard', query: { focus: 'scan', features } });
+};
+
+const goToDashboard = (focus) => {
+  if (['scan', 'polish', 'translate', 'citation'].includes(focus)) {
+    scanStore.setFunctions([focus]);
+  }
+  const features = (scanStore.selectedFunctions.length ? scanStore.selectedFunctions : ['scan']).join(',');
+  router.push({ name: 'dashboard', query: { focus, features } });
 };
 </script>

@@ -6,20 +6,30 @@
         <div class="flex flex-col gap-12 lg:flex-row">
           <section class="flex-1">
             <div class="rounded-3xl border border-slate-200 bg-white/90 p-6 shadow-lg shadow-primary-100/30 backdrop-blur">
-              <div class="flex flex-wrap items-center gap-2">
+              <div class="flex flex-wrap items-center justify-between gap-3">
+                <div class="flex flex-wrap items-center gap-2">
+                  <button
+                    v-for="option in functionOptions"
+                    :key="option.key"
+                    type="button"
+                    :class="[
+                      'inline-flex items-center rounded-full border px-4 py-2 text-xs font-semibold transition',
+                      isFunctionSelected(option.key)
+                        ? 'border-transparent bg-slate-900 text-white shadow-sm'
+                        : 'border-slate-200 bg-white text-slate-600 hover:border-primary-200 hover:text-primary-600',
+                    ]"
+                    @click="toggleFunction(option.key)"
+                  >
+                    <component :is="option.icon" class="mr-2 h-4 w-4" />
+                    {{ option.label }}
+                  </button>
+                </div>
                 <button
-                  v-for="mode in modes"
-                  :key="mode.value"
                   type="button"
-                  :class="[
-                    'inline-flex items-center rounded-full px-4 py-2 text-xs font-semibold transition',
-                    activeMode === mode.value
-                      ? 'bg-slate-900 text-white shadow-sm'
-                      : 'bg-slate-100 text-slate-600 hover:bg-slate-200',
-                  ]"
-                  @click="switchMode(mode.value)"
+                  class="inline-flex items-center rounded-full border border-slate-200 px-3 py-1 text-xs font-semibold text-slate-500 transition hover:border-primary-200 hover:text-primary-600"
+                  @click="resetInput"
                 >
-                  {{ mode.label }}
+                  一键重置
                 </button>
               </div>
               <div class="mt-6 space-y-4">
@@ -52,11 +62,14 @@
                     {{ example.label }}
                   </button>
                 </div>
-                <div v-if="scanStore.lastUploadedFileName" class="flex items-center space-x-2 text-xs text-slate-500">
-                  <svg class="h-4 w-4 text-primary-500" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M4 16.75V5a2 2 0 012-2h6.586a2 2 0 011.414.586l5.414 5.414a2 2 0 01.586 1.414V19a2 2 0 01-2 2H6a2 2 0 01-2-2" />
-                  </svg>
-                  <span>已导入：{{ scanStore.lastUploadedFileName }}</span>
+                <div class="flex flex-wrap items-center gap-3 text-xs text-slate-500">
+                  <span>已选功能：{{ selectedFunctionSummary }}</span>
+                  <span v-if="scanStore.lastUploadedFileName" class="flex items-center space-x-2">
+                    <svg class="h-4 w-4 text-primary-500" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M4 16.75V5a2 2 0 012-2h6.586a2 2 0 011.414.586l5.414 5.414a2 2 0 01.586 1.414V19a2 2 0 01-2 2H6a2 2 0 01-2-2" />
+                    </svg>
+                    <span>已导入：{{ scanStore.lastUploadedFileName }}</span>
+                  </span>
                 </div>
                 <p v-if="scanStore.uploadError" class="flex items-center space-x-2 rounded-2xl bg-rose-50 px-3 py-2 text-xs text-rose-600">
                   <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
@@ -66,23 +79,6 @@
                 </p>
               </div>
               <div class="mt-6 flex flex-wrap items-center justify-between gap-3">
-                <div class="flex flex-wrap gap-2 text-xs">
-                  <button
-                    v-for="tool in tools"
-                    :key="tool.key"
-                    type="button"
-                    :class="[
-                      'inline-flex items-center rounded-full border px-4 py-2 font-semibold transition',
-                      tool.primary
-                        ? 'border-transparent bg-primary-600 text-white shadow-glow hover:bg-primary-500'
-                        : 'border-slate-200 bg-white text-slate-600 hover:border-primary-200 hover:text-primary-600',
-                    ]"
-                    @click="handleTool(tool)"
-                  >
-                    <component :is="tool.icon" class="mr-2 h-4 w-4" />
-                    {{ tool.label }}
-                  </button>
-                </div>
                 <div class="flex items-center gap-2">
                   <input ref="fileInput" type="file" class="hidden" accept=".txt,.md,.doc,.docx,.pdf,.json,.csv,.yaml,.yml,.tex,.tax" @change="onFileChange" />
                   <button
@@ -93,24 +89,24 @@
                     <ArrowUpTrayIcon class="mr-2 h-4 w-4" />
                     {{ scanStore.isUploading ? '正在读取...' : '上传文件' }}
                   </button>
-                  <button
-                    type="button"
-                    class="inline-flex items-center rounded-full bg-slate-900 px-6 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-slate-800"
-                    @click="handleScan"
-                  >
-                    <svg
-                      v-if="isScanning"
-                      class="mr-2 h-4 w-4 animate-spin"
-                      xmlns="http://www.w3.org/2000/svg"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                    >
-                      <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                      <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"></path>
-                    </svg>
-                    扫描
-                  </button>
                 </div>
+                <button
+                  type="button"
+                  class="inline-flex items-center rounded-full bg-slate-900 px-6 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-slate-800"
+                  @click="handleScan"
+                >
+                  <svg
+                    v-if="isScanning"
+                    class="mr-2 h-4 w-4 animate-spin"
+                    xmlns="http://www.w3.org/2000/svg"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                  >
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"></path>
+                  </svg>
+                  扫描
+                </button>
               </div>
             </div>
           </section>
@@ -188,10 +184,10 @@
 
 <script setup>
 import { computed, onMounted, ref } from 'vue';
-import { useRoute, useRouter } from 'vue-router';
+import { useRoute } from 'vue-router';
 import {
   ArrowUpTrayIcon,
-  DocumentTextIcon,
+  DocumentMagnifyingGlassIcon,
   LanguageIcon,
   PencilSquareIcon,
   ShieldCheckIcon,
@@ -204,7 +200,6 @@ import { useScanStore } from '../store/scan';
 
 const authStore = useAuthStore();
 const scanStore = useScanStore();
-const router = useRouter();
 const route = useRoute();
 
 const fileInput = ref(null);
@@ -225,18 +220,11 @@ const scanHighlights = [
   '可导出 PDF 报告与引用清单',
 ];
 
-const modes = [
-  { label: '扫描检测', value: 'scan' },
-  { label: '润色', value: 'polish' },
-  { label: '翻译', value: 'translate' },
-  { label: '引用核查', value: 'citation' },
-];
-
-const tools = [
+const functionOptions = [
+  { key: 'scan', label: 'AI 检测', icon: ShieldCheckIcon },
   { key: 'polish', label: '润色', icon: PencilSquareIcon },
   { key: 'translate', label: '翻译', icon: LanguageIcon },
-  { key: 'scan', label: '扫描', icon: ShieldCheckIcon, primary: true },
-  { key: 'upload', label: '上传文件', icon: DocumentTextIcon },
+  { key: 'citation', label: '引用核查', icon: DocumentMagnifyingGlassIcon },
 ];
 
 const textModel = computed({
@@ -256,22 +244,54 @@ const aiRiskLabel = computed(() => {
   return '偏高';
 });
 
-const activeMode = ref('scan');
+const parseFeatures = (value) => {
+  if (typeof value !== 'string') return [];
+  return value
+    .split(',')
+    .map((item) => item.trim())
+    .filter((item) => ['scan', 'polish', 'translate', 'citation'].includes(item));
+};
 
 onMounted(() => {
+  const featuresFromQuery = parseFeatures(route.query.features);
+  if (featuresFromQuery.length) {
+    scanStore.setFunctions(featuresFromQuery);
+    return;
+  }
+
   const modeFromQuery = route.query.mode;
-  if (typeof modeFromQuery === 'string' && modes.some((mode) => mode.value === modeFromQuery)) {
-    activeMode.value = modeFromQuery;
+  if (typeof modeFromQuery === 'string' && ['scan', 'polish', 'translate', 'citation'].includes(modeFromQuery)) {
+    scanStore.setFunctions([modeFromQuery]);
   }
 });
 
-const switchMode = (mode) => {
-  activeMode.value = mode;
-  router.replace({ name: 'scan', query: { mode } });
+const selectedFunctionSummary = computed(() => {
+  if (!scanStore.selectedFunctions.length) {
+    return 'AI 检测';
+  }
+
+  const labelMap = functionOptions.reduce((acc, option) => {
+    acc[option.key] = option.label;
+    return acc;
+  }, {});
+
+  return scanStore.selectedFunctions.map((key) => labelMap[key] || key).join('、');
+});
+
+const isFunctionSelected = (key) => scanStore.selectedFunctions.includes(key);
+
+const toggleFunction = (key) => {
+  scanStore.toggleFunction(key);
+  scanCompleted.value = false;
 };
 
 const applyExample = (key) => {
   scanStore.applyExample(key);
+  scanCompleted.value = false;
+};
+
+const resetInput = () => {
+  scanStore.resetText();
   scanCompleted.value = false;
 };
 
@@ -293,24 +313,11 @@ const onFileChange = async (event) => {
   }
 };
 
-const handleTool = (tool) => {
-  if (tool.key === 'upload') {
-    triggerUpload();
-    return;
-  }
-
-  if (!authStore.isAuthenticated) {
-    loginMessage.value = `登录后即可使用${tool.label}工具并同步历史记录。`;
-    showLoginModal.value = true;
-    return;
-  }
-
-  if (tool.key !== 'scan') {
-    switchMode(tool.key);
-  }
-};
-
 const handleScan = async () => {
+  if (!scanStore.selectedFunctions.length) {
+    scanStore.setFunctions(['scan']);
+  }
+
   if (!authStore.isAuthenticated) {
     loginMessage.value = '登录后即可开始扫描并查看完整结果。';
     showLoginModal.value = true;

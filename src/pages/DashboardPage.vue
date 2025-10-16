@@ -34,6 +34,22 @@
                   <span>支持 32 种语言</span>
                 </span>
               </div>
+              <div class="rounded-3xl border border-white/10 bg-white/5 p-4 text-sm text-white/70">
+                <div class="flex flex-wrap items-center justify-between gap-3">
+                  <p class="text-xs font-semibold uppercase tracking-[0.3em] text-white/50">当前已选功能</p>
+                  <span class="text-xs text-white/50">{{ selectedCharacterCount }} 字</span>
+                </div>
+                <div class="mt-3 flex flex-wrap gap-2">
+                  <span
+                    v-for="badge in selectedFunctionBadges"
+                    :key="badge.key"
+                    class="inline-flex items-center space-x-2 rounded-full border border-white/20 bg-white/10 px-3 py-1 text-xs font-semibold text-white/80"
+                  >
+                    <span>{{ badge.label }}</span>
+                  </span>
+                </div>
+                <p class="mt-3 text-xs leading-relaxed text-white/60">文本预览：{{ selectedTextPreview }}</p>
+              </div>
             </div>
             <div class="w-full max-w-sm rounded-3xl border border-white/10 bg-white/10 p-6 backdrop-blur">
               <div class="space-y-4">
@@ -183,20 +199,50 @@
 </template>
 
 <script setup>
-import { computed, reactive, ref } from 'vue';
+import { computed, onMounted, reactive, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { GlobeAltIcon, ShieldCheckIcon, SparklesIcon } from '@heroicons/vue/24/outline';
 import AppHeader from '../sections/AppHeader.vue';
 import AppFooter from '../sections/AppFooter.vue';
 import LoginPromptModal from '../components/common/LoginPromptModal.vue';
 import { useAuthStore } from '../store/auth';
+import { useScanStore } from '../store/scan';
 
 const authStore = useAuthStore();
+const scanStore = useScanStore();
 const router = useRouter();
 const route = useRoute();
 
 const showLoginModal = ref(false);
 const loginMessage = ref('登录后即可使用仪表盘中的全部检测与润色工具。');
+
+const functionLabelMap = {
+  scan: 'AI 检测',
+  polish: '润色',
+  translate: '翻译',
+  citation: '引用核查',
+};
+
+const parseFeatures = (value) => {
+  if (typeof value !== 'string') return [];
+  return value
+    .split(',')
+    .map((item) => item.trim())
+    .filter((item) => Object.prototype.hasOwnProperty.call(functionLabelMap, item));
+};
+
+onMounted(() => {
+  const featuresFromQuery = parseFeatures(route.query.features);
+  if (featuresFromQuery.length) {
+    scanStore.setFunctions(featuresFromQuery);
+    return;
+  }
+
+  const focusFromQuery = route.query.focus;
+  if (typeof focusFromQuery === 'string' && Object.prototype.hasOwnProperty.call(functionLabelMap, focusFromQuery)) {
+    scanStore.setFunctions([focusFromQuery]);
+  }
+});
 
 const featureCards = [
   {
@@ -284,7 +330,34 @@ const insightCards = [
   },
 ];
 
-const focusedFeature = computed(() => route.query.focus || 'scan');
+const selectedFunctionBadges = computed(() => {
+  const base = scanStore.selectedFunctions.length ? scanStore.selectedFunctions : ['scan'];
+  return base.map((key) => ({ key, label: functionLabelMap[key] || key }));
+});
+
+const selectedTextPreview = computed(() => {
+  const text = (scanStore.inputText || '').trim();
+  if (!text) {
+    return '尚未粘贴文本';
+  }
+  if (text.length > 160) {
+    return `${text.slice(0, 160)}…`;
+  }
+  return text;
+});
+
+const selectedCharacterCount = computed(() => scanStore.characterCount);
+
+const focusedFeature = computed(() => {
+  const focusFromRoute = route.query.focus;
+  if (typeof focusFromRoute === 'string' && !functionLabelMap[focusFromRoute]) {
+    return focusFromRoute;
+  }
+  if (scanStore.selectedFunctions.length) {
+    return scanStore.selectedFunctions[0];
+  }
+  return focusFromRoute || 'scan';
+});
 
 const handleFeature = (feature) => {
   if (!authStore.isAuthenticated) {
@@ -294,19 +367,23 @@ const handleFeature = (feature) => {
   }
 
   if (['scan', 'polish', 'translate', 'citation'].includes(feature.action)) {
+    scanStore.setFunctions([feature.action]);
+    const features = (scanStore.selectedFunctions.length ? scanStore.selectedFunctions : ['scan']).join(',');
     router.push({
       name: 'scan',
       query: {
-        mode: feature.action,
+        features,
       },
     });
     return;
   }
 
+  const features = (scanStore.selectedFunctions.length ? scanStore.selectedFunctions : ['scan']).join(',');
   router.push({
     name: 'dashboard',
     query: {
       focus: feature.key,
+      features,
     },
   });
 };

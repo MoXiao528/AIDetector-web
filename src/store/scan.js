@@ -29,12 +29,15 @@ const examples = [
   },
 ];
 
+const validFunctionKeys = ['scan', 'polish', 'translate', 'citation'];
+
 export const useScanStore = defineStore('scan', () => {
   const inputText = ref(examples[0].content);
   const selectedExampleKey = ref(examples[0].key);
   const isUploading = ref(false);
   const uploadError = ref('');
   const lastUploadedFileName = ref('');
+  const selectedFunctions = ref(['scan']);
 
   const characterCount = computed(() => inputText.value.length);
 
@@ -71,6 +74,45 @@ export const useScanStore = defineStore('scan', () => {
     uploadError.value = '';
   };
 
+  const toggleFunction = (key) => {
+    if (!validFunctionKeys.includes(key)) return;
+    const current = new Set(selectedFunctions.value);
+    if (current.has(key)) {
+      current.delete(key);
+    } else {
+      current.add(key);
+    }
+
+    if (current.size === 0) {
+      current.add('scan');
+    }
+
+    selectedFunctions.value = Array.from(current);
+  };
+
+  const setFunctions = (functions = []) => {
+    const next = Array.from(
+      new Set(functions.filter((item) => typeof item === 'string' && validFunctionKeys.includes(item)))
+    );
+    selectedFunctions.value = next.length ? next : ['scan'];
+  };
+
+  const resetFunctions = () => {
+    selectedFunctions.value = ['scan'];
+  };
+
+  const resetText = () => {
+    inputText.value = examples[0].content;
+    selectedExampleKey.value = examples[0].key;
+    lastUploadedFileName.value = '';
+    resetError();
+  };
+
+  const resetAll = () => {
+    resetText();
+    resetFunctions();
+  };
+
   return {
     examples,
     inputText,
@@ -78,10 +120,16 @@ export const useScanStore = defineStore('scan', () => {
     isUploading,
     uploadError,
     lastUploadedFileName,
+    selectedFunctions,
     characterCount,
     setText,
     applyExample,
     readFile,
     resetError,
+    toggleFunction,
+    setFunctions,
+    resetFunctions,
+    resetText,
+    resetAll,
   };
 });
