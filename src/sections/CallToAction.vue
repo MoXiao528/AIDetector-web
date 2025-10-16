@@ -12,7 +12,10 @@
       <p class="mt-4 text-lg text-white/80">
         接入 Veritascribe，开启可信内容生产旅程。无需信用卡，可随时取消。
       </p>
-      <form class="mx-auto mt-10 flex max-w-2xl flex-col gap-3 rounded-full bg-white/10 p-2 backdrop-blur md:flex-row">
+      <form
+        class="mx-auto mt-10 flex max-w-2xl flex-col gap-3 rounded-full bg-white/10 p-2 backdrop-blur md:flex-row"
+        @submit.prevent="goToRegister"
+      >
         <input
           type="email"
           placeholder="输入工作邮箱，立即获得试用链接"
@@ -26,3 +29,13 @@
     </div>
   </section>
 </template>
+
+<script setup>
+import { useRouter } from 'vue-router';
+
+const router = useRouter();
+
+const goToRegister = () => {
+  router.push('/register');
+};
+</script>

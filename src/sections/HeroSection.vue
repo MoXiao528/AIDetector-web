@@ -9,138 +9,151 @@
       <div class="w-full lg:w-1/2">
         <div class="inline-flex items-center space-x-2 rounded-full border border-slate-200 bg-white/80 px-3 py-1 text-xs font-semibold text-slate-600 shadow-sm">
           <span class="flex h-2 w-2 rounded-full bg-emerald-500"></span>
-          <span>企业级 AI 文本检测 · 实时守护内容可信度</span>
+          <span>参考 GPTZero 的 AI 文本检测体验</span>
         </div>
         <h1 class="mt-6 text-4xl font-bold tracking-tight text-slate-900 sm:text-5xl">
-          以 GPTZero 水准的准确率，
-          <span class="text-primary-600">秒级辨别 AI 生成文本</span>
+          快速识别并处理 <span class="text-primary-600">AI 生成文本</span>
         </h1>
         <p class="mt-6 text-lg text-slate-600">
-          Veritascribe 将深度检测、文本润色、风格改写与跨语言翻译融于一体，为高校、媒体与企业提供可信赖的智能写作工作台。一次分析即可生成检测报告、人工痕迹增强建议与多语言对照稿。
+          Veritascribe 将检测、润色、翻译与引用核查融合到同一工作台中。粘贴或上传文本，即刻获得 GPTZero 级别的风险分析和改写建议。
         </p>
         <ul class="mt-8 grid gap-3 text-sm text-slate-600 sm:grid-cols-2">
           <li class="flex items-center space-x-2">
             <svg class="h-4 w-4 text-emerald-500" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
             </svg>
-            <span>混合大模型比对，检测准确率 97.4%</span>
+            <span>段落级 AI 概率热力图</span>
           </li>
           <li class="flex items-center space-x-2">
             <svg class="h-4 w-4 text-emerald-500" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
             </svg>
-            <span>支持中英双语润色与专业术语保留</span>
+            <span>自动保留段落结构与引用</span>
           </li>
           <li class="flex items-center space-x-2">
             <svg class="h-4 w-4 text-emerald-500" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
             </svg>
-            <span>写作风格库覆盖学术、媒体、营销</span>
+            <span>支持 TXT / DOC / PDF 等常见格式</span>
           </li>
           <li class="flex items-center space-x-2">
             <svg class="h-4 w-4 text-emerald-500" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
             </svg>
-            <span>团队仪表盘与 API 接入一体化</span>
+            <span>润色与翻译共享同一份上下文</span>
           </li>
         </ul>
         <div class="mt-10 flex flex-wrap items-center gap-4">
-          <a
-            href="#trial"
+          <button
+            type="button"
             class="inline-flex items-center justify-center rounded-full bg-primary-600 px-6 py-3 text-sm font-semibold text-white shadow-glow transition hover:bg-primary-500"
+            @click="goToDashboard('scan')"
           >
-            立即免费检测 1200 字
-          </a>
-          <a href="#showcase" class="text-sm font-semibold text-slate-700">
-            查看典型案例 →
-          </a>
+            体验仪表盘
+          </button>
+          <button type="button" class="text-sm font-semibold text-slate-700" @click="goToDashboard('polish')">
+            查看润色工作流 →
+          </button>
         </div>
-        <dl class="mt-12 grid w-full gap-6 rounded-3xl border border-slate-200 bg-white/70 p-6 shadow-sm backdrop-blur">
-          <div class="flex items-center justify-between">
-            <dt class="text-sm text-slate-500">高校与出版社信任</dt>
-            <dd class="text-xl font-semibold text-slate-900">1300+ 机构</dd>
-          </div>
-          <div class="flex items-center justify-between">
-            <dt class="text-sm text-slate-500">每日处理文档</dt>
-            <dd class="text-xl font-semibold text-slate-900">82,000+</dd>
-          </div>
-          <div class="flex items-center justify-between">
-            <dt class="text-sm text-slate-500">平均检测耗时</dt>
-            <dd class="text-xl font-semibold text-slate-900">6.4 秒 / 千字</dd>
-          </div>
-        </dl>
       </div>
       <div class="w-full lg:w-1/2">
-        <div class="relative rounded-3xl border border-slate-200 bg-white/80 p-6 shadow-xl shadow-primary-200/40 backdrop-blur">
+        <div class="relative rounded-3xl border border-slate-200 bg-white/90 p-6 shadow-xl shadow-primary-200/40 backdrop-blur">
           <div class="absolute -top-10 right-8 hidden rounded-full bg-white/90 px-4 py-2 text-xs font-semibold text-slate-500 shadow-md sm:flex">
-            实时校验
+            实时扫描预览
           </div>
           <div class="space-y-6">
+            <div class="flex flex-wrap items-center gap-2">
+              <button
+                v-for="mode in modes"
+                :key="mode.value"
+                type="button"
+                :class="[
+                  'inline-flex items-center rounded-full px-4 py-2 text-xs font-semibold transition',
+                  activeMode === mode.value ? 'bg-slate-900 text-white shadow-sm' : 'bg-slate-100 text-slate-600 hover:bg-slate-200',
+                ]"
+                @click="switchMode(mode.value)"
+              >
+                {{ mode.label }}
+              </button>
+            </div>
             <div>
-              <div class="flex items-center justify-between">
-                <h3 class="text-sm font-semibold text-slate-700">AI 文本检测</h3>
-                <span class="rounded-full bg-emerald-50 px-3 py-1 text-xs font-medium text-emerald-600">高置信</span>
-              </div>
               <textarea
-                v-model="inputText"
+                v-model="textModel"
                 rows="10"
-                class="mt-3 w-full rounded-2xl border border-slate-200 bg-slate-50/70 p-4 text-sm text-slate-700 shadow-inner focus:border-primary-400 focus:outline-none focus:ring-2 focus:ring-primary-100"
-                placeholder="粘贴需要检测或润色的文本，我们将自动识别 AI 生成概率并给出修改建议。"
+                class="mt-3 w-full rounded-2xl border border-slate-200 bg-slate-50/80 p-4 text-sm text-slate-700 shadow-inner focus:border-primary-400 focus:outline-none focus:ring-2 focus:ring-primary-100"
+                placeholder="粘贴文本或点击下方范例，立即体验 GPTZero 式的 AI 检测界面。"
               ></textarea>
-              <div class="mt-3 flex flex-wrap items-center justify-between gap-3 text-xs text-slate-500">
-                <div class="flex items-center space-x-3">
-                  <span>字数：{{ charCount }}</span>
-                  <span>句子：{{ sentenceCount }}</span>
-                  <span>AI 概率：<span :class="aiProbabilityClass">{{ aiProbabilityLabel }}</span></span>
-                </div>
-                <div class="flex items-center space-x-2">
-                  <button class="rounded-full border border-slate-200 px-3 py-1 font-medium text-slate-600 hover:border-primary-300 hover:text-primary-600">
-                    润色
-                  </button>
-                  <button class="rounded-full border border-slate-200 px-3 py-1 font-medium text-slate-600 hover:border-primary-300 hover:text-primary-600">
-                    翻译
-                  </button>
-                  <button class="rounded-full bg-primary-600 px-3 py-1 font-medium text-white shadow-sm hover:bg-primary-500">
-                    开始检测
-                  </button>
-                </div>
+            </div>
+            <div class="space-y-3 text-xs text-slate-500">
+              <div class="flex flex-wrap items-center gap-2">
+                <span>试试这些范例：</span>
+                <button
+                  v-for="example in scanStore.examples"
+                  :key="example.key"
+                  type="button"
+                  :class="[
+                    'rounded-full border px-3 py-1 font-medium transition',
+                    scanStore.selectedExampleKey === example.key
+                      ? 'border-primary-300 bg-primary-50 text-primary-600'
+                      : 'border-slate-200 text-slate-500 hover:border-primary-200 hover:text-primary-600',
+                  ]"
+                  @click="applyExample(example.key)"
+                >
+                  {{ example.label }}
+                </button>
+              </div>
+              <div class="flex flex-wrap items-center gap-3">
+                <span>字数：{{ scanStore.characterCount }}</span>
+                <span>模式：{{ activeModeLabel }}</span>
+              </div>
+              <div v-if="scanStore.uploadError" class="flex items-center space-x-2 rounded-2xl bg-rose-50 px-3 py-2 text-rose-600">
+                <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v4m0 4h.01M5.22 5.22l13.56 13.56M19 13a7 7 0 11-14 0 7 7 0 0114 0z" />
+                </svg>
+                <span>{{ scanStore.uploadError }}</span>
+              </div>
+              <div v-if="scanStore.lastUploadedFileName" class="flex items-center space-x-2 text-slate-500">
+                <svg class="h-4 w-4 text-primary-500" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M4 16.75V5a2 2 0 012-2h6.586a2 2 0 011.414.586l5.414 5.414a2 2 0 01.586 1.414V19a2 2 0 01-2 2H6a2 2 0 01-2-2" />
+                </svg>
+                <span>已导入：{{ scanStore.lastUploadedFileName }}</span>
               </div>
             </div>
-            <div class="grid gap-4 rounded-2xl border border-slate-200 bg-white/80 p-4">
-              <div class="flex items-center justify-between">
-                <span class="text-xs font-semibold uppercase tracking-widest text-slate-500">检测摘要</span>
-                <span class="rounded-full bg-primary-50 px-2 py-1 text-[10px] font-semibold text-primary-600">Beta</span>
+            <div class="flex flex-wrap items-center justify-between gap-3 text-xs">
+              <div class="flex flex-wrap gap-2">
+                <button
+                  v-for="tool in tools"
+                  :key="tool.key"
+                  type="button"
+                  :class="[
+                    'inline-flex items-center rounded-full border px-4 py-2 font-semibold transition',
+                    tool.primary
+                      ? 'border-transparent bg-primary-600 text-white shadow-glow hover:bg-primary-500'
+                      : 'border-slate-200 bg-white text-slate-600 hover:border-primary-200 hover:text-primary-600',
+                  ]"
+                  @click="handleTool(tool)"
+                >
+                  <component :is="tool.icon" class="mr-2 h-4 w-4" />
+                  {{ tool.label }}
+                </button>
               </div>
-              <div class="space-y-4">
-                <div class="flex items-center justify-between rounded-xl bg-slate-50/90 p-3">
-                  <div>
-                    <p class="text-xs text-slate-500">整体 AI 生成概率</p>
-                    <p class="text-lg font-semibold text-slate-900">{{ (aiProbability * 100).toFixed(1) }}%</p>
-                  </div>
-                  <div class="h-14 w-14 rounded-full border-8 border-emerald-200/80 p-3 text-center text-xs font-semibold text-emerald-600">
-                    可信
-                  </div>
-                </div>
-                <div class="grid gap-3 sm:grid-cols-2">
-                  <div class="rounded-xl border border-slate-200 p-3">
-                    <p class="text-xs font-medium text-slate-500">原创度评分</p>
-                    <p class="mt-1 text-lg font-semibold text-slate-900">92 / 100</p>
-                    <p class="mt-1 text-xs text-slate-500">高原创度，建议保持关键信息</p>
-                  </div>
-                  <div class="rounded-xl border border-slate-200 p-3">
-                    <p class="text-xs font-medium text-slate-500">语气匹配度</p>
-                    <p class="mt-1 text-lg font-semibold text-slate-900">86%</p>
-                    <p class="mt-1 text-xs text-slate-500">符合学术写作风格</p>
-                  </div>
-                </div>
-                <div class="rounded-xl border border-slate-200 p-3">
-                  <p class="text-xs font-medium text-slate-500">润色建议</p>
-                  <ul class="mt-2 list-disc space-y-1 pl-4 text-xs text-slate-500">
-                    <li>加强段落之间的衔接词，提升可读性。</li>
-                    <li>保留原始数据引用，避免信息缺失。</li>
-                    <li>如需翻译，请选择保留术语模式。</li>
-                  </ul>
-                </div>
+              <div class="flex items-center gap-2">
+                <input ref="fileInput" type="file" class="hidden" accept=".txt,.md,.doc,.docx,.pdf,.json,.csv,.yaml,.yml,.tex,.tax" @change="onFileChange" />
+                <button
+                  type="button"
+                  class="inline-flex items-center rounded-full border border-dashed border-slate-300 px-4 py-2 font-semibold text-slate-600 hover:border-primary-300 hover:text-primary-600"
+                  @click="triggerUpload"
+                >
+                  <ArrowUpTrayIcon class="mr-2 h-4 w-4" />
+                  {{ scanStore.isUploading ? '正在读取...' : '上传文件' }}
+                </button>
+                <button
+                  type="button"
+                  class="inline-flex items-center rounded-full bg-slate-900 px-6 py-2 font-semibold text-white shadow-sm transition hover:bg-slate-800"
+                  @click="goToScan"
+                >
+                  扫描
+                </button>
               </div>
             </div>
           </div>
@@ -151,28 +164,92 @@
 </template>
 
 <script setup>
-import { computed, ref } from 'vue';
+import { computed, onMounted, ref } from 'vue';
+import { useRouter } from 'vue-router';
+import {
+  ArrowUpTrayIcon,
+  DocumentTextIcon,
+  LanguageIcon,
+  PencilSquareIcon,
+  ShieldCheckIcon,
+} from '@heroicons/vue/24/outline';
+import { useScanStore } from '../store/scan';
 
-const defaultText = `In today's rapidly evolving AI landscape, educators require transparent ways to validate the authenticity of student work while still encouraging responsible experimentation with generative tools.`;
-const inputText = ref(defaultText);
+const router = useRouter();
+const scanStore = useScanStore();
+const fileInput = ref(null);
+const activeMode = ref('scan');
 
-const charCount = computed(() => inputText.value.length);
-const sentenceCount = computed(() => (inputText.value.match(/[.!?。！？]/g) || []).length || 1);
-const aiProbability = computed(() => {
-  const threshold = 180;
-  const variance = Math.max(0, threshold - inputText.value.length) / threshold;
-  return Number((0.18 + variance * 0.22).toFixed(2));
+const modes = [
+  { label: '扫描检测', value: 'scan' },
+  { label: '润色', value: 'polish' },
+  { label: '翻译', value: 'translate' },
+];
+
+const tools = [
+  { key: 'polish', label: '润色', icon: PencilSquareIcon },
+  { key: 'translate', label: '翻译', icon: LanguageIcon },
+  { key: 'scan', label: '扫描', icon: ShieldCheckIcon, primary: true },
+  { key: 'upload', label: '上传文件', icon: DocumentTextIcon },
+];
+
+const textModel = computed({
+  get: () => scanStore.inputText,
+  set: (value) => scanStore.setText(value),
 });
 
-const aiProbabilityLabel = computed(() => {
-  if (aiProbability.value < 0.3) return '极低';
-  if (aiProbability.value < 0.6) return '中等';
-  return '偏高';
+const activeModeLabel = computed(() => {
+  const matched = modes.find((mode) => mode.value === activeMode.value);
+  return matched ? matched.label : '扫描检测';
 });
 
-const aiProbabilityClass = computed(() => {
-  if (aiProbability.value < 0.3) return 'text-emerald-600 font-semibold';
-  if (aiProbability.value < 0.6) return 'text-amber-600 font-semibold';
-  return 'text-rose-600 font-semibold';
+onMounted(() => {
+  scanStore.resetError();
 });
+
+const switchMode = (mode) => {
+  activeMode.value = mode;
+};
+
+const applyExample = (key) => {
+  scanStore.applyExample(key);
+};
+
+const goToScan = () => {
+  router.push({ name: 'scan', query: { mode: activeMode.value } });
+};
+
+const goToDashboard = (focus) => {
+  router.push({ name: 'dashboard', query: { focus } });
+};
+
+const handleTool = (tool) => {
+  if (tool.key === 'upload') {
+    triggerUpload();
+    return;
+  }
+  if (tool.key === 'scan') {
+    goToScan();
+    return;
+  }
+  goToDashboard(tool.key);
+};
+
+const triggerUpload = () => {
+  scanStore.resetError();
+  fileInput.value?.click();
+};
+
+const onFileChange = async (event) => {
+  const [file] = event.target.files || [];
+  if (!file) return;
+  try {
+    await scanStore.readFile(file);
+    router.push({ name: 'scan', query: { mode: activeMode.value } });
+  } catch (error) {
+    console.error(error);
+  } finally {
+    event.target.value = '';
+  }
+};
 </script>
