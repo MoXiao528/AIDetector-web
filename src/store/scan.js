@@ -32,6 +32,7 @@ const examples = [
 const validFunctionKeys = ['scan', 'polish', 'translate', 'citation'];
 const CHARACTER_LIMIT = 10000;
 const STORAGE_KEY = 'ai-detector-scan-draft';
+const HISTORY_STORAGE_KEY = 'ai-detector-history-records';
 
 const escapeHtml = (value = '') =>
   String(value)
@@ -67,6 +68,145 @@ const extractTextFromHtml = (html = '') => {
   return doc.body.textContent || '';
 };
 
+const historyHighlightClasses = {
+  ai: 'bg-amber-100 text-amber-900',
+  mixed: 'bg-violet-100 text-violet-900',
+  human: 'bg-emerald-100 text-emerald-900',
+};
+
+const buildSeedHistoryAnalysis = ({ summary, sentences, translation = '', polish = [], citations = [] }) => {
+  const normalizedSentences = sentences.map((item, index) => ({
+    id: item.id || `seed-sentence-${index}`,
+    text: item.text,
+    raw: item.raw || item.text,
+    type: item.type,
+    probability: item.probability ?? 0.5,
+    reason: item.reason,
+  }));
+  const aiLikelyCount = normalizedSentences.filter((item) => item.type === 'ai' || item.type === 'mixed').length;
+  const highlightedHtml = normalizedSentences
+    .map((item) => `<span class="inline-block rounded-lg px-1 ${historyHighlightClasses[item.type] || ''}">${escapeHtml(item.text)}</span>`)
+    .join(' ');
+  return {
+    summary,
+    sentences: normalizedSentences,
+    translation,
+    polish,
+    citations,
+    aiLikelyCount,
+    highlightedHtml,
+  };
+};
+
+const seedHistoryRecords = [
+  {
+    id: 'history-1',
+    title: '课堂论文检测',
+    createdAt: '2024-06-12T09:24:00.000Z',
+    functions: ['scan', 'citation'],
+    inputText:
+      'This classroom essay evaluates the impact of AI writing assistants on student voice, yet several opening paragraphs repeat generic claims without citing classroom data.',
+    editorHtml: plainTextToHtml(
+      'This classroom essay evaluates the impact of AI writing assistants on student voice, yet several opening paragraphs repeat generic claims without citing classroom data.'
+    ),
+    analysis: buildSeedHistoryAnalysis({
+      summary: { ai: 58, mixed: 27, human: 15 },
+      sentences: [
+        {
+          id: 'history-1-s1',
+          text: 'The introduction leans on formulaic statements about technology reshaping learning without concrete classroom anecdotes.',
+          type: 'ai',
+          probability: 0.82,
+          reason: '缺乏个性化细节与案例，语气模板化明显。',
+        },
+        {
+          id: 'history-1-s2',
+          text: 'Middle paragraphs reference student interviews but still rely on generic transitions that feel partially machine-generated.',
+          type: 'mixed',
+          probability: 0.64,
+          reason: '部分保留真实经历，但衔接语句与段落结构呈现模型痕迹。',
+        },
+        {
+          id: 'history-1-s3',
+          text: 'The closing section summarises findings without pointing to verifiable classroom observations.',
+          type: 'ai',
+          probability: 0.74,
+          reason: '总结部分语义笼统，缺少具体观察与引用支撑。',
+        },
+      ],
+      citations: [
+        {
+          id: 'history-1-c1',
+          excerpt: 'The introduction leans on formulaic statements about technology reshaping learning without concrete classroom anecdotes.',
+          status: '缺失引用',
+          note: '建议补充课堂观察或引用官方数据支持观点。',
+        },
+        {
+          id: 'history-1-c2',
+          excerpt: 'Middle paragraphs reference student interviews but still rely on generic transitions that feel partially machine-generated.',
+          status: '待验证',
+          note: '请核实访谈记录来源并补充准确引用信息。',
+        },
+      ],
+    }),
+  },
+  {
+    id: 'history-2',
+    title: '市场报告润色',
+    createdAt: '2024-06-08T13:05:00.000Z',
+    functions: ['scan', 'translate', 'polish'],
+    inputText:
+      'The quarterly market summary outlines user growth with confident but repetitive wording, and several insights were drafted collaboratively by product and AI tools.',
+    editorHtml: plainTextToHtml(
+      'The quarterly market summary outlines user growth with confident but repetitive wording, and several insights were drafted collaboratively by product and AI tools.'
+    ),
+    analysis: buildSeedHistoryAnalysis({
+      summary: { ai: 42, mixed: 38, human: 20 },
+      sentences: [
+        {
+          id: 'history-2-s1',
+          text: 'The quarterly market summary outlines user growth with confident but repetitive wording.',
+          type: 'mixed',
+          probability: 0.58,
+          reason: '语气流畅但句式重复，可视为人机共同参与撰写。',
+        },
+        {
+          id: 'history-2-s2',
+          text: 'Several insights were drafted collaboratively by product and AI tools.',
+          type: 'ai',
+          probability: 0.7,
+          reason: '描述笼统且缺少实证数据，模型参与度较高。',
+        },
+        {
+          id: 'history-2-s3',
+          text: 'Team feedback highlighted the need for clearer regional metrics and citations.',
+          type: 'human',
+          probability: 0.22,
+          reason: '包含具体团队需求与上下文，贴近人工撰写。',
+        },
+      ],
+      translation:
+        '第 1 句：The quarterly market summary outlines user growth with confident but repetitive wording. → 本季度市场总结以自信却略显重复的语气描述了用户增长。
+第 2 句：Several insights were drafted collaboratively by product and AI tools. → 多条洞见由产品团队与 AI 工具协作完成。
+第 3 句：Team feedback highlighted the need for clearer regional metrics and citations. → 团队反馈强调需要更清晰的区域指标与引用。',
+      polish: [
+        {
+          id: 'history-2-p1',
+          original: 'The quarterly market summary outlines user growth with confident but repetitive wording.',
+          suggestion: 'The quarterly market summary outlines user growth with confident but repetitive wording, lacking concrete cohort comparisons.',
+          reason: '补充定量信息与对比，增强说服力。',
+        },
+        {
+          id: 'history-2-p2',
+          original: 'Several insights were drafted collaboratively by product and AI tools.',
+          suggestion: 'Several insights were drafted collaboratively by product and AI tools, and require explicit sourcing before publication.',
+          reason: '说明下一步动作与责任主体，便于执行。',
+        },
+      ],
+    }),
+  },
+];
+
 export const useScanStore = defineStore('scan', () => {
   const inputText = ref('');
   const editorHtml = ref('');
@@ -75,7 +215,9 @@ export const useScanStore = defineStore('scan', () => {
   const uploadError = ref('');
   const lastUploadedFileName = ref('');
   const selectedFunctions = ref(['scan']);
+  const historyRecords = ref([...seedHistoryRecords]);
   let isRestoring = false;
+  let isHydratingHistory = false;
 
   const characterCount = computed(() => inputText.value.length);
 
@@ -174,6 +316,142 @@ export const useScanStore = defineStore('scan', () => {
     resetFunctions();
   };
 
+  const persistHistory = () => {
+    if (isHydratingHistory || typeof window === 'undefined') return;
+    try {
+      const payload = historyRecords.value.map((item) => ({
+        ...item,
+        analysis: item.analysis
+          ? {
+              ...item.analysis,
+              sentences: (item.analysis.sentences || []).map((sentence) => ({ ...sentence })),
+              polish: (item.analysis.polish || []).map((entry) => ({ ...entry })),
+              citations: (item.analysis.citations || []).map((entry) => ({ ...entry })),
+            }
+          : null,
+      }));
+      window.localStorage.setItem(HISTORY_STORAGE_KEY, JSON.stringify(payload));
+    } catch (error) {
+      console.error('Failed to persist history records', error);
+    }
+  };
+
+  const hydrateHistory = () => {
+    if (typeof window === 'undefined') return;
+    try {
+      const raw = window.localStorage.getItem(HISTORY_STORAGE_KEY);
+      if (!raw) return;
+      const parsed = JSON.parse(raw);
+      if (!Array.isArray(parsed)) return;
+      isHydratingHistory = true;
+      historyRecords.value = parsed.map((record, index) => ({
+        id: record.id || `history-${index}-${Date.now()}`,
+        title: record.title || `扫描记录 ${index + 1}`,
+        createdAt: record.createdAt || new Date().toISOString(),
+        functions: Array.isArray(record.functions)
+          ? record.functions.filter((item) => validFunctionKeys.includes(item))
+          : ['scan'],
+        inputText: record.inputText || '',
+        editorHtml: typeof record.editorHtml === 'string' ? record.editorHtml : plainTextToHtml(record.inputText || ''),
+        analysis: record.analysis
+          ? {
+              summary: record.analysis.summary || { ai: 0, mixed: 0, human: 0 },
+              sentences: Array.isArray(record.analysis.sentences)
+                ? record.analysis.sentences.map((sentence, sentenceIndex) => ({
+                    id: sentence.id || `history-${index}-sentence-${sentenceIndex}`,
+                    text: sentence.text || '',
+                    raw: sentence.raw || sentence.text || '',
+                    type: ['ai', 'mixed', 'human'].includes(sentence.type) ? sentence.type : 'human',
+                    probability: typeof sentence.probability === 'number' ? sentence.probability : 0.5,
+                    reason: sentence.reason || '',
+                  }))
+                : [],
+              translation: record.analysis.translation || '',
+              polish: Array.isArray(record.analysis.polish)
+                ? record.analysis.polish.map((entry, entryIndex) => ({
+                    id: entry.id || `history-${index}-polish-${entryIndex}`,
+                    original: entry.original || '',
+                    suggestion: entry.suggestion || '',
+                    reason: entry.reason || '',
+                  }))
+                : [],
+              citations: Array.isArray(record.analysis.citations)
+                ? record.analysis.citations.map((entry, entryIndex) => ({
+                    id: entry.id || `history-${index}-citation-${entryIndex}`,
+                    excerpt: entry.excerpt || '',
+                    status: entry.status || '待验证',
+                    note: entry.note || '',
+                  }))
+                : [],
+              aiLikelyCount:
+                typeof record.analysis.aiLikelyCount === 'number'
+                  ? record.analysis.aiLikelyCount
+                  : (Array.isArray(record.analysis.sentences)
+                      ? record.analysis.sentences.filter((item) => item.type === 'ai' || item.type === 'mixed').length
+                      : 0),
+              highlightedHtml: record.analysis.highlightedHtml || '',
+            }
+          : null,
+      }));
+    } catch (error) {
+      console.error('Failed to hydrate history records', error);
+    } finally {
+      isHydratingHistory = false;
+    }
+  };
+
+  const addHistoryRecord = ({ title, text, html, functions = [], analysis }) => {
+    const normalizedFunctions = Array.from(
+      new Set(functions.filter((item) => typeof item === 'string' && validFunctionKeys.includes(item)))
+    );
+    const recordAnalysis = analysis
+      ? {
+          ...analysis,
+          sentences: (analysis.sentences || []).map((sentence, index) => ({
+            id: sentence.id || `history-new-sentence-${index}`,
+            text: sentence.text || '',
+            raw: sentence.raw || sentence.text || '',
+            type: ['ai', 'mixed', 'human'].includes(sentence.type) ? sentence.type : 'human',
+            probability: typeof sentence.probability === 'number' ? sentence.probability : 0.5,
+            reason: sentence.reason || '',
+          })),
+          polish: (analysis.polish || []).map((entry, index) => ({
+            id: entry.id || `history-new-polish-${index}`,
+            original: entry.original || '',
+            suggestion: entry.suggestion || '',
+            reason: entry.reason || '',
+          })),
+          citations: (analysis.citations || []).map((entry, index) => ({
+            id: entry.id || `history-new-citation-${index}`,
+            excerpt: entry.excerpt || '',
+            status: entry.status || '待验证',
+            note: entry.note || '',
+          })),
+          aiLikelyCount:
+            typeof analysis.aiLikelyCount === 'number'
+              ? analysis.aiLikelyCount
+              : (analysis.sentences || []).filter((item) => item.type === 'ai' || item.type === 'mixed').length,
+          highlightedHtml: analysis.highlightedHtml || '',
+        }
+      : null;
+
+    const record = {
+      id: `history-${Date.now()}`,
+      title:
+        title && title.trim()
+          ? title.trim()
+          : `扫描记录 · ${new Date().toLocaleString('zh-CN', { hour12: false })}`,
+      createdAt: new Date().toISOString(),
+      functions: normalizedFunctions.length ? normalizedFunctions : ['scan'],
+      inputText: text || '',
+      editorHtml: html || plainTextToHtml(text || ''),
+      analysis: recordAnalysis,
+    };
+
+    historyRecords.value = [record, ...historyRecords.value].slice(0, 30);
+    persistHistory();
+  };
+
   const persistState = () => {
     if (isRestoring || typeof window === 'undefined') return;
     try {
@@ -225,11 +503,14 @@ export const useScanStore = defineStore('scan', () => {
 
   if (typeof window !== 'undefined') {
     hydrateFromStorage();
+    hydrateHistory();
   }
 
   watch([inputText, editorHtml, selectedFunctions, lastUploadedFileName, selectedExampleKey], persistState, {
     deep: true,
   });
+
+  watch(historyRecords, persistHistory, { deep: true });
 
   return {
     examples,
@@ -254,5 +535,7 @@ export const useScanStore = defineStore('scan', () => {
     resetText,
     resetAll,
     commitDraftToStorage,
+    historyRecords,
+    addHistoryRecord,
   };
 });

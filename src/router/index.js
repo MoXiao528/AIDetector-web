@@ -4,7 +4,6 @@ const HomePage = () => import('../pages/HomePage.vue');
 const DashboardPage = () => import('../pages/ScanPage.vue');
 const LoginPage = () => import('../pages/LoginPage.vue');
 const RegisterPage = () => import('../pages/RegisterPage.vue');
-const ProfilePage = () => import('../pages/ProfilePage.vue');
 const ContactPage = () => import('../pages/ContactPage.vue');
 const QAPage = () => import('../pages/QAPage.vue');
 
@@ -16,7 +15,7 @@ const router = createRouter({
     { path: '/scan', redirect: { name: 'dashboard' } },
     { path: '/login', name: 'login', component: LoginPage },
     { path: '/register', name: 'register', component: RegisterPage },
-    { path: '/profile', name: 'profile', component: ProfilePage },
+    { path: '/profile', redirect: { name: 'dashboard', query: { panel: 'profile' } } },
     { path: '/contact', name: 'contact', component: ContactPage },
     { path: '/qa', name: 'qa', component: QAPage },
   ],

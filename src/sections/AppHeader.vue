@@ -263,7 +263,9 @@ const openDashboardFromMobile = () => {
 };
 
 const openAccountDetails = () => {
-  router.push({ name: 'profile' });
+  const query = { ...(route.query || {}) };
+  query.panel = 'profile';
+  router.push({ name: 'dashboard', query });
   isUserMenuOpen.value = false;
 };
 
