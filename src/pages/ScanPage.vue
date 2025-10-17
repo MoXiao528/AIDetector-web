@@ -333,7 +333,7 @@
               </div>
             </aside>
           </div>
-          <div class="pointer-events-none fixed bottom-6 left-1/2 z-30 flex w-full max-w-4xl -translate-x-1/2 px-4">
+          <div class="pointer-events-none fixed bottom-4 left-1/2 z-30 flex w-full max-w-4xl -translate-x-1/2 px-4 sm:bottom-6">
             <div class="pointer-events-auto flex w-full flex-wrap items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-white/95 px-4 py-3 shadow-xl shadow-slate-200/80 backdrop-blur">
               <div class="flex flex-wrap items-center gap-2">
                 <button type="button" class="toolbar-button" @click="applyCommand('bold')">B</button>
