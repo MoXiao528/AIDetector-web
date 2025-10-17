@@ -185,10 +185,11 @@ const buildSeedHistoryAnalysis = ({ summary, sentences, translation = '', polish
           reason: '包含具体团队需求与上下文，贴近人工撰写。',
         },
       ],
-      translation:
-        '第 1 句：The quarterly market summary outlines user growth with confident but repetitive wording. → 本季度市场总结以自信却略显重复的语气描述了用户增长。
-第 2 句：Several insights were drafted collaboratively by product and AI tools. → 多条洞见由产品团队与 AI 工具协作完成。
-第 3 句：Team feedback highlighted the need for clearer regional metrics and citations. → 团队反馈强调需要更清晰的区域指标与引用。',
+      translation: [
+        '第 1 句：The quarterly market summary outlines user growth with confident but repetitive wording. → 本季度市场总结以自信却略显重复的语气描述了用户增长。',
+        '第 2 句：Several insights were drafted collaboratively by product and AI tools. → 多条洞见由产品团队与 AI 工具协作完成。',
+        '第 3 句：Team feedback highlighted the need for clearer regional metrics and citations. → 团队反馈强调需要更清晰的区域指标与引用。',
+      ].join('\n'),
       polish: [
         {
           id: 'history-2-p1',
