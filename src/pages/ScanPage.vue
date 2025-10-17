@@ -41,6 +41,16 @@
         <div class="mt-auto rounded-2xl border border-dashed border-slate-200 bg-slate-50 p-4 text-xs text-slate-500">
           <p>拖拽 TXT / DOCX / PDF 等文件到编辑区即可自动读取。</p>
         </div>
+        <div v-if="authStore.isAuthenticated" class="mt-6 space-y-2 border-t border-slate-200 pt-4">
+          <button type="button" class="nav-item" @click="goToProfile">
+            <Cog6ToothIcon class="h-5 w-5" />
+            <span>Settings</span>
+          </button>
+          <button type="button" class="nav-item" @click="goToQA">
+            <QuestionMarkCircleIcon class="h-5 w-5" />
+            <span>问答</span>
+          </button>
+        </div>
         <input
           ref="multiFileInput"
           type="file"
@@ -92,52 +102,6 @@
         <div class="flex flex-1 flex-col overflow-hidden lg:flex-row">
           <section class="flex-1 overflow-hidden px-4 py-6">
             <div class="flex h-full flex-col overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-xl shadow-slate-200/60">
-              <div class="flex flex-wrap items-center justify-between gap-2 border-b border-slate-200 px-6 py-3">
-                <div class="flex flex-wrap items-center gap-2">
-                  <button type="button" class="toolbar-button" @click="applyCommand('bold')">B</button>
-                  <button type="button" class="toolbar-button italic" @click="applyCommand('italic')">I</button>
-                  <button type="button" class="toolbar-button underline" @click="applyCommand('underline')">U</button>
-                  <button type="button" class="toolbar-button" @click="applyCommand('insertUnorderedList')">• 列表</button>
-                  <button type="button" class="toolbar-button" @click="applyCommand('insertOrderedList')">1. 列表</button>
-                  <button type="button" class="toolbar-button" @click="applyCommand('justifyLeft')">左对齐</button>
-                  <button type="button" class="toolbar-button" @click="applyCommand('justifyCenter')">居中</button>
-                  <button type="button" class="toolbar-button" @click="applyCommand('justifyRight')">右对齐</button>
-                  <div class="toolbar-select">
-                    <label class="sr-only" for="font-size">字体大小</label>
-                    <select id="font-size" class="text-xs" @change="onFontSizeChange">
-                      <option value="" selected>字体大小</option>
-                      <option value="small">12px</option>
-                      <option value="base">14px</option>
-                      <option value="lg">16px</option>
-                      <option value="xl">18px</option>
-                      <option value="2xl">24px</option>
-                    </select>
-                  </div>
-                </div>
-                <div class="flex items-center gap-2">
-                  <button type="button" class="toolbar-button" @click="triggerUpload">
-                    <ArrowUpTrayIcon class="mr-1 h-4 w-4" />
-                    上传文件
-                  </button>
-                  <button
-                    type="button"
-                    class="inline-flex items-center rounded-full bg-primary-600 px-4 py-2 text-sm font-semibold text-white shadow hover:bg-primary-500"
-                    @click="handleScan"
-                  >
-                    <svg
-                      v-if="isScanning"
-                      class="mr-2 h-4 w-4 animate-spin"
-                      xmlns="http://www.w3.org/2000/svg"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                    >
-                      <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                      <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"></path>
-                    </svg>
-                    {{ isScanning ? '扫描中...' : '开始扫描' }}
-                  </button>
-                </div>
-              </div>
               <div class="relative flex-1 overflow-hidden">
                 <div
                   v-show="editorMode === 'edit'"
@@ -163,11 +127,59 @@
                 </div>
                 <div
                   v-if="dragActive"
-                  class="pointer-events-none absolute inset-0 flex flex-col items-center justify-center rounded-3xl border-2 border-dashed border-primary-400 bg-primary-50/80 text-primary-600"
+                  class="pointer-events-none absolute inset-0 z-10 flex flex-col items-center justify-center rounded-3xl border-2 border-dashed border-primary-400 bg-primary-50/80 text-primary-600"
                 >
                   <ArrowUpTrayIcon class="mb-3 h-10 w-10" />
                   <p class="text-sm font-semibold">释放鼠标上传文档</p>
                   <p class="mt-1 text-xs">支持 TXT / DOCX / PDF / Markdown 等格式</p>
+                </div>
+                <div class="pointer-events-none absolute inset-x-0 bottom-0 z-20 flex justify-center px-6 pb-6">
+                  <div class="pointer-events-auto flex w-full max-w-3xl flex-wrap items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-white/95 px-4 py-3 shadow-xl shadow-slate-200/80 backdrop-blur">
+                    <div class="flex flex-wrap items-center gap-2">
+                      <button type="button" class="toolbar-button" @click="applyCommand('bold')">B</button>
+                      <button type="button" class="toolbar-button italic" @click="applyCommand('italic')">I</button>
+                      <button type="button" class="toolbar-button underline" @click="applyCommand('underline')">U</button>
+                      <button type="button" class="toolbar-button" @click="applyCommand('insertUnorderedList')">• 列表</button>
+                      <button type="button" class="toolbar-button" @click="applyCommand('insertOrderedList')">1. 列表</button>
+                      <button type="button" class="toolbar-button" @click="applyCommand('justifyLeft')">左对齐</button>
+                      <button type="button" class="toolbar-button" @click="applyCommand('justifyCenter')">居中</button>
+                      <button type="button" class="toolbar-button" @click="applyCommand('justifyRight')">右对齐</button>
+                      <div class="toolbar-select">
+                        <label class="sr-only" for="font-size">字体大小</label>
+                        <select id="font-size" class="text-xs" @change="onFontSizeChange">
+                          <option value="" selected>字体大小</option>
+                          <option value="small">12px</option>
+                          <option value="base">14px</option>
+                          <option value="lg">16px</option>
+                          <option value="xl">18px</option>
+                          <option value="2xl">24px</option>
+                        </select>
+                      </div>
+                    </div>
+                    <div class="flex items-center gap-2">
+                      <button type="button" class="toolbar-button" @click="triggerUpload">
+                        <ArrowUpTrayIcon class="mr-1 h-4 w-4" />
+                        上传文件
+                      </button>
+                      <button
+                        type="button"
+                        class="inline-flex items-center rounded-full bg-primary-600 px-4 py-2 text-sm font-semibold text-white shadow hover:bg-primary-500"
+                        @click="handleScan"
+                      >
+                        <svg
+                          v-if="isScanning"
+                          class="mr-2 h-4 w-4 animate-spin"
+                          xmlns="http://www.w3.org/2000/svg"
+                          fill="none"
+                          viewBox="0 0 24 24"
+                        >
+                          <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                          <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"></path>
+                        </svg>
+                        {{ isScanning ? '扫描中...' : '开始扫描' }}
+                      </button>
+                    </div>
+                  </div>
                 </div>
               </div>
               <div class="border-t border-slate-200 bg-slate-50 px-6 py-3 text-xs text-slate-500">
@@ -183,19 +195,7 @@
             />
           </section>
 
-          <aside
-            :class="[
-              'relative w-full border-t border-slate-200 bg-white shadow-[0_-8px_24px_rgba(15,23,42,0.08)] transition-all duration-300 ease-in-out lg:w-96 lg:border-t-0 lg:border-l lg:shadow-none',
-              isDrawerOpen ? 'lg:translate-x-0' : 'lg:-translate-x-72',
-            ]"
-          >
-            <button
-              type="button"
-              class="absolute -left-5 top-6 hidden h-10 w-10 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-500 shadow-lg transition hover:border-primary-300 hover:text-primary-600 lg:flex"
-              @click="isDrawerOpen = !isDrawerOpen"
-            >
-              <ChevronLeftIcon :class="['h-5 w-5 transition', isDrawerOpen ? 'rotate-180' : '']" />
-            </button>
+          <aside class="relative w-full border-t border-slate-200 bg-white shadow-[0_-8px_24px_rgba(15,23,42,0.08)] lg:w-96 lg:border-t-0 lg:border-l lg:shadow-none">
             <div class="h-full overflow-y-auto px-5 py-6">
               <div class="flex items-center justify-between">
                 <div>
@@ -371,12 +371,13 @@ import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router';
 import {
   ArrowUpTrayIcon,
-  ChevronLeftIcon,
   DocumentMagnifyingGlassIcon,
   DocumentTextIcon,
   HomeIcon,
   LanguageIcon,
   PencilSquareIcon,
+  Cog6ToothIcon,
+  QuestionMarkCircleIcon,
   PlusIcon,
   ShieldCheckIcon,
 } from '@heroicons/vue/24/outline';
@@ -397,7 +398,6 @@ const newMenuRef = ref(null);
 const newMenuButtonRef = ref(null);
 
 const editorMode = ref('edit');
-const isDrawerOpen = ref(true);
 const isScanning = ref(false);
 const dragActive = ref(false);
 const detectionResults = ref(null);
@@ -754,7 +754,6 @@ const handleScan = async () => {
   highlightedPreviewHtml.value = analysis.highlightedHtml;
   editorMode.value = 'preview';
   activeResultTab.value = 'scan';
-  isDrawerOpen.value = true;
   isScanning.value = false;
   scanStore.commitDraftToStorage();
 };
@@ -866,6 +865,14 @@ const goHome = () => {
   router.push({ name: 'home' });
 };
 
+const goToProfile = () => {
+  router.push({ name: 'profile' });
+};
+
+const goToQA = () => {
+  router.push({ name: 'qa' });
+};
+
 const startNewScan = () => {
   newMenuOpen.value = false;
   scanStore.resetAll();
@@ -921,7 +928,7 @@ const onGlobalClick = (event) => {
 }
 
 .editor-surface {
-  @apply h-full overflow-y-auto px-6 py-6 text-sm leading-relaxed text-slate-700 focus:outline-none;
+  @apply h-full overflow-y-auto px-6 pt-6 pb-32 text-sm leading-relaxed text-slate-700 focus:outline-none;
 }
 
 .editor-surface:empty::before {
@@ -930,7 +937,7 @@ const onGlobalClick = (event) => {
 }
 
 .preview-surface {
-  @apply h-full overflow-y-auto px-6 py-6 text-sm leading-relaxed text-slate-700;
+  @apply h-full overflow-y-auto px-6 pt-6 pb-32 text-sm leading-relaxed text-slate-700;
 }
 
 .highlight-chip {

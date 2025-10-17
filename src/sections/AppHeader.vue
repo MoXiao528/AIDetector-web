@@ -23,7 +23,7 @@
         </div>
         <div v-else class="hidden items-center space-x-3 md:flex">
           <template v-if="authStore.isAuthenticated">
-            <div class="relative">
+            <div class="relative" ref="userMenuContainerRef">
               <button
                 type="button"
                 class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-primary-500 text-sm font-semibold text-white shadow-sm"
@@ -34,12 +34,42 @@
               <transition name="fade">
                 <div
                   v-if="isUserMenuOpen"
-                  class="absolute right-0 mt-3 w-48 rounded-2xl border border-slate-200 bg-white p-3 text-sm text-slate-600 shadow-xl"
+                  class="absolute right-0 mt-3 w-72 rounded-3xl border border-slate-200 bg-white/95 p-4 text-sm text-slate-600 shadow-xl backdrop-blur"
                 >
-                  <p class="truncate px-3 text-xs text-slate-400">{{ authStore.user?.email }}</p>
+                  <div class="flex items-center gap-3">
+                    <div class="flex h-12 w-12 items-center justify-center rounded-full bg-primary-500 text-base font-semibold text-white">
+                      {{ userInitials }}
+                    </div>
+                    <div class="flex-1">
+                      <p class="truncate text-sm font-semibold text-slate-900">{{ authStore.user?.email }}</p>
+                      <p class="mt-0.5 text-xs text-primary-600">Personal Plan · Free</p>
+                    </div>
+                  </div>
+                  <div class="mt-4 space-y-2 text-sm">
+                    <button
+                      type="button"
+                      class="flex w-full items-center justify-between rounded-2xl border border-slate-200 px-3 py-2 font-semibold text-slate-700 transition hover:border-primary-200 hover:text-primary-600"
+                      @click="openAccountDetails"
+                    >
+                      <span>Account Details</span>
+                      <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" />
+                      </svg>
+                    </button>
+                    <button
+                      type="button"
+                      class="flex w-full items-center justify-between rounded-2xl border border-slate-200 px-3 py-2 font-semibold text-slate-700 transition hover:border-primary-200 hover:text-primary-600"
+                      @click="openContact"
+                    >
+                      <span>Contact Us</span>
+                      <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8m-18 8h18" />
+                      </svg>
+                    </button>
+                  </div>
                   <button
                     type="button"
-                    class="mt-2 w-full rounded-xl bg-slate-900 px-3 py-2 text-xs font-semibold text-white hover:bg-slate-800"
+                    class="mt-4 flex w-full items-center justify-center rounded-2xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-800"
                     @click="handleLogout"
                   >
                     退出登录
@@ -93,9 +123,36 @@
           </template>
           <template v-else>
             <div v-if="authStore.isAuthenticated" class="space-y-3">
-              <div class="rounded-2xl bg-slate-100 px-4 py-3 text-xs text-slate-500">
-                <p class="font-semibold text-slate-700">{{ authStore.user?.name }}</p>
-                <p class="truncate">{{ authStore.user?.email }}</p>
+              <div class="space-y-3 rounded-2xl bg-slate-100 px-4 py-4 text-sm text-slate-600">
+                <div class="flex items-center gap-3">
+                  <div class="flex h-11 w-11 items-center justify-center rounded-full bg-primary-500 text-sm font-semibold text-white">
+                    {{ userInitials }}
+                  </div>
+                  <div>
+                    <p class="font-semibold text-slate-700">{{ authStore.user?.email }}</p>
+                    <p class="text-xs text-primary-600">Personal Plan · Free</p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  class="flex w-full items-center justify-between rounded-2xl border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-700 transition hover:border-primary-200 hover:text-primary-600"
+                  @click="openAccountDetailsFromMobile"
+                >
+                  <span>Account Details</span>
+                  <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" />
+                  </svg>
+                </button>
+                <button
+                  type="button"
+                  class="flex w-full items-center justify-between rounded-2xl border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-700 transition hover:border-primary-200 hover:text-primary-600"
+                  @click="openContactFromMobile"
+                >
+                  <span>Contact Us</span>
+                  <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8m-18 8h18" />
+                  </svg>
+                </button>
               </div>
               <button
                 type="button"
@@ -129,7 +186,7 @@
 </template>
 
 <script setup>
-import { computed, ref, watch } from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useAuthStore } from '../store/auth';
 
@@ -146,6 +203,7 @@ const authStore = useAuthStore();
 
 const isMobileMenuOpen = ref(false);
 const isUserMenuOpen = ref(false);
+const userMenuContainerRef = ref(null);
 
 const isMarketing = computed(() => props.mode === 'marketing');
 const isDashboard = computed(() => props.mode === 'dashboard');
@@ -161,6 +219,10 @@ const marketingLinks = computed(() => [
 ]);
 
 const userInitials = computed(() => {
+  const profile = authStore.user?.profile;
+  if (profile?.firstName || profile?.surname) {
+    return `${profile.firstName?.charAt(0) || ''}${profile.surname?.charAt(0) || ''}`.toUpperCase() || 'U';
+  }
   if (!authStore.user?.name) {
     return (authStore.user?.email || 'U').charAt(0).toUpperCase();
   }
@@ -200,9 +262,35 @@ const openDashboardFromMobile = () => {
   closeMobileMenu();
 };
 
+const openAccountDetails = () => {
+  router.push({ name: 'profile' });
+  isUserMenuOpen.value = false;
+};
+
+const openAccountDetailsFromMobile = () => {
+  openAccountDetails();
+  closeMobileMenu();
+};
+
+const openContact = () => {
+  router.push({ name: 'contact' });
+  isUserMenuOpen.value = false;
+};
+
+const openContactFromMobile = () => {
+  openContact();
+  closeMobileMenu();
+};
+
 const logoutFromMobile = () => {
   handleLogout();
   closeMobileMenu();
+};
+
+const handleGlobalClick = (event) => {
+  if (!isUserMenuOpen.value) return;
+  if (userMenuContainerRef.value?.contains(event.target)) return;
+  isUserMenuOpen.value = false;
 };
 
 watch(
@@ -229,6 +317,14 @@ if (isDashboard.value) {
     }
   );
 }
+
+onMounted(() => {
+  document.addEventListener('click', handleGlobalClick);
+});
+
+onBeforeUnmount(() => {
+  document.removeEventListener('click', handleGlobalClick);
+});
 </script>
 
 <style scoped>

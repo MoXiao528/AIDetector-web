@@ -3,6 +3,7 @@ import { computed, ref, watch } from 'vue';
 
 const STORAGE_KEY = 'ai-detector-auth';
 const USERS_STORAGE_KEY = 'ai-detector-users';
+const PROFILE_OVERRIDES_KEY = 'ai-detector-profile-overrides';
 
 const staticUsers = [
   {
@@ -11,15 +12,55 @@ const staticUsers = [
     email: 'test@veritascribe.dev',
     password: 'a123456',
     name: '测试用户',
+    plan: 'personal-free',
+    profile: {
+      firstName: 'Test',
+      surname: 'User',
+      organization: 'Veritascribe Labs',
+      role: '内容创作者',
+      industry: '教育与研究',
+    },
   },
 ];
 
 export const useAuthStore = defineStore('auth', () => {
   const user = ref(null);
   const storedUsers = ref([]);
+  const profileOverrides = ref({});
 
   const isAuthenticated = computed(() => Boolean(user.value));
   const allUsers = computed(() => [...staticUsers, ...storedUsers.value]);
+
+  const getAccountIdentifier = (record) => {
+    if (!record) return '';
+    const email = record.email ? record.email.toLowerCase() : '';
+    if (email) return email;
+    const username = record.username ? record.username.toLowerCase() : '';
+    if (username) return username;
+    return record.id || '';
+  };
+
+  const buildProfile = (account) => {
+    const baseProfile = {
+      firstName: account?.profile?.firstName || account?.name || '',
+      surname: account?.profile?.surname || '',
+      organization: account?.profile?.organization || '',
+      role: account?.profile?.role || '',
+      industry: account?.profile?.industry || '',
+    };
+    const identifier = getAccountIdentifier(account);
+    if (!identifier) {
+      return baseProfile;
+    }
+    const override = profileOverrides.value[identifier];
+    if (!override) {
+      return baseProfile;
+    }
+    return {
+      ...baseProfile,
+      ...override,
+    };
+  };
 
   const restoreSession = () => {
     if (typeof window === 'undefined') return;
@@ -67,6 +108,29 @@ export const useAuthStore = defineStore('auth', () => {
     }
   };
 
+  const restoreProfileOverrides = () => {
+    if (typeof window === 'undefined') return;
+    try {
+      const raw = window.localStorage.getItem(PROFILE_OVERRIDES_KEY);
+      if (!raw) return;
+      const parsed = JSON.parse(raw);
+      if (parsed && typeof parsed === 'object') {
+        profileOverrides.value = parsed;
+      }
+    } catch (error) {
+      console.error('Failed to restore profile overrides', error);
+    }
+  };
+
+  const persistProfileOverrides = () => {
+    if (typeof window === 'undefined') return;
+    try {
+      window.localStorage.setItem(PROFILE_OVERRIDES_KEY, JSON.stringify(profileOverrides.value));
+    } catch (error) {
+      console.error('Failed to persist profile overrides', error);
+    }
+  };
+
   const findUserByIdentifier = (identifier) => {
     if (typeof identifier !== 'string') return null;
     const normalized = identifier.trim().toLowerCase();
@@ -89,11 +153,15 @@ export const useAuthStore = defineStore('auth', () => {
     }
 
     const displayName = account.name || account.username || account.email?.split('@')[0] || '用户';
+    const profile = buildProfile(account);
+    const plan = account.plan || 'personal-free';
     user.value = {
       email: account.email || `${account.username}@veritascribe.local`,
       name: displayName,
       username: account.username || '',
       lastLoginAt: new Date().toISOString(),
+      plan,
+      profile,
     };
   };
 
@@ -118,6 +186,14 @@ export const useAuthStore = defineStore('auth', () => {
       username,
       password,
       name: name?.trim() || username,
+      plan: 'personal-free',
+      profile: {
+        firstName: name?.trim() || username,
+        surname: '',
+        organization: '',
+        role: '',
+        industry: '',
+      },
     };
 
     storedUsers.value = [...storedUsers.value, record];
@@ -129,15 +205,63 @@ export const useAuthStore = defineStore('auth', () => {
     user.value = null;
   };
 
+  const updateProfile = (payload) => {
+    if (!user.value) {
+      throw new Error('请先登录后再更新个人信息。');
+    }
+
+    const identifier = getAccountIdentifier(user.value);
+    const currentProfile = user.value.profile || {};
+    const updatedProfile = {
+      ...currentProfile,
+      ...payload,
+    };
+    user.value = {
+      ...user.value,
+      profile: updatedProfile,
+      name:
+        updatedProfile.firstName || updatedProfile.surname
+          ? `${updatedProfile.firstName || ''}${updatedProfile.surname || ''}`.trim() || user.value.name
+          : user.value.name,
+    };
+
+    if (identifier) {
+      profileOverrides.value = {
+        ...profileOverrides.value,
+        [identifier]: updatedProfile,
+      };
+    }
+
+    const index = storedUsers.value.findIndex((record) => getAccountIdentifier(record) === identifier);
+    if (index >= 0) {
+      const record = {
+        ...storedUsers.value[index],
+        profile: {
+          ...(storedUsers.value[index].profile || {}),
+          ...updatedProfile,
+        },
+        name:
+          updatedProfile.firstName || updatedProfile.surname
+            ? `${updatedProfile.firstName || ''}${updatedProfile.surname || ''}`.trim() || storedUsers.value[index].name
+            : storedUsers.value[index].name,
+      };
+      const next = [...storedUsers.value];
+      next.splice(index, 1, record);
+      storedUsers.value = next;
+    }
+  };
+
   const requireAuthentication = () => isAuthenticated.value;
 
   if (typeof window !== 'undefined') {
     restoreSession();
     restoreUsers();
+    restoreProfileOverrides();
   }
 
   watch(user, persistSession, { deep: true });
   watch(storedUsers, persistUsers, { deep: true });
+  watch(profileOverrides, persistProfileOverrides, { deep: true });
 
   return {
     user,
@@ -145,6 +269,7 @@ export const useAuthStore = defineStore('auth', () => {
     login,
     register,
     logout,
+    updateProfile,
     requireAuthentication,
   };
 });
