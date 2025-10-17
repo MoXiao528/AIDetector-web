@@ -11,7 +11,7 @@
           <RouterLink :to="{ name: 'home', hash: '#workflow' }" class="hover:text-slate-900">工作流</RouterLink>
           <RouterLink :to="{ name: 'home', hash: '#showcase' }" class="hover:text-slate-900">行业案例</RouterLink>
           <RouterLink :to="{ name: 'home', hash: '#pricing' }" class="hover:text-slate-900">定价</RouterLink>
-          <RouterLink :to="{ name: 'dashboard' }" class="hover:text-slate-900">控制台</RouterLink>
+          <RouterLink :to="{ name: 'scan' }" class="hover:text-slate-900">识别</RouterLink>
         </nav>
         <div class="hidden items-center space-x-3 md:flex">
           <RouterLink to="/login" class="text-sm font-medium text-slate-600 transition hover:text-slate-900">登录</RouterLink>
@@ -80,7 +80,7 @@ const mobileLinks = computed(() => [
   { label: '工作流', to: { name: 'home', hash: '#workflow' } },
   { label: '行业案例', to: { name: 'home', hash: '#showcase' } },
   { label: '定价', to: { name: 'home', hash: '#pricing' } },
-  { label: '控制台', to: { name: 'dashboard' } },
+  { label: '识别', to: { name: 'scan' } },
 ]);
 
 const closeMobileMenu = () => {

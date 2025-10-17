@@ -34,7 +34,7 @@
         </div>
         <aside class="flex flex-col justify-between rounded-3xl border border-primary-100 bg-primary-50/60 p-8 text-primary-900 shadow-glow">
           <div>
-            <p class="text-xs font-semibold uppercase tracking-[0.3em] text-primary-600">仪表盘快照</p>
+            <p class="text-xs font-semibold uppercase tracking-[0.3em] text-primary-600">识别工作台快照</p>
             <h3 class="mt-4 text-2xl font-semibold tracking-tight">团队合规健康度 92%</h3>
             <p class="mt-3 text-sm text-primary-900/80">实时监控团队写作合规性，自动推送异常段落与人工复核任务。</p>
           </div>
@@ -52,9 +52,12 @@
               <dd class="text-xl font-semibold">87%</dd>
             </div>
           </dl>
-          <button class="mt-10 inline-flex items-center justify-center rounded-full bg-primary-600 px-4 py-3 text-sm font-semibold text-white shadow-lg shadow-primary-200/60 transition hover:bg-primary-500">
-            查看完整仪表盘
-          </button>
+          <RouterLink
+            to="/scan"
+            class="mt-10 inline-flex items-center justify-center rounded-full bg-primary-600 px-4 py-3 text-sm font-semibold text-white shadow-lg shadow-primary-200/60 transition hover:bg-primary-500"
+          >
+            前往识别页面
+          </RouterLink>
         </aside>
       </div>
     </div>

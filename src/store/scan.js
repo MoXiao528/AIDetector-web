@@ -30,10 +30,11 @@ const examples = [
 ];
 
 const validFunctionKeys = ['scan', 'polish', 'translate', 'citation'];
+const CHARACTER_LIMIT = 10000;
 
 export const useScanStore = defineStore('scan', () => {
-  const inputText = ref(examples[0].content);
-  const selectedExampleKey = ref(examples[0].key);
+  const inputText = ref('');
+  const selectedExampleKey = ref('');
   const isUploading = ref(false);
   const uploadError = ref('');
   const lastUploadedFileName = ref('');
@@ -51,6 +52,7 @@ export const useScanStore = defineStore('scan', () => {
     if (!matched) return;
     inputText.value = matched.content;
     selectedExampleKey.value = matched.key;
+    lastUploadedFileName.value = '';
   };
 
   const readFile = async (file) => {
@@ -102,8 +104,8 @@ export const useScanStore = defineStore('scan', () => {
   };
 
   const resetText = () => {
-    inputText.value = examples[0].content;
-    selectedExampleKey.value = examples[0].key;
+    inputText.value = '';
+    selectedExampleKey.value = '';
     lastUploadedFileName.value = '';
     resetError();
   };
@@ -122,6 +124,7 @@ export const useScanStore = defineStore('scan', () => {
     lastUploadedFileName,
     selectedFunctions,
     characterCount,
+    characterLimit: CHARACTER_LIMIT,
     setText,
     applyExample,
     readFile,

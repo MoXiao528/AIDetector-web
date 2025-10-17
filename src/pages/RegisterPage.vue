@@ -98,7 +98,11 @@ const handleSubmit = () => {
     error.value = '两次输入的密码不一致。';
     return;
   }
-  authStore.register({ name: form.name, email: form.email });
-  router.push('/dashboard');
+  try {
+    authStore.register({ name: form.name, email: form.email, password: form.password });
+    router.push('/scan');
+  } catch (err) {
+    error.value = err?.message || '注册失败，请稍后再试。';
+  }
 };
 </script>

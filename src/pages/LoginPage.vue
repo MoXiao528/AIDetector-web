@@ -9,13 +9,13 @@
         </div>
         <form class="space-y-5" @submit.prevent="handleSubmit">
           <div class="space-y-1">
-            <label for="email" class="block text-sm font-medium text-white/80">邮箱</label>
+            <label for="identifier" class="block text-sm font-medium text-white/80">邮箱或用户名</label>
             <input
-              id="email"
-              v-model="form.email"
-              type="email"
+              id="identifier"
+              v-model="form.identifier"
+              type="text"
               required
-              placeholder="name@company.com"
+              placeholder="test 或 name@company.com"
               class="w-full rounded-2xl border border-white/10 bg-white/10 px-4 py-3 text-sm text-white placeholder:text-white/40 focus:border-primary-300 focus:outline-none focus:ring-2 focus:ring-primary-300/40"
             />
           </div>
@@ -35,7 +35,7 @@
             type="submit"
             class="flex w-full items-center justify-center rounded-2xl bg-primary-500 px-4 py-3 text-sm font-semibold text-white shadow-glow transition hover:bg-primary-400"
           >
-            登录并进入仪表盘
+            登录并进入识别页面
           </button>
         </form>
         <p class="text-center text-xs text-white/50">
@@ -58,7 +58,7 @@ const router = useRouter();
 const route = useRoute();
 
 const form = reactive({
-  email: '',
+  identifier: '',
   password: '',
 });
 
@@ -66,12 +66,18 @@ const error = ref('');
 
 const handleSubmit = () => {
   error.value = '';
-  if (!form.email || !form.password) {
-    error.value = '请填写邮箱和密码。';
+  if (!form.identifier || !form.password) {
+    error.value = '请填写账号和密码。';
     return;
   }
-  authStore.login({ email: form.email });
-  const redirectTo = typeof route.query.redirect === 'string' ? route.query.redirect : '/dashboard';
-  router.push(redirectTo);
+  try {
+    authStore.login({ identifier: form.identifier, password: form.password });
+    const redirectTo = typeof route.query.redirect === 'string' && route.query.redirect
+      ? route.query.redirect
+      : '/scan';
+    router.push(redirectTo);
+  } catch (err) {
+    error.value = err?.message || '登录失败，请稍后再试。';
+  }
 };
 </script>

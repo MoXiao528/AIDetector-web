@@ -35,7 +35,7 @@
               <div class="mt-6 space-y-4">
                 <label class="flex items-center justify-between text-sm font-semibold text-slate-700">
                   <span>粘贴或输入文本</span>
-                  <span class="text-xs font-medium text-slate-400">{{ scanStore.characterCount }} 字</span>
+                  <span class="text-xs font-medium text-slate-400">{{ characterUsage }}</span>
                 </label>
                 <textarea
                   v-model="textModel"
@@ -63,6 +63,7 @@
                   </button>
                 </div>
                 <div class="flex flex-wrap items-center gap-3 text-xs text-slate-500">
+                  <span>{{ characterUsage }}</span>
                   <span>已选功能：{{ selectedFunctionSummary }}</span>
                   <span v-if="scanStore.lastUploadedFileName" class="flex items-center space-x-2">
                     <svg class="h-4 w-4 text-primary-500" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
@@ -144,7 +145,7 @@
             <div class="rounded-3xl border border-slate-200 bg-white p-6 shadow-lg">
               <h3 class="text-sm font-semibold text-slate-900">使用技巧</h3>
               <ul class="mt-4 space-y-3 text-xs text-slate-500">
-                <li>在仪表盘中可切换至润色与翻译模式，保留同一份文本上下文。</li>
+                <li>在识别页面中可切换至润色与翻译模式，保留同一份文本上下文。</li>
                 <li>上传 PDF 或 Word 文件时，我们会自动识别段落并清理格式。</li>
                 <li>点击“扫描”时将同步检测并提示登录以继续。</li>
               </ul>
@@ -213,6 +214,8 @@ const simulatedResult = ref({
   reviewTips: 5,
   polishSuggestions: 8,
 });
+
+const characterUsage = computed(() => `字数：${scanStore.characterCount}/${scanStore.characterLimit}`);
 
 const scanHighlights = [
   '重点标记高风险段落并提供人工复核建议',

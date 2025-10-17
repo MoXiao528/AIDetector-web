@@ -47,11 +47,11 @@
           <button
             type="button"
             class="inline-flex items-center justify-center rounded-full bg-primary-600 px-6 py-3 text-sm font-semibold text-white shadow-glow transition hover:bg-primary-500"
-            @click="goToDashboard('scan')"
+            @click="goToScan('scan')"
           >
-            体验仪表盘
+            体验识别工作台
           </button>
-          <button type="button" class="text-sm font-semibold text-slate-700" @click="goToDashboard('polish')">
+          <button type="button" class="text-sm font-semibold text-slate-700" @click="goToScan('polish')">
             查看润色工作流 →
           </button>
         </div>
@@ -118,7 +118,7 @@
                 </button>
               </div>
               <div class="flex flex-wrap items-center gap-3">
-                <span>字数：{{ scanStore.characterCount }}</span>
+                <span>字数：{{ scanStore.characterCount }}/{{ scanStore.characterLimit }}</span>
                 <span>已选功能：{{ selectedFunctionSummary }}</span>
               </div>
               <div v-if="scanStore.uploadError" class="flex items-center space-x-2 rounded-2xl bg-rose-50 px-3 py-2 text-rose-600">
@@ -243,19 +243,19 @@ const onFileChange = async (event) => {
   }
 };
 
-const handleScan = () => {
-  if (!scanStore.selectedFunctions.length) {
-    scanStore.setFunctions(['scan']);
-  }
+  const handleScan = () => {
+    if (!scanStore.selectedFunctions.length) {
+      scanStore.setFunctions(['scan']);
+    }
   const features = (scanStore.selectedFunctions.length ? scanStore.selectedFunctions : ['scan']).join(',');
-  router.push({ name: 'dashboard', query: { focus: 'scan', features } });
+  router.push({ name: 'scan', query: { features } });
 };
 
-const goToDashboard = (focus) => {
+const goToScan = (focus) => {
   if (['scan', 'polish', 'translate', 'citation'].includes(focus)) {
     scanStore.setFunctions([focus]);
   }
   const features = (scanStore.selectedFunctions.length ? scanStore.selectedFunctions : ['scan']).join(',');
-  router.push({ name: 'dashboard', query: { focus, features } });
+  router.push({ name: 'scan', query: { features } });
 };
 </script>
