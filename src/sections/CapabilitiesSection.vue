@@ -4,8 +4,10 @@
     <div class="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
       <div class="max-w-3xl">
         <span class="inline-flex items-center rounded-full border border-white/10 px-3 py-1 text-xs font-semibold uppercase tracking-wider text-white/70">全栈能力矩阵</span>
-        <h2 class="section-title mt-6 text-white">检测、润色、翻译，一站式智能写作中枢</h2>
-        <p class="section-subtitle text-white/70">
+        <h2 class="section-title mt-6 text-primary-100 drop-shadow-[0_4px_16px_rgba(15,23,42,0.45)]">
+          检测、润色、翻译，一站式智能写作中枢
+        </h2>
+        <p class="section-subtitle !text-slate-200">
           结合语义模型、文体评估与跨语言对齐，Veritascribe 为不同角色提供从文本创作到审阅的完整工具链，帮助团队快速迭代高可信内容。
         </p>
       </div>
@@ -55,7 +57,7 @@ import { AcademicCapIcon, ShieldCheckIcon, SparklesIcon } from '@heroicons/vue/2
 const capabilities = [
   {
     title: '深度 AI 文本检测',
-    description: '基于 GPTZero 同级别多模型比对算法，快速识别段落级别的 AI 痕迹并生成解释说明。',
+    description: '基于 RepreGuard 模型比对算法，快速识别段落级别的 AI 痕迹并生成解释说明。',
     tag: 'Detection',
     icon: ShieldCheckIcon,
     points: ['词法、句法、语义三层证据链', 'AI 概率热力图与逐句报告', '上传 PDF、DOCX、Markdown 多格式']
