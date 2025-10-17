@@ -52,12 +52,13 @@
               <dd class="text-xl font-semibold">87%</dd>
             </div>
           </dl>
-          <RouterLink
-            to="/scan"
+          <button
+            type="button"
             class="mt-10 inline-flex items-center justify-center rounded-full bg-primary-600 px-4 py-3 text-sm font-semibold text-white shadow-lg shadow-primary-200/60 transition hover:bg-primary-500"
+            @click="openDashboard"
           >
             前往识别页面
-          </RouterLink>
+          </button>
         </aside>
       </div>
     </div>
@@ -65,6 +66,9 @@
 </template>
 
 <script setup>
+import { useRouter } from 'vue-router';
+import { useScanStore } from '../store/scan';
+
 const steps = [
   {
     title: '批量导入文本，获取段落级检测报告',
@@ -82,4 +86,15 @@ const steps = [
     chips: ['翻译记忆', '协同批注', '版本追踪']
   }
 ];
+
+const router = useRouter();
+const scanStore = useScanStore();
+
+const openDashboard = () => {
+  scanStore.commitDraftToStorage();
+  const target = router.resolve({ name: 'dashboard' });
+  if (typeof window !== 'undefined') {
+    window.open(target.href, '_blank', 'noopener');
+  }
+};
 </script>

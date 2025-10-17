@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia';
-import { computed, ref } from 'vue';
+import { computed, ref, watch } from 'vue';
 import { readTextFromFile } from '../utils/fileReaders';
 
 const examples = [
@@ -31,19 +31,64 @@ const examples = [
 
 const validFunctionKeys = ['scan', 'polish', 'translate', 'citation'];
 const CHARACTER_LIMIT = 10000;
+const STORAGE_KEY = 'ai-detector-scan-draft';
+
+const escapeHtml = (value = '') =>
+  String(value)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+
+const plainTextToHtml = (value = '') => {
+  if (!value) return '';
+  const normalized = String(value).replace(/\r\n/g, '\n');
+  return normalized
+    .split('\n')
+    .map((line) => {
+      if (!line) {
+        return '<p><br></p>';
+      }
+      return `<p>${escapeHtml(line)
+        .replace(/  /g, ' &nbsp;')
+        .replace(/\t/g, '&nbsp;&nbsp;&nbsp;&nbsp;')}</p>`;
+    })
+    .join('');
+};
+
+const extractTextFromHtml = (html = '') => {
+  if (!html) return '';
+  if (typeof window === 'undefined') {
+    return String(html).replace(/<[^>]+>/g, '');
+  }
+  const parser = new DOMParser();
+  const doc = parser.parseFromString(`<body>${html}</body>`, 'text/html');
+  return doc.body.textContent || '';
+};
 
 export const useScanStore = defineStore('scan', () => {
   const inputText = ref('');
+  const editorHtml = ref('');
   const selectedExampleKey = ref('');
   const isUploading = ref(false);
   const uploadError = ref('');
   const lastUploadedFileName = ref('');
   const selectedFunctions = ref(['scan']);
+  let isRestoring = false;
 
   const characterCount = computed(() => inputText.value.length);
 
   const setText = (value) => {
-    inputText.value = value;
+    const normalized = value || '';
+    inputText.value = normalized;
+    editorHtml.value = plainTextToHtml(normalized);
+    selectedExampleKey.value = '';
+  };
+
+  const setEditorHtml = (value = '') => {
+    editorHtml.value = value || '';
+    inputText.value = extractTextFromHtml(editorHtml.value);
     selectedExampleKey.value = '';
   };
 
@@ -51,19 +96,32 @@ export const useScanStore = defineStore('scan', () => {
     const matched = examples.find((item) => item.key === key);
     if (!matched) return;
     inputText.value = matched.content;
+    editorHtml.value = plainTextToHtml(matched.content);
     selectedExampleKey.value = matched.key;
     lastUploadedFileName.value = '';
   };
 
   const readFile = async (file) => {
     if (!file) return;
+    await readFiles([file]);
+  };
+
+  const readFiles = async (files) => {
+    const fileList = Array.from(files || []).filter(Boolean);
+    if (!fileList.length) return;
     isUploading.value = true;
     uploadError.value = '';
     try {
-      const content = await readTextFromFile(file);
-      inputText.value = content;
-      selectedExampleKey.value = '';
-      lastUploadedFileName.value = file.name;
+      const contents = [];
+      for (const current of fileList) {
+        // eslint-disable-next-line no-await-in-loop
+        const content = await readTextFromFile(current);
+        contents.push(content);
+      }
+      const combined = contents.join('\n\n');
+      setText(combined);
+      lastUploadedFileName.value =
+        fileList.length === 1 ? fileList[0].name : `${fileList[0].name} 等 ${fileList.length} 个文件`;
     } catch (error) {
       uploadError.value = error.message || '文件解析失败，请稍后重试。';
       throw error;
@@ -105,6 +163,7 @@ export const useScanStore = defineStore('scan', () => {
 
   const resetText = () => {
     inputText.value = '';
+    editorHtml.value = '';
     selectedExampleKey.value = '';
     lastUploadedFileName.value = '';
     resetError();
@@ -115,9 +174,67 @@ export const useScanStore = defineStore('scan', () => {
     resetFunctions();
   };
 
+  const persistState = () => {
+    if (isRestoring || typeof window === 'undefined') return;
+    try {
+      const payload = {
+        inputText: inputText.value,
+        editorHtml: editorHtml.value,
+        selectedFunctions: selectedFunctions.value,
+        lastUploadedFileName: lastUploadedFileName.value,
+        selectedExampleKey: selectedExampleKey.value,
+      };
+      window.localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
+    } catch (error) {
+      console.error('Failed to persist scan draft', error);
+    }
+  };
+
+  const hydrateFromStorage = () => {
+    if (typeof window === 'undefined') return;
+    try {
+      const raw = window.localStorage.getItem(STORAGE_KEY);
+      if (!raw) return;
+      const payload = JSON.parse(raw);
+      if (!payload || typeof payload !== 'object') return;
+      isRestoring = true;
+      if (typeof payload.editorHtml === 'string' && payload.editorHtml) {
+        setEditorHtml(payload.editorHtml);
+      } else if (typeof payload.inputText === 'string') {
+        setText(payload.inputText);
+      }
+      if (Array.isArray(payload.selectedFunctions)) {
+        setFunctions(payload.selectedFunctions);
+      }
+      if (typeof payload.lastUploadedFileName === 'string') {
+        lastUploadedFileName.value = payload.lastUploadedFileName;
+      }
+      if (typeof payload.selectedExampleKey === 'string') {
+        selectedExampleKey.value = payload.selectedExampleKey;
+      }
+    } catch (error) {
+      console.error('Failed to hydrate scan draft', error);
+    } finally {
+      isRestoring = false;
+    }
+  };
+
+  const commitDraftToStorage = () => {
+    persistState();
+  };
+
+  if (typeof window !== 'undefined') {
+    hydrateFromStorage();
+  }
+
+  watch([inputText, editorHtml, selectedFunctions, lastUploadedFileName, selectedExampleKey], persistState, {
+    deep: true,
+  });
+
   return {
     examples,
     inputText,
+    editorHtml,
     selectedExampleKey,
     isUploading,
     uploadError,
@@ -126,13 +243,16 @@ export const useScanStore = defineStore('scan', () => {
     characterCount,
     characterLimit: CHARACTER_LIMIT,
     setText,
+     setEditorHtml,
     applyExample,
     readFile,
+    readFiles,
     resetError,
     toggleFunction,
     setFunctions,
     resetFunctions,
     resetText,
     resetAll,
+    commitDraftToStorage,
   };
 });

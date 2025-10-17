@@ -1,6 +1,6 @@
 <template>
   <div class="min-h-screen bg-slate-50">
-    <AppHeader />
+    <AppHeader mode="marketing" />
     <main>
       <HeroSection />
       <TrustIndicators />

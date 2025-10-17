@@ -243,19 +243,26 @@ const onFileChange = async (event) => {
   }
 };
 
-  const handleScan = () => {
-    if (!scanStore.selectedFunctions.length) {
-      scanStore.setFunctions(['scan']);
-    }
+const openDashboard = () => {
+  if (!scanStore.selectedFunctions.length) {
+    scanStore.setFunctions(['scan']);
+  }
   const features = (scanStore.selectedFunctions.length ? scanStore.selectedFunctions : ['scan']).join(',');
-  router.push({ name: 'scan', query: { features } });
+  const target = router.resolve({ name: 'dashboard', query: { features } });
+  scanStore.commitDraftToStorage();
+  if (typeof window !== 'undefined') {
+    window.open(target.href, '_blank', 'noopener');
+  }
+};
+
+const handleScan = () => {
+  openDashboard();
 };
 
 const goToScan = (focus) => {
   if (['scan', 'polish', 'translate', 'citation'].includes(focus)) {
     scanStore.setFunctions([focus]);
   }
-  const features = (scanStore.selectedFunctions.length ? scanStore.selectedFunctions : ['scan']).join(',');
-  router.push({ name: 'scan', query: { features } });
+  openDashboard();
 };
 </script>

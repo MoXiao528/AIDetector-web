@@ -1,6 +1,6 @@
 <template>
   <div class="min-h-screen bg-slate-950 text-white">
-    <AppHeader />
+    <AppHeader mode="auth" />
     <main class="flex items-center justify-center px-4 py-20 sm:px-6 lg:px-8">
       <div class="w-full max-w-md space-y-8 rounded-3xl border border-white/10 bg-white/5 p-8 shadow-[0_40px_80px_-40px_rgba(15,23,42,0.65)] backdrop-blur">
         <div class="space-y-2 text-center">
@@ -100,7 +100,7 @@ const handleSubmit = () => {
   }
   try {
     authStore.register({ name: form.name, email: form.email, password: form.password });
-    router.push('/scan');
+    router.push('/dashboard');
   } catch (err) {
     error.value = err?.message || '注册失败，请稍后再试。';
   }
