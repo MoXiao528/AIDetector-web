@@ -4,7 +4,7 @@
     <div class="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
       <div class="max-w-3xl">
         <span class="inline-flex items-center rounded-full border border-white/10 px-3 py-1 text-xs font-semibold uppercase tracking-wider text-white/70">全栈能力矩阵</span>
-        <h2 class="section-title mt-6 text-primary-100 drop-shadow-[0_4px_16px_rgba(15,23,42,0.45)]">
+        <h2 class="section-title mt-6 !text-primary-100 drop-shadow-[0_4px_16px_rgba(15,23,42,0.45)]">
           检测、润色、翻译，一站式智能写作中枢
         </h2>
         <p class="section-subtitle !text-slate-200">

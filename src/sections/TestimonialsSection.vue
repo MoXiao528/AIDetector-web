@@ -41,25 +41,25 @@
 <script setup>
 const testimonials = [
   {
-    quote: '段落级 AI 概率热力图让我们更快锁定可疑内容，团队审核效率提升了一倍。',
-    author: '王静怡',
-    role: '复旦大学新闻学院 · 教学秘书',
-    metric: '审核效率 +102%',
-    context: '自 2023 年使用'
+    quote: 'quote1',
+    author: 'name1',
+    role: 'role1',
+    metric: 'metric1',
+    context: 'context1'
   },
   {
-    quote: '在媒体值班时可以同步润色与翻译，让稿件在发布前就保持统一风格。',
-    author: 'Laura Chen',
-    role: '南华早报 · 高级编辑',
-    metric: '风格一致性 95%',
-    context: '跨语种编辑部'
+    quote: 'quote2',
+    author: 'name2',
+    role: 'role2',
+    metric: 'metric2',
+    context: 'context2'
   },
   {
-    quote: 'API 接入后，营销素材自动完成检测和报告归档，极大减轻了法务压力。',
-    author: '刘宇辰',
-    role: '蔚来汽车 · 品牌合规主管',
-    metric: '合规风险 -58%',
-    context: '覆盖 12 条业务线'
+    quote: 'quote3',
+    author: 'name3',
+    role: 'role3',
+    metric: 'metric3',
+    context: 'context3'
   }
 ];
 </script>
