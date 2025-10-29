@@ -6,8 +6,8 @@
         <nav class="space-y-2">
           <button
             type="button"
-            class="nav-item"
-            @click="goHome"
+            :class="['nav-item', isPanelActive('home') ? 'nav-item--active' : '']"
+            @click="setActivePanel('home')"
           >
             <HomeIcon class="h-5 w-5" />
             <span>Home</span>
@@ -71,18 +71,198 @@
             <span>问答</span>
           </button>
         </div>
-        <input
-          ref="multiFileInput"
-          type="file"
-          class="hidden"
-          multiple
-          accept=".txt,.md,.doc,.docx,.pdf,.json,.csv,.yaml,.yml,.tex,.tax"
-          @change="onMultiFileChange"
-        />
       </aside>
 
       <main class="flex min-h-[calc(100vh-4rem)] flex-1 flex-col overflow-hidden">
-        <div v-if="isPanelActive('document')" class="flex h-full flex-col">
+        <div v-if="isPanelActive('home')" class="relative flex-1 overflow-y-auto px-4 py-6">
+          <div
+            :class="[
+              'mx-auto flex w-full max-w-6xl flex-col gap-10',
+              isFeatureModalOpen ? 'pointer-events-none select-none filter blur-sm' : '',
+            ]"
+          >
+            <header class="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
+              <div class="space-y-3">
+                <div class="flex flex-wrap items-center gap-3">
+                  <h1 class="text-2xl font-semibold tracking-tight text-slate-900">
+                    Welcome, {{ userDisplayName }}
+                  </h1>
+                  <span class="inline-flex items-center rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-semibold text-slate-500">
+                    {{ userPlanTag }}
+                  </span>
+                </div>
+                <p class="max-w-2xl text-sm leading-relaxed text-slate-500">{{ activeQuote }}</p>
+              </div>
+              <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-end">
+                <div class="flex items-center gap-3">
+                  <button
+                    type="button"
+                    class="inline-flex items-center justify-center rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-600 transition hover:border-slate-300 hover:text-slate-800"
+                  >
+                    Feedback
+                  </button>
+                  <button
+                    type="button"
+                    class="inline-flex items-center justify-center rounded-full bg-primary-600 px-5 py-2 text-sm font-semibold text-white shadow hover:bg-primary-500"
+                  >
+                    Upgrade
+                  </button>
+                </div>
+                <div class="flex flex-1 items-center gap-3 sm:w-auto sm:flex-none">
+                  <div class="w-full min-w-[200px] sm:w-60">
+                    <div class="flex items-center justify-between text-xs font-semibold text-slate-500">
+                      <span>6K credits</span>
+                      <span>of 10K remaining</span>
+                    </div>
+                    <div class="mt-2 h-2 overflow-hidden rounded-full bg-slate-200">
+                      <div class="h-full rounded-full bg-emerald-500" :style="{ width: creditUsagePercent }"></div>
+                    </div>
+                  </div>
+                  <div class="flex h-11 w-11 items-center justify-center rounded-full bg-primary-500 text-sm font-semibold text-white shadow-sm">
+                    {{ userInitials }}
+                  </div>
+                </div>
+              </div>
+            </header>
+
+            <section class="grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)]">
+              <button
+                type="button"
+                class="group relative flex h-full min-h-[240px] flex-col justify-between rounded-4xl bg-white px-8 py-8 text-left shadow-xl shadow-slate-200/60 transition hover:-translate-y-1 hover:shadow-2xl"
+                @click="startNewScan"
+              >
+                <div class="flex items-start justify-between">
+                  <div class="flex h-16 w-16 items-center justify-center rounded-3xl bg-emerald-100 text-emerald-600">
+                    <svg class="h-8 w-8" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M4 7a2 2 0 012-2h6l4 4v9a2 2 0 01-2 2H6a2 2 0 01-2-2V7z" />
+                    </svg>
+                  </div>
+                  <span class="inline-flex items-center rounded-full bg-emerald-500/10 px-3 py-1 text-xs font-semibold text-emerald-600">
+                    Quick launch
+                  </span>
+                </div>
+                <div class="mt-10 space-y-3">
+                  <p class="text-3xl font-semibold tracking-tight text-slate-900">New scan</p>
+                  <p class="max-w-sm text-sm text-slate-500">准备好一段文本或多个文件？点击即可回到文档编辑器开始 RepreGuard 检测。</p>
+                </div>
+                <span class="absolute -bottom-4 -right-4 flex h-14 w-14 items-center justify-center rounded-full bg-emerald-500 text-2xl font-semibold text-white shadow-xl shadow-emerald-500/40 transition group-hover:scale-110">
+                  +
+                </span>
+              </button>
+
+              <div class="flex flex-col gap-6">
+                <div class="flex items-center justify-between">
+                  <h2 class="text-sm font-semibold uppercase tracking-[0.3em] text-slate-500">Feature Capsules</h2>
+                  <p class="text-xs text-slate-400">点击以了解更多功能</p>
+                </div>
+                <div class="-mx-1 overflow-x-auto pb-2">
+                  <div class="flex min-w-full gap-4 px-1">
+                    <button
+                      v-for="card in featureCards"
+                      :key="card.key"
+                      type="button"
+                      :title="card.tooltip"
+                      class="group relative flex min-w-[200px] flex-1 flex-col gap-4 rounded-3xl bg-white/90 p-5 text-left shadow-md shadow-slate-200/70 transition hover:-translate-y-1 hover:shadow-xl"
+                      @click="openFeatureModal(card)"
+                    >
+                      <div class="flex items-center justify-between">
+                        <div :class="['flex h-12 w-12 items-center justify-center rounded-2xl', card.iconClass]">
+                          <component :is="card.icon" class="h-6 w-6" aria-hidden="true" />
+                        </div>
+                        <span v-if="card.tag" :class="['inline-flex items-center rounded-full px-2.5 py-0.5 text-[11px] font-semibold', card.tagClass]">
+                          {{ card.tag }}
+                        </span>
+                      </div>
+                      <div>
+                        <p class="text-base font-semibold text-slate-900">{{ card.title }}</p>
+                        <p class="mt-1 text-xs text-slate-500">{{ card.subtitle }}</p>
+                      </div>
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </section>
+
+            <section class="rounded-4xl border border-slate-200 bg-blue-50/90 px-8 py-8 shadow-sm">
+              <div class="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
+                <div class="max-w-2xl space-y-2">
+                  <span class="inline-flex items-center rounded-full bg-sky-100 px-3 py-1 text-xs font-semibold text-sky-700">New for Educators</span>
+                  <h3 class="text-2xl font-semibold tracking-tight text-slate-900">New for Educators</h3>
+                  <p class="text-sm leading-relaxed text-slate-600">
+                    我们的 AI 评分助手可帮助教师根据课程快速提供一致反馈，节省时间并保持教学控制。
+                  </p>
+                </div>
+                <div class="flex items-center gap-6">
+                  <button
+                    type="button"
+                    class="inline-flex items-center justify-center rounded-full bg-sky-600 px-5 py-2 text-sm font-semibold text-white shadow hover:bg-sky-500"
+                  >
+                    Get started
+                  </button>
+                  <div class="flex h-20 w-20 items-center justify-center rounded-3xl bg-white shadow-inner">
+                    <svg class="h-10 w-10 text-sky-500" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M7 7h10M7 12h6m-6 5h10M9 5l-2 2 2 2M17 5l2 2-2 2" />
+                    </svg>
+                  </div>
+                </div>
+              </div>
+            </section>
+
+            <section class="space-y-4">
+              <h3 class="text-sm font-semibold uppercase tracking-[0.3em] text-slate-500">More ways to scan...</h3>
+              <div class="flex flex-wrap gap-3">
+                <button
+                  v-for="integration in integrationButtons"
+                  :key="integration.key"
+                  type="button"
+                  :class="[
+                    'flex items-center gap-2 rounded-full px-4 py-2 text-sm font-semibold shadow-sm transition',
+                    integration.class,
+                  ]"
+                  @click="handleIntegrationAction(integration)"
+                >
+                  <component :is="integration.icon" class="h-5 w-5" aria-hidden="true" />
+                  {{ integration.label }}
+                </button>
+              </div>
+            </section>
+          </div>
+
+          <transition name="fade">
+            <div
+              v-if="isFeatureModalOpen"
+              class="fixed inset-0 z-40 flex items-center justify-center bg-slate-900/40 backdrop-blur-sm"
+              @click="closeFeatureModal"
+            >
+              <div
+                class="w-full max-w-xl rounded-4xl bg-white p-8 shadow-2xl"
+                @click.stop
+              >
+                <div class="space-y-6 text-center">
+                  <div class="space-y-2">
+                    <h3 class="text-2xl font-semibold tracking-tight text-slate-900">{{ activeFeatureCard?.modalTitle }}</h3>
+                    <p class="text-sm text-slate-500">{{ activeFeatureCard?.modalSubtitle }}</p>
+                  </div>
+                  <div class="flex h-48 items-center justify-center rounded-3xl border border-dashed border-slate-200 bg-slate-50">
+                    <span class="text-sm font-semibold text-slate-400">演示动画占位</span>
+                  </div>
+                  <button
+                    type="button"
+                    :class="[
+                      'mx-auto inline-flex items-center justify-center rounded-full px-6 py-2 text-sm font-semibold transition',
+                      activeFeatureCard?.buttonVariant === 'free'
+                        ? 'bg-emerald-500 text-white hover:bg-emerald-400'
+                        : 'bg-slate-900 text-white hover:bg-slate-800',
+                    ]"
+                  >
+                    {{ activeFeatureCard?.buttonLabel }}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </transition>
+        </div>
+        <div v-else-if="isPanelActive('document')" class="flex h-full flex-col">
           <div class="border-b border-slate-200 bg-white/70 px-4 py-3 backdrop-blur">
             <div class="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
               <div class="flex flex-wrap items-center gap-2">
@@ -588,20 +768,30 @@
 </template>
 
 <script setup>
-import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
+import { computed, h, markRaw, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import {
   ArrowUpTrayIcon,
+  BoltIcon,
+  BookOpenIcon,
+  BookmarkSquareIcon,
+  CommandLineIcon,
   ClockIcon,
   DocumentMagnifyingGlassIcon,
   DocumentTextIcon,
   HomeIcon,
+  MagnifyingGlassCircleIcon,
   LanguageIcon,
+  PaintBrushIcon,
   PencilSquareIcon,
   Cog6ToothIcon,
   QuestionMarkCircleIcon,
   PlusIcon,
+  SparklesIcon,
+  Squares2X2Icon,
   ShieldCheckIcon,
+  AcademicCapIcon,
+  UserGroupIcon,
 } from '@heroicons/vue/24/outline';
 import AppHeader from '../sections/AppHeader.vue';
 import LoginPromptModal from '../components/common/LoginPromptModal.vue';
@@ -617,9 +807,10 @@ const route = useRoute();
 
 const editorRef = ref(null);
 const fileInput = ref(null);
-const multiFileInput = ref(null);
 const newMenuRef = ref(null);
 const newMenuButtonRef = ref(null);
+const activeFeatureCard = ref(null);
+const activeQuote = ref('');
 
 const editorMode = ref('edit');
 const isScanning = ref(false);
@@ -630,7 +821,7 @@ const showLoginModal = ref(false);
 const loginMessage = ref('登录后即可查看完整检测结果。');
 const activeResultTab = ref('scan');
 const newMenuOpen = ref(false);
-const activePanel = ref('document');
+const activePanel = ref('home');
 const activeHistoryId = ref('');
 const activeHistoryTab = ref('scan');
 
@@ -651,7 +842,200 @@ const functionOptions = [
   },
 ];
 
-const panelOptions = ['document', 'history', 'profile', 'qa'];
+const panelOptions = ['home', 'document', 'history', 'profile', 'qa'];
+
+const motivationalQuotes = [
+  '“To survive, you must tell stories.” — Umberto Eco.',
+  '“Writing is thinking. To write well is to think clearly.” — David McCullough.',
+  '“The secret of getting ahead is getting started.” — Mark Twain.',
+  '“Clarity precedes mastery.” — Robin Sharma.',
+  '“Precision builds trust in every insight.” — Veritascribe Research.',
+];
+
+const creditRemaining = 6000;
+const creditTotal = 10000;
+
+const userDisplayName = computed(() => {
+  if (authStore.user?.name) return authStore.user.name;
+  if (authStore.user?.username) return authStore.user.username;
+  if (authStore.user?.email) return authStore.user.email.split('@')[0];
+  return '访客';
+});
+
+const userPlanTag = computed(() => {
+  const plan = authStore.user?.plan || 'personal-free';
+  if (plan.includes('team')) return 'TEAM';
+  if (plan.includes('edu')) return 'EDU';
+  if (plan.includes('pro')) return 'PRO';
+  return 'FREE';
+});
+
+const userInitials = computed(() => {
+  const source = authStore.user?.name || authStore.user?.username || authStore.user?.email || 'Guest';
+  return (
+    source
+      .split(/[\s@._-]+/)
+      .filter(Boolean)
+      .slice(0, 2)
+      .map((chunk) => chunk[0]?.toUpperCase() || '')
+      .join('') || 'G'
+  );
+});
+
+const creditUsagePercent = computed(() => {
+  if (!creditTotal) return '0%';
+  const value = Math.round((creditRemaining / creditTotal) * 100);
+  return `${Math.min(100, Math.max(0, value))}%`;
+});
+
+const pickRandomQuote = () => {
+  if (!motivationalQuotes.length) {
+    activeQuote.value = '';
+    return;
+  }
+  const index = Math.floor(Math.random() * motivationalQuotes.length);
+  activeQuote.value = motivationalQuotes[index];
+};
+
+const featureCards = [
+  {
+    key: 'advanced',
+    title: 'Advanced scan',
+    subtitle: '多模型重检，捕捉细微 AI 痕迹',
+    icon: SparklesIcon,
+    iconClass: 'bg-gradient-to-br from-amber-100 via-violet-100 to-sky-100 text-amber-600',
+    tooltip: '高级检测',
+    modalTitle: 'Unlock Advanced Scan. Diagnose authorship with depth.',
+    modalSubtitle: 'Layer multi-model comparisons to surface nuance and authorship signals instantly.',
+    buttonLabel: 'Upgrade to try',
+    buttonVariant: 'upgrade',
+  },
+  {
+    key: 'xl',
+    title: 'XL Documents',
+    subtitle: '跨越 50 页的长文档分段检测',
+    icon: Squares2X2Icon,
+    iconClass: 'bg-slate-900 text-white',
+    tooltip: '长文档支持',
+    modalTitle: 'Scan XL Documents. Go beyond a basic AI checker.',
+    modalSubtitle: 'Scan up to 50 pages, page by page, simultaneously.',
+    buttonLabel: 'Upgrade to try',
+    buttonVariant: 'upgrade',
+  },
+  {
+    key: 'vocabulary',
+    title: 'AI Vocabulary',
+    subtitle: '精选词库保障语气一致',
+    icon: BookOpenIcon,
+    iconClass: 'bg-emerald-100 text-emerald-600',
+    tooltip: '词汇助手',
+    tag: 'ENABLED',
+    tagClass: 'bg-emerald-100 text-emerald-600',
+    modalTitle: "Grow an AI Vocabulary. Keep tone precise and consistent.",
+    modalSubtitle: 'Activate curated phrases that reinforce your institution’s voice across every document.',
+    buttonLabel: "Try it now — it's free",
+    buttonVariant: 'free',
+  },
+  {
+    key: 'citation',
+    title: 'Citation check',
+    subtitle: '引用对照保障来源可信',
+    icon: BookmarkSquareIcon,
+    iconClass: 'bg-indigo-100 text-indigo-600',
+    tooltip: '引用核查',
+    modalTitle: 'Run Citation Check. Trust every sourced claim.',
+    modalSubtitle: 'Automatically cross-reference statements with academic databases before submission.',
+    buttonLabel: 'Upgrade to try',
+    buttonVariant: 'upgrade',
+  },
+  {
+    key: 'plagiarism',
+    title: 'Plagiarism',
+    subtitle: '跨平台查重，守护原创',
+    icon: MagnifyingGlassCircleIcon,
+    iconClass: 'bg-rose-100 text-rose-600',
+    tooltip: '查重检测',
+    modalTitle: 'Deploy Plagiarism Guard. Compare across millions of sources.',
+    modalSubtitle: 'Scan assignments against research archives and LMS submissions simultaneously.',
+    buttonLabel: 'Upgrade to try',
+    buttonVariant: 'upgrade',
+  },
+];
+
+const ChromeGlyph = markRaw(() =>
+  h('svg', { viewBox: '0 0 24 24', class: 'h-5 w-5' }, [
+    h('circle', { cx: '12', cy: '12', r: '10', fill: '#E8EAED' }),
+    h('path', { d: 'M12 12L21 12A9 9 0 0012 3', fill: '#EA4335' }),
+    h('path', { d: 'M12 12L7.5 20.79A9 9 0 0021 12', fill: '#34A853' }),
+    h('path', { d: 'M12 12L3 12A9 9 0 0011.99 21', fill: '#FBBC04' }),
+    h('circle', { cx: '12', cy: '12', r: '4', fill: '#4285F4' }),
+  ]),
+);
+
+const integrationButtons = [
+  {
+    key: 'multi-upload',
+    label: 'Multi-file Upload',
+    icon: ArrowUpTrayIcon,
+    class: 'bg-slate-900 text-white hover:bg-slate-800',
+    action: 'multi-upload',
+  },
+  {
+    key: 'api',
+    label: 'API',
+    icon: CommandLineIcon,
+    class: 'bg-purple-600 text-white hover:bg-purple-500',
+    action: 'contact',
+  },
+  {
+    key: 'chrome',
+    label: 'Chrome',
+    icon: ChromeGlyph,
+    class: 'border border-slate-200 bg-white text-slate-700 hover:border-slate-300',
+    action: 'external',
+    href: 'https://chrome.google.com/webstore',
+  },
+  {
+    key: 'canvas',
+    label: 'Canvas',
+    icon: PaintBrushIcon,
+    class: 'bg-orange-500 text-white hover:bg-orange-400',
+    action: 'contact',
+  },
+  {
+    key: 'moodle',
+    label: 'Moodle',
+    icon: AcademicCapIcon,
+    class: 'bg-amber-500 text-white hover:bg-amber-400',
+    action: 'contact',
+  },
+  {
+    key: 'zapier',
+    label: 'Zapier',
+    icon: BoltIcon,
+    class: 'bg-orange-400 text-white hover:bg-orange-300',
+    action: 'external',
+    href: 'https://zapier.com',
+  },
+  {
+    key: 'docs',
+    label: 'Google Docs',
+    icon: DocumentTextIcon,
+    class: 'bg-blue-500 text-white hover:bg-blue-400',
+    action: 'external',
+    href: 'https://docs.google.com',
+  },
+  {
+    key: 'classroom',
+    label: 'Google Classroom',
+    icon: UserGroupIcon,
+    class: 'bg-emerald-500 text-white hover:bg-emerald-400',
+    action: 'external',
+    href: 'https://classroom.google.com',
+  },
+];
+
+const isFeatureModalOpen = computed(() => Boolean(activeFeatureCard.value));
 
 const fontSizeMap = {
   small: '2',
@@ -821,13 +1205,13 @@ const buildHighlightedHtml = (tokens, sentences) => {
 };
 
 const parsePanel = (value) => {
-  if (typeof value !== 'string') return 'document';
-  return panelOptions.includes(value) ? value : 'document';
+  if (typeof value !== 'string') return 'home';
+  return panelOptions.includes(value) ? value : 'home';
 };
 
 const syncPanelToRoute = (panel) => {
   const query = { ...route.query };
-  if (panel === 'document') {
+  if (panel === 'home') {
     if (!('panel' in query)) {
       return;
     }
@@ -988,6 +1372,9 @@ onMounted(() => {
   syncEditorFromStore();
   const initialPanel = parsePanel(route.query.panel);
   activePanel.value = initialPanel;
+  if (initialPanel === 'home') {
+    pickRandomQuote();
+  }
   if (historyRecords.value.length && !activeHistoryId.value) {
     activeHistoryId.value = historyRecords.value[0].id;
   }
@@ -1000,6 +1387,7 @@ onMounted(() => {
 
 onBeforeUnmount(() => {
   document.removeEventListener('click', onGlobalClick);
+  document.removeEventListener('keydown', featureModalKeyHandler);
 });
 
 watch(
@@ -1033,6 +1421,20 @@ watch(activePanel, (panel) => {
     }
   } else {
     activeHistoryTab.value = 'scan';
+  }
+  if (panel === 'home') {
+    pickRandomQuote();
+  } else {
+    closeFeatureModal();
+  }
+});
+
+watch(isFeatureModalOpen, (open) => {
+  if (typeof window === 'undefined') return;
+  if (open) {
+    document.addEventListener('keydown', featureModalKeyHandler);
+  } else {
+    document.removeEventListener('keydown', featureModalKeyHandler);
   }
 });
 
@@ -1085,6 +1487,40 @@ const formatHighlightedSentence = (sentence) => {
     human: 'text-emerald-700',
   };
   return `<span class="font-semibold ${colorMap[sentence.type] || ''}">${escapeHtml(sentence.text)}</span>`;
+};
+
+const openFeatureModal = (card) => {
+  if (!card) return;
+  activeFeatureCard.value = card;
+};
+
+const closeFeatureModal = () => {
+  activeFeatureCard.value = null;
+};
+
+const featureModalKeyHandler = (event) => {
+  if (event.key === 'Escape') {
+    closeFeatureModal();
+  }
+};
+
+const handleIntegrationAction = (integration) => {
+  if (!integration) return;
+  if (integration.action === 'multi-upload') {
+    router.push({ name: 'multi-upload' });
+    return;
+  }
+  if (integration.action === 'contact') {
+    router.push({ name: 'contact' });
+    return;
+  }
+  if (integration.action === 'document') {
+    setActivePanel('document');
+    return;
+  }
+  if (integration.action === 'external' && integration.href && typeof window !== 'undefined') {
+    window.open(integration.href, '_blank', 'noopener');
+  }
 };
 
 const applyExample = (key) => {
@@ -1212,27 +1648,7 @@ const onFileChange = async (event) => {
 
 const triggerMultiUpload = () => {
   newMenuOpen.value = false;
-  setActivePanel('document');
-  multiFileInput.value?.click();
-};
-
-const onMultiFileChange = async (event) => {
-  const files = event.target.files;
-  if (!files?.length) return;
-  try {
-    await scanStore.readFiles(files);
-    detectionResults.value = null;
-    highlightedPreviewHtml.value = '';
-    editorMode.value = 'edit';
-    nextTick(() => {
-      syncEditorFromStore();
-    });
-  } catch (error) {
-    console.error(error);
-  } finally {
-    event.target.value = '';
-    scanStore.commitDraftToStorage();
-  }
+  router.push({ name: 'multi-upload' });
 };
 
 const onDragEnter = () => {
@@ -1264,10 +1680,6 @@ const onDrop = async (event) => {
   } finally {
     scanStore.commitDraftToStorage();
   }
-};
-
-const goHome = () => {
-  router.push({ name: 'home' });
 };
 
 const goToProfile = () => {
@@ -1352,5 +1764,9 @@ const onGlobalClick = (event) => {
 
 .function-chip {
   @apply inline-flex items-center rounded-full border px-3 py-1 text-xs font-semibold transition;
+}
+
+.rounded-4xl {
+  border-radius: 2rem;
 }
 </style>

@@ -250,7 +250,7 @@ const handleLogout = () => {
 };
 
 const openDashboard = () => {
-  const target = router.resolve({ name: 'dashboard' });
+  const target = router.resolve({ name: 'dashboard', query: { panel: 'home' } });
   const url = target.href;
   if (typeof window !== 'undefined') {
     window.open(url, '_blank', 'noopener');

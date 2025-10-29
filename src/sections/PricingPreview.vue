@@ -2,7 +2,7 @@
   <section id="pricing" class="bg-slate-950 py-24 text-white">
     <div class="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
       <div class="max-w-3xl">
-        <h2 class="section-title !text-primary-100 drop-shadow-[0_4px_16px_rgba(15,23,42,0.45)]">灵活定价，适配不同团队规模</h2>
+        <h2 class="section-title text-primary-100 drop-shadow-[0_4px_16px_rgba(15,23,42,0.45)]">灵活定价，适配不同团队规模</h2>
         <p class="section-subtitle !text-slate-200">
           从个人创作者到企业合规团队，Veritascribe 提供透明的按需计费模式。所有套餐均包含 GPTZero 级别检测能力与全文润色服务。
         </p>

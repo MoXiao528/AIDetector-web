@@ -248,7 +248,7 @@ const openDashboard = () => {
     scanStore.setFunctions(['scan']);
   }
   const features = (scanStore.selectedFunctions.length ? scanStore.selectedFunctions : ['scan']).join(',');
-  const target = router.resolve({ name: 'dashboard', query: { features } });
+  const target = router.resolve({ name: 'dashboard', query: { features, panel: 'document' } });
   scanStore.commitDraftToStorage();
   if (typeof window !== 'undefined') {
     window.open(target.href, '_blank', 'noopener');

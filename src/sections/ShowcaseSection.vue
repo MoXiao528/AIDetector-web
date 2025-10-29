@@ -3,7 +3,7 @@
     <div class="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
       <div class="flex flex-col gap-8 lg:flex-row lg:items-end lg:justify-between">
         <div class="max-w-3xl">
-          <h2 class="section-title !text-primary-100 drop-shadow-[0_4px_16px_rgba(15,23,42,0.45)]">为真实场景打造的 AI 内容管控方案</h2>
+          <h2 class="section-title text-primary-100 drop-shadow-[0_4px_16px_rgba(15,23,42,0.45)]">为真实场景打造的 AI 内容管控方案</h2>
           <p class="section-subtitle !text-slate-200">
             无论你是高校教师、媒体编辑还是企业法务，Veritascribe 都能提供开箱即用的模板与报告，降低审核成本并提升写作效率。
           </p>
