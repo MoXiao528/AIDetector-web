@@ -1,6 +1,6 @@
 <template>
   <div class="min-h-screen bg-slate-100">
-    <AppHeader mode="dashboard" />
+    <AppHeader mode="dashboard" :dashboard-context="headerVariant" />
     <div class="flex flex-col lg:flex-row">
       <aside class="hidden w-64 flex-shrink-0 flex-col border-b border-slate-200 bg-white/90 px-4 py-6 shadow-sm lg:flex lg:border-b-0 lg:border-r">
         <nav class="space-y-2">
@@ -111,8 +111,8 @@
                 <div class="flex flex-1 items-center gap-3 sm:w-auto sm:flex-none">
                   <div class="w-full min-w-[200px] sm:w-60">
                     <div class="flex items-center justify-between text-xs font-semibold text-slate-500">
-                      <span>6K credits</span>
-                      <span>of 10K remaining</span>
+                      <span>{{ creditCompactRemaining }} credits</span>
+                      <span>of {{ creditCompactTotal }} remaining</span>
                     </div>
                     <div class="mt-2 h-2 overflow-hidden rounded-full bg-slate-200">
                       <div class="h-full rounded-full bg-emerald-500" :style="{ width: creditUsagePercent }"></div>
@@ -125,7 +125,7 @@
               </div>
             </header>
 
-            <section class="grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)]">
+            <section class="grid gap-6 lg:grid-cols-[minmax(0,0.85fr)_minmax(0,1.25fr)] xl:grid-cols-[minmax(0,0.8fr)_minmax(0,1.35fr)]">
               <button
                 type="button"
                 class="group relative flex h-full min-h-[240px] flex-col justify-between rounded-4xl bg-white px-8 py-8 text-left shadow-xl shadow-slate-200/60 transition hover:-translate-y-1 hover:shadow-2xl"
@@ -155,14 +155,14 @@
                   <h2 class="text-sm font-semibold uppercase tracking-[0.3em] text-slate-500">Feature Capsules</h2>
                   <p class="text-xs text-slate-400">点击以了解更多功能</p>
                 </div>
-                <div class="-mx-1 overflow-x-auto pb-2">
-                  <div class="flex min-w-full gap-4 px-1">
+                <div class="-mx-1 overflow-x-auto pb-2 lg:mx-0 lg:overflow-visible">
+                  <div class="flex min-w-full gap-4 px-1 lg:grid lg:min-w-0 lg:grid-cols-2 lg:gap-5 xl:grid-cols-3">
                     <button
                       v-for="card in featureCards"
                       :key="card.key"
                       type="button"
                       :title="card.tooltip"
-                      class="group relative flex min-w-[200px] flex-1 flex-col gap-4 rounded-3xl bg-white/90 p-5 text-left shadow-md shadow-slate-200/70 transition hover:-translate-y-1 hover:shadow-xl"
+                      class="group relative flex min-w-[200px] flex-1 flex-col gap-4 rounded-3xl bg-white/90 p-5 text-left shadow-md shadow-slate-200/70 transition hover:-translate-y-1 hover:shadow-xl lg:min-w-0"
                       @click="openFeatureModal(card)"
                     >
                       <div class="flex items-center justify-between">
@@ -824,6 +824,7 @@ const newMenuOpen = ref(false);
 const activePanel = ref('home');
 const activeHistoryId = ref('');
 const activeHistoryTab = ref('scan');
+const headerVariant = computed(() => (activePanel.value === 'document' ? 'scan' : 'standard'));
 
 const editorModes = [
   { key: 'edit', label: '编辑模式' },
@@ -852,10 +853,20 @@ const motivationalQuotes = [
   '“Precision builds trust in every insight.” — Veritascribe Research.',
 ];
 
-const creditRemaining = 6000;
-const creditTotal = 10000;
+const creditUsageDetails = computed(() => authStore.creditUsage || { remaining: 0, total: 0 });
+const creditRemaining = computed(() => Math.max(0, Number(creditUsageDetails.value.remaining) || 0));
+const creditTotal = computed(() => Math.max(0, Number(creditUsageDetails.value.total) || 0));
+
+const numberCompactFormatter = new Intl.NumberFormat('en-US', { notation: 'compact', maximumFractionDigits: 1 });
+
+const creditCompactRemaining = computed(() => numberCompactFormatter.format(Math.round(creditRemaining.value)));
+const creditCompactTotal = computed(() => numberCompactFormatter.format(Math.round(creditTotal.value)));
 
 const userDisplayName = computed(() => {
+  const profile = authStore.user?.profile;
+  if (profile?.firstName || profile?.surname) {
+    return `${profile.firstName || ''} ${profile.surname || ''}`.trim() || profile.firstName || profile.surname || '访客';
+  }
   if (authStore.user?.name) return authStore.user.name;
   if (authStore.user?.username) return authStore.user.username;
   if (authStore.user?.email) return authStore.user.email.split('@')[0];
@@ -883,8 +894,10 @@ const userInitials = computed(() => {
 });
 
 const creditUsagePercent = computed(() => {
-  if (!creditTotal) return '0%';
-  const value = Math.round((creditRemaining / creditTotal) * 100);
+  const total = creditTotal.value;
+  if (!total) return '0%';
+  const remaining = Math.max(0, Math.min(total, creditRemaining.value));
+  const value = Math.round((remaining / total) * 100);
   return `${Math.min(100, Math.max(0, value))}%`;
 });
 

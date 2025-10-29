@@ -4,6 +4,7 @@ import { computed, ref, watch } from 'vue';
 const STORAGE_KEY = 'ai-detector-auth';
 const USERS_STORAGE_KEY = 'ai-detector-users';
 const PROFILE_OVERRIDES_KEY = 'ai-detector-profile-overrides';
+const CREDIT_STORAGE_KEY = 'ai-detector-credits';
 
 const staticUsers = [
   {
@@ -27,6 +28,7 @@ export const useAuthStore = defineStore('auth', () => {
   const user = ref(null);
   const storedUsers = ref([]);
   const profileOverrides = ref({});
+  const creditSnapshot = ref({ total: 10000, remaining: 6003 });
 
   const isAuthenticated = computed(() => Boolean(user.value));
   const allUsers = computed(() => [...staticUsers, ...storedUsers.value]);
@@ -130,6 +132,57 @@ export const useAuthStore = defineStore('auth', () => {
       console.error('Failed to persist profile overrides', error);
     }
   };
+
+  const restoreCredits = () => {
+    if (typeof window === 'undefined') return;
+    try {
+      const raw = window.localStorage.getItem(CREDIT_STORAGE_KEY);
+      if (!raw) return;
+      const parsed = JSON.parse(raw);
+      if (parsed && typeof parsed === 'object') {
+        const { total, remaining } = parsed;
+        creditSnapshot.value = {
+          total: Number.isFinite(total) ? Number(total) : 10000,
+          remaining: Number.isFinite(remaining) ? Number(remaining) : 6003,
+        };
+      }
+    } catch (error) {
+      console.error('Failed to restore credits', error);
+    }
+  };
+
+  const persistCredits = () => {
+    if (typeof window === 'undefined') return;
+    try {
+      window.localStorage.setItem(CREDIT_STORAGE_KEY, JSON.stringify(creditSnapshot.value));
+    } catch (error) {
+      console.error('Failed to persist credits', error);
+    }
+  };
+
+  const setCredits = ({ total, remaining }) => {
+    creditSnapshot.value = {
+      total: Number.isFinite(total) ? Number(total) : creditSnapshot.value.total,
+      remaining: Number.isFinite(remaining) ? Number(remaining) : creditSnapshot.value.remaining,
+    };
+  };
+
+  const adjustCredits = (delta) => {
+    if (!Number.isFinite(delta)) return;
+    const nextRemaining = Math.max(0, Math.min(creditSnapshot.value.total, creditSnapshot.value.remaining + delta));
+    creditSnapshot.value = { ...creditSnapshot.value, remaining: nextRemaining };
+  };
+
+  const creditUsage = computed(() => {
+    const total = Math.max(0, Number(creditSnapshot.value.total) || 0);
+    const remaining = Math.max(0, Math.min(total, Number(creditSnapshot.value.remaining) || 0));
+    return {
+      total,
+      remaining,
+      used: Math.max(0, total - remaining),
+      percentRemaining: total === 0 ? 0 : Math.min(100, Math.round((remaining / total) * 100)),
+    };
+  });
 
   const findUserByIdentifier = (identifier) => {
     if (typeof identifier !== 'string') return null;
@@ -257,15 +310,20 @@ export const useAuthStore = defineStore('auth', () => {
     restoreSession();
     restoreUsers();
     restoreProfileOverrides();
+    restoreCredits();
   }
 
   watch(user, persistSession, { deep: true });
   watch(storedUsers, persistUsers, { deep: true });
   watch(profileOverrides, persistProfileOverrides, { deep: true });
+  watch(creditSnapshot, persistCredits, { deep: true });
 
   return {
     user,
     isAuthenticated,
+    creditUsage,
+    setCredits,
+    adjustCredits,
     login,
     register,
     logout,
