@@ -7,6 +7,7 @@ const LoginPage = () => import('../pages/LoginPage.vue');
 const RegisterPage = () => import('../pages/RegisterPage.vue');
 const ContactPage = () => import('../pages/ContactPage.vue');
 const QAPage = () => import('../pages/QAPage.vue');
+const PricingPage = () => import('../pages/PricingPage.vue');
 
 const router = createRouter({
   history: createWebHistory(),
@@ -20,6 +21,7 @@ const router = createRouter({
     { path: '/profile', redirect: { name: 'dashboard', query: { panel: 'profile' } } },
     { path: '/contact', name: 'contact', component: ContactPage },
     { path: '/qa', name: 'qa', component: QAPage },
+    { path: '/pricing', name: 'pricing', component: PricingPage },
   ],
   scrollBehavior(to, from, savedPosition) {
     if (savedPosition) {

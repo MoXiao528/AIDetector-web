@@ -59,7 +59,7 @@ const useCases = [
     description: '在提交论文前完成自动检测与润色，一键导出可追溯检测报告并生成人工修改建议。',
     tag: 'Higher Education',
     metric: '已覆盖 420 所高校',
-    points: ['Turnitin/GPTZero 双引擎对比', '批量上传毕业论文与作业', '可共享的 PDF 审核报告']
+    points: ['Turnitin/RepreGuard 双引擎对比', '批量上传毕业论文与作业', '可共享的 PDF 审核报告']
   },
   {
     title: '媒体编辑部校对',

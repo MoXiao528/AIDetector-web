@@ -1,6 +1,6 @@
 <template>
   <div class="min-h-screen bg-slate-100">
-    <AppHeader mode="dashboard" />
+    <AppHeader mode="dashboard" dashboard-context="scan" />
     <main class="mx-auto flex w-full max-w-5xl flex-col gap-10 px-4 py-10 lg:py-14">
       <section class="flex justify-center">
         <div class="flex flex-wrap items-center justify-center gap-3 rounded-3xl border border-slate-200 bg-white/90 px-4 py-3 shadow-sm backdrop-blur">
