@@ -715,6 +715,10 @@
           </div>
         </div>
 
+        <div v-else-if="isPanelActive('pricing')" class="flex-1 overflow-y-auto bg-[#FAFAF7] px-0 py-6">
+          <PricingPage embedded />
+        </div>
+
         <div v-else-if="isPanelActive('profile')" class="flex-1 overflow-y-auto px-4 py-6">
           <div class="mx-auto w-full max-w-4xl">
             <ProfilePanel />
@@ -768,6 +772,7 @@ import AppHeader from '../sections/AppHeader.vue';
 import LoginPromptModal from '../components/common/LoginPromptModal.vue';
 import ProfilePanel from '../components/dashboard/ProfilePanel.vue';
 import QAPanel from '../components/dashboard/QAPanel.vue';
+import PricingPage from './PricingPage.vue';
 import { useAuthStore } from '../store/auth';
 import { useScanStore } from '../store/scan';
 
@@ -814,7 +819,7 @@ const functionOptions = [
   },
 ];
 
-const panelOptions = ['home', 'document', 'history', 'profile', 'qa'];
+const panelOptions = ['home', 'document', 'history', 'profile', 'qa', 'pricing'];
 
 const motivationalQuotes = [
   '“To survive, you must tell stories.” — Umberto Eco.',
@@ -1452,8 +1457,8 @@ const openFeatureModal = (card) => {
 const handleFeatureModalAction = (card) => {
   if (!card) return;
   if (card.buttonVariant === 'upgrade') {
-    router.push({ name: 'pricing' });
     closeFeatureModal();
+    setActivePanel('pricing');
     return;
   }
   if (card.buttonVariant === 'free') {

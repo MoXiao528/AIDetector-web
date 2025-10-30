@@ -89,13 +89,15 @@
             </UserProfileArea>
           </template>
           <template v-else>
-            <RouterLink to="/login" class="text-sm font-medium text-slate-600 transition hover:text-slate-900">登录</RouterLink>
-            <RouterLink
-              to="/register"
-              class="inline-flex items-center justify-center rounded-full bg-primary-600 px-4 py-2 text-sm font-semibold text-white shadow-glow transition hover:bg-primary-500"
-            >
-              注册
-            </RouterLink>
+            <div class="flex items-center gap-4">
+              <RouterLink to="/login" class="text-sm font-medium text-slate-600 transition hover:text-slate-900">登录</RouterLink>
+              <RouterLink
+                to="/register"
+                class="inline-flex items-center justify-center rounded-full bg-primary-600 px-4 py-2 text-sm font-semibold text-white shadow-glow transition hover:bg-primary-500"
+              >
+                注册
+              </RouterLink>
+            </div>
           </template>
         </div>
         <button
@@ -277,7 +279,18 @@ const handleLogout = () => {
 };
 
 const openUpgrade = () => {
-  router.push({ name: 'pricing' });
+  const targetQuery = { ...(route.query || {}), panel: 'pricing' };
+  if (route.name === 'dashboard') {
+    router.push({ name: 'dashboard', query: targetQuery });
+    isUserMenuOpen.value = false;
+    return;
+  }
+  const target = router.resolve({ name: 'dashboard', query: { panel: 'pricing' } });
+  if (typeof window !== 'undefined') {
+    window.open(target.href, '_blank', 'noopener');
+    return;
+  }
+  router.push({ name: 'dashboard', query: { panel: 'pricing' } });
 };
 
 const openFeedback = () => {
