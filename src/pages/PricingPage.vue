@@ -1,7 +1,7 @@
 <template>
-  <div class="min-h-screen bg-[#FAFAF7] text-slate-800">
-    <AppHeader mode="marketing" />
-    <main class="pb-24">
+  <div :class="rootClasses">
+    <AppHeader v-if="!embedded" mode="marketing" />
+    <main :class="mainClasses">
       <section v-if="showStatusBanner" class="border-b border-slate-200 bg-slate-100/70">
         <div class="mx-auto flex w-full max-w-5xl items-center justify-between gap-4 px-4 py-3 text-sm sm:px-6 lg:px-0">
           <div class="flex flex-wrap items-center gap-2">
@@ -135,7 +135,7 @@
         </div>
       </section>
     </main>
-    <AppFooter />
+    <AppFooter v-if="!embedded" />
   </div>
 </template>
 
@@ -144,9 +144,22 @@ import { computed, ref } from 'vue';
 import AppHeader from '../sections/AppHeader.vue';
 import AppFooter from '../sections/AppFooter.vue';
 
+const props = defineProps({
+  embedded: {
+    type: Boolean,
+    default: false,
+  },
+});
+
 const showStatusBanner = ref(true);
 const billingCycle = ref('annual');
 const planSection = ref(null);
+
+const rootClasses = computed(() =>
+  props.embedded ? 'min-h-full bg-transparent text-slate-800' : 'min-h-screen bg-[#FAFAF7] text-slate-800',
+);
+
+const mainClasses = computed(() => (props.embedded ? 'pb-16 pt-4' : 'pb-24'));
 
 const billingOptions = [
   { value: 'annual', label: 'Annual (Save 45%)', activeClass: 'bg-emerald-500 text-white shadow-sm', inactiveClass: 'text-emerald-600 hover:bg-emerald-50' },
