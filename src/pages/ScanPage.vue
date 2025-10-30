@@ -77,11 +77,11 @@
         <div v-if="isPanelActive('home')" class="relative flex-1 overflow-y-auto px-4 py-6">
           <div
             :class="[
-              'mx-auto flex w-full max-w-6xl flex-col gap-10',
+              'mx-auto flex w-full max-w-7xl flex-col gap-10',
               isFeatureModalOpen ? 'pointer-events-none select-none filter blur-sm' : '',
             ]"
           >
-            <header class="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
+            <header class="flex flex-col gap-6">
               <div class="space-y-3">
                 <div class="flex flex-wrap items-center gap-3">
                   <h1 class="text-2xl font-semibold tracking-tight text-slate-900">
@@ -93,39 +93,9 @@
                 </div>
                 <p class="max-w-2xl text-sm leading-relaxed text-slate-500">{{ activeQuote }}</p>
               </div>
-              <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-end">
-                <div class="flex items-center gap-3">
-                  <button
-                    type="button"
-                    class="inline-flex items-center justify-center rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-600 transition hover:border-slate-300 hover:text-slate-800"
-                  >
-                    Feedback
-                  </button>
-                  <button
-                    type="button"
-                    class="inline-flex items-center justify-center rounded-full bg-primary-600 px-5 py-2 text-sm font-semibold text-white shadow hover:bg-primary-500"
-                  >
-                    Upgrade
-                  </button>
-                </div>
-                <div class="flex flex-1 items-center gap-3 sm:w-auto sm:flex-none">
-                  <div class="w-full min-w-[200px] sm:w-60">
-                    <div class="flex items-center justify-between text-xs font-semibold text-slate-500">
-                      <span>{{ creditCompactRemaining }} credits</span>
-                      <span>of {{ creditCompactTotal }} remaining</span>
-                    </div>
-                    <div class="mt-2 h-2 overflow-hidden rounded-full bg-slate-200">
-                      <div class="h-full rounded-full bg-emerald-500" :style="{ width: creditUsagePercent }"></div>
-                    </div>
-                  </div>
-                  <div class="flex h-11 w-11 items-center justify-center rounded-full bg-primary-500 text-sm font-semibold text-white shadow-sm">
-                    {{ userInitials }}
-                  </div>
-                </div>
-              </div>
             </header>
 
-            <section class="grid gap-6 lg:grid-cols-[minmax(0,0.85fr)_minmax(0,1.25fr)] xl:grid-cols-[minmax(0,0.8fr)_minmax(0,1.35fr)]">
+            <section class="grid gap-6 lg:grid-cols-[minmax(0,0.7fr)_minmax(0,1.3fr)] xl:grid-cols-[minmax(0,0.65fr)_minmax(0,1.4fr)] 2xl:grid-cols-[minmax(0,0.6fr)_minmax(0,1.45fr)]">
               <button
                 type="button"
                 class="group relative flex h-full min-h-[240px] flex-col justify-between rounded-4xl bg-white px-8 py-8 text-left shadow-xl shadow-slate-200/60 transition hover:-translate-y-1 hover:shadow-2xl"
@@ -156,7 +126,7 @@
                   <p class="text-xs text-slate-400">点击以了解更多功能</p>
                 </div>
                 <div class="-mx-1 overflow-x-auto pb-2 lg:mx-0 lg:overflow-visible">
-                  <div class="flex min-w-full gap-4 px-1 lg:grid lg:min-w-0 lg:grid-cols-2 lg:gap-5 xl:grid-cols-3">
+                  <div class="flex min-w-full gap-4 px-1 lg:grid lg:min-w-0 lg:grid-cols-2 lg:gap-5 xl:grid-cols-3 2xl:grid-cols-4">
                     <button
                       v-for="card in featureCards"
                       :key="card.key"
@@ -254,6 +224,7 @@
                         ? 'bg-emerald-500 text-white hover:bg-emerald-400'
                         : 'bg-slate-900 text-white hover:bg-slate-800',
                     ]"
+                    @click="handleFeatureModalAction(activeFeatureCard)"
                   >
                     {{ activeFeatureCard?.buttonLabel }}
                   </button>
@@ -853,15 +824,6 @@ const motivationalQuotes = [
   '“Precision builds trust in every insight.” — Veritascribe Research.',
 ];
 
-const creditUsageDetails = computed(() => authStore.creditUsage || { remaining: 0, total: 0 });
-const creditRemaining = computed(() => Math.max(0, Number(creditUsageDetails.value.remaining) || 0));
-const creditTotal = computed(() => Math.max(0, Number(creditUsageDetails.value.total) || 0));
-
-const numberCompactFormatter = new Intl.NumberFormat('en-US', { notation: 'compact', maximumFractionDigits: 1 });
-
-const creditCompactRemaining = computed(() => numberCompactFormatter.format(Math.round(creditRemaining.value)));
-const creditCompactTotal = computed(() => numberCompactFormatter.format(Math.round(creditTotal.value)));
-
 const userDisplayName = computed(() => {
   const profile = authStore.user?.profile;
   if (profile?.firstName || profile?.surname) {
@@ -879,26 +841,6 @@ const userPlanTag = computed(() => {
   if (plan.includes('edu')) return 'EDU';
   if (plan.includes('pro')) return 'PRO';
   return 'FREE';
-});
-
-const userInitials = computed(() => {
-  const source = authStore.user?.name || authStore.user?.username || authStore.user?.email || 'Guest';
-  return (
-    source
-      .split(/[\s@._-]+/)
-      .filter(Boolean)
-      .slice(0, 2)
-      .map((chunk) => chunk[0]?.toUpperCase() || '')
-      .join('') || 'G'
-  );
-});
-
-const creditUsagePercent = computed(() => {
-  const total = creditTotal.value;
-  if (!total) return '0%';
-  const remaining = Math.max(0, Math.min(total, creditRemaining.value));
-  const value = Math.round((remaining / total) * 100);
-  return `${Math.min(100, Math.max(0, value))}%`;
 });
 
 const pickRandomQuote = () => {
@@ -1505,6 +1447,19 @@ const formatHighlightedSentence = (sentence) => {
 const openFeatureModal = (card) => {
   if (!card) return;
   activeFeatureCard.value = card;
+};
+
+const handleFeatureModalAction = (card) => {
+  if (!card) return;
+  if (card.buttonVariant === 'upgrade') {
+    router.push({ name: 'pricing' });
+    closeFeatureModal();
+    return;
+  }
+  if (card.buttonVariant === 'free') {
+    closeFeatureModal();
+    setActivePanel('document');
+  }
 };
 
 const closeFeatureModal = () => {
