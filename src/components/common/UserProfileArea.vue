@@ -54,7 +54,7 @@
     v-else
     class="flex flex-wrap items-center justify-end gap-3 text-sm text-slate-600 md:flex-nowrap"
   >
-    <div class="flex items-center gap-2">
+    <div class="flex items-center gap-4">
       <button
         type="button"
         class="hidden items-center justify-center rounded-full border border-slate-200 bg-white px-3.5 py-1.5 text-[13px] font-semibold text-slate-600 transition hover:border-slate-300 hover:text-slate-800 sm:inline-flex"
@@ -71,7 +71,7 @@
         <span>Upgrade</span>
       </button>
     </div>
-    <div class="flex items-center gap-3">
+    <div class="flex items-center gap-4">
       <div class="hidden min-w-[200px] flex-1 md:block">
         <div class="flex items-center justify-between text-[11px] font-semibold text-slate-400">
           <span>{{ compactRemaining }} credits</span>

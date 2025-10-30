@@ -1,8 +1,8 @@
 <template>
   <header class="sticky top-0 z-40 border-b border-slate-200/60 bg-white/80 backdrop-blur">
-    <div class="mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-10">
+    <div class="mx-auto w-full max-w-7xl px-12 sm:px-14">
       <div class="flex h-16 items-center justify-between gap-6">
-        <RouterLink :to="{ name: 'home' }" class="-ml-1 flex items-center space-x-2 sm:-ml-2">
+        <RouterLink :to="{ name: 'home' }" class="flex items-center space-x-3">
           <span class="inline-flex h-9 w-9 items-center justify-center rounded-full bg-primary-500 font-semibold text-white">V</span>
           <span class="text-lg font-semibold tracking-tight text-slate-900">Veritascribe</span>
         </RouterLink>
@@ -277,7 +277,7 @@ const handleLogout = () => {
 };
 
 const openUpgrade = () => {
-  router.push({ name: 'dashboard', query: { panel: 'document', upgrade: 'true' } });
+  router.push({ name: 'pricing' });
 };
 
 const openFeedback = () => {
