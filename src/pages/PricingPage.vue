@@ -108,8 +108,8 @@
                 </tr>
               </thead>
               <tbody class="divide-y divide-slate-100">
-                <template v-for="section in comparison">
-                  <tr :key="section.name" class="bg-slate-50/60 text-xs uppercase tracking-wide text-slate-500">
+                <template v-for="section in comparison" :key="section.name">
+                  <tr class="bg-slate-50/60 text-xs uppercase tracking-wide text-slate-500">
                     <td class="px-4 py-2" :colspan="tablePlans.length + 1">{{ section.name }}</td>
                   </tr>
                   <tr
