@@ -288,6 +288,31 @@ export const useScanStore = defineStore('scan', () => {
     selectedExampleKey.value = '';
   };
 
+  const getDraftSnapshot = () => ({
+    inputText: inputText.value,
+    editorHtml: editorHtml.value,
+    selectedFunctions: [...selectedFunctions.value],
+    lastUploadedFileName: lastUploadedFileName.value,
+  });
+
+  const applyDraftPayload = (payload = {}) => {
+    if (!payload || typeof payload !== 'object') return;
+
+    if (Array.isArray(payload.selectedFunctions) && payload.selectedFunctions.length) {
+      setFunctions(payload.selectedFunctions);
+    }
+
+    if (typeof payload.lastUploadedFileName === 'string') {
+      lastUploadedFileName.value = payload.lastUploadedFileName;
+    }
+
+    if (typeof payload.editorHtml === 'string' && payload.editorHtml) {
+      setEditorHtml(payload.editorHtml);
+    } else if (typeof payload.inputText === 'string') {
+      setText(payload.inputText);
+    }
+  };
+
   const applyExample = (key) => {
     const matched = examples.find((item) => item.key === key);
     if (!matched) return;
@@ -589,6 +614,8 @@ export const useScanStore = defineStore('scan', () => {
     resetText,
     resetAll,
     commitDraftToStorage,
+    getDraftSnapshot,
+    applyDraftPayload,
     historyRecords,
     addHistoryRecord,
   };

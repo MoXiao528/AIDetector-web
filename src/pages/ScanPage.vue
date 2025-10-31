@@ -59,7 +59,7 @@
               ref="moreMenuButtonRef"
               type="button"
               :class="[
-                'nav-item justify-between',
+                'nav-item',
                 moreMenuOpen || moreMenuActive ? 'nav-item--active' : '',
               ]"
               @click="toggleMoreMenu"
@@ -68,10 +68,6 @@
                 <EllipsisHorizontalIcon class="h-5 w-5" />
                 <span>More</span>
               </span>
-              <ChevronDownIcon
-                class="h-4 w-4 transition"
-                :class="moreMenuOpen ? 'rotate-180 text-white' : ''"
-              />
             </button>
             <transition name="fade">
               <div
@@ -842,7 +838,6 @@ import {
   ShieldCheckIcon,
   AcademicCapIcon,
   UserGroupIcon,
-  ChevronDownIcon,
   ChevronRightIcon,
   EllipsisHorizontalIcon,
 } from '@heroicons/vue/24/outline';
@@ -861,6 +856,7 @@ const authStore = useAuthStore();
 const scanStore = useScanStore();
 const router = useRouter();
 const route = useRoute();
+const SESSION_DRAFT_PREFIX = 'scan-draft:';
 
 const editorRef = ref(null);
 const fileInput = ref(null);
@@ -907,6 +903,52 @@ const functionOptions = [
 const panelOptions = ['home', 'document', 'history', 'profile', 'qa', 'pricing', 'statistics', 'team', 'api'];
 const morePanels = ['statistics', 'team', 'api'];
 const moreMenuActive = computed(() => morePanels.includes(activePanel.value));
+
+const removeDraftQuery = () => {
+  if (!('draft' in route.query)) return;
+  const nextQuery = { ...route.query };
+  delete nextQuery.draft;
+  router.replace({ query: nextQuery }).catch(() => {});
+};
+
+const applySessionDraft = () => {
+  const draftParam = route.query.draft;
+  const draftKey = Array.isArray(draftParam) ? draftParam[0] : draftParam;
+  if (!draftKey) return;
+
+  if (typeof window === 'undefined') {
+    removeDraftQuery();
+    return;
+  }
+
+  const storageKey = `${SESSION_DRAFT_PREFIX}${draftKey}`;
+  try {
+    const raw = window.sessionStorage.getItem(storageKey);
+    if (!raw) return;
+    const payload = JSON.parse(raw);
+    if (typeof scanStore.applyDraftPayload === 'function') {
+      scanStore.applyDraftPayload(payload);
+    } else if (payload && typeof payload === 'object') {
+      if (Array.isArray(payload.selectedFunctions) && payload.selectedFunctions.length) {
+        scanStore.setFunctions(payload.selectedFunctions);
+      }
+      if (typeof payload.lastUploadedFileName === 'string') {
+        scanStore.lastUploadedFileName = payload.lastUploadedFileName;
+      }
+      if (typeof payload.editorHtml === 'string' && payload.editorHtml) {
+        scanStore.setEditorHtml(payload.editorHtml);
+      } else if (typeof payload.inputText === 'string') {
+        scanStore.setText(payload.inputText);
+      }
+    }
+    scanStore.commitDraftToStorage();
+  } catch (error) {
+    console.error('Failed to restore session draft', error);
+  } finally {
+    window.sessionStorage.removeItem(storageKey);
+    removeDraftQuery();
+  }
+};
 
 const motivationalQuotes = [
   '“To survive, you must tell stories.” — Umberto Eco.',
@@ -1447,6 +1489,7 @@ const syncEditorFromStore = () => {
 };
 
 onMounted(() => {
+  applySessionDraft();
   syncEditorFromStore();
   const initialPanel = parsePanel(route.query.panel);
   activePanel.value = initialPanel;
@@ -1506,6 +1549,14 @@ watch(
         apiWorkspaceTab.value = next;
       }
     }
+  }
+);
+
+watch(
+  () => route.query.draft,
+  () => {
+    applySessionDraft();
+    syncEditorFromStore();
   }
 );
 

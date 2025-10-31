@@ -89,10 +89,51 @@ const steps = [
 
 const router = useRouter();
 const scanStore = useScanStore();
+const SESSION_DRAFT_PREFIX = 'scan-draft:';
+
+const persistSessionDraft = (overrides = {}) => {
+  if (typeof window === 'undefined') return null;
+  const draftId = `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}`;
+  const snapshot = typeof scanStore.getDraftSnapshot === 'function'
+    ? scanStore.getDraftSnapshot()
+    : {
+        inputText: scanStore.inputText,
+        editorHtml: scanStore.editorHtml,
+        selectedFunctions: Array.isArray(scanStore.selectedFunctions)
+          ? [...scanStore.selectedFunctions]
+          : [],
+        lastUploadedFileName: scanStore.lastUploadedFileName,
+      };
+  const payload = {
+    ...snapshot,
+    ...overrides,
+  };
+  try {
+    window.sessionStorage.setItem(`${SESSION_DRAFT_PREFIX}${draftId}`, JSON.stringify(payload));
+  } catch (error) {
+    console.error('Failed to persist session draft', error);
+    return null;
+  }
+  return draftId;
+};
 
 const openDashboard = () => {
+  const ensuredFunctions = scanStore.selectedFunctions.length
+    ? [...scanStore.selectedFunctions]
+    : ['scan'];
+  if (!scanStore.selectedFunctions.length) {
+    scanStore.setFunctions(ensuredFunctions);
+  }
+  const draftId = persistSessionDraft({ selectedFunctions: ensuredFunctions });
+  const query = {
+    panel: 'document',
+    features: ensuredFunctions.join(','),
+  };
+  if (draftId) {
+    query.draft = draftId;
+  }
+  const target = router.resolve({ name: 'dashboard', query });
   scanStore.commitDraftToStorage();
-  const target = router.resolve({ name: 'dashboard' });
   if (typeof window !== 'undefined') {
     window.open(target.href, '_blank', 'noopener');
   }

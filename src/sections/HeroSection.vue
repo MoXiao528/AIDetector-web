@@ -182,6 +182,7 @@ import { useScanStore } from '../store/scan';
 const router = useRouter();
 const scanStore = useScanStore();
 const fileInput = ref(null);
+const SESSION_DRAFT_PREFIX = 'scan-draft:';
 
 const functionOptions = [
   { key: 'scan', label: 'AI 检测', icon: ShieldCheckIcon },
@@ -243,12 +244,48 @@ const onFileChange = async (event) => {
   }
 };
 
+const persistSessionDraft = (overrides = {}) => {
+  if (typeof window === 'undefined') return null;
+  const draftId = `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}`;
+  const snapshot = typeof scanStore.getDraftSnapshot === 'function'
+    ? scanStore.getDraftSnapshot()
+    : {
+        inputText: scanStore.inputText,
+        editorHtml: scanStore.editorHtml,
+        selectedFunctions: Array.isArray(scanStore.selectedFunctions)
+          ? [...scanStore.selectedFunctions]
+          : [],
+        lastUploadedFileName: scanStore.lastUploadedFileName,
+      };
+  const payload = {
+    ...snapshot,
+    ...overrides,
+  };
+  try {
+    window.sessionStorage.setItem(`${SESSION_DRAFT_PREFIX}${draftId}`, JSON.stringify(payload));
+  } catch (error) {
+    console.error('Failed to persist session draft', error);
+    return null;
+  }
+  return draftId;
+};
+
 const openDashboard = () => {
   if (!scanStore.selectedFunctions.length) {
     scanStore.setFunctions(['scan']);
   }
-  const features = (scanStore.selectedFunctions.length ? scanStore.selectedFunctions : ['scan']).join(',');
-  const target = router.resolve({ name: 'dashboard', query: { features, panel: 'document' } });
+  const ensuredFunctions = scanStore.selectedFunctions.length
+    ? [...scanStore.selectedFunctions]
+    : ['scan'];
+  const draftId = persistSessionDraft({ selectedFunctions: ensuredFunctions });
+  const query = {
+    features: ensuredFunctions.join(','),
+    panel: 'document',
+  };
+  if (draftId) {
+    query.draft = draftId;
+  }
+  const target = router.resolve({ name: 'dashboard', query });
   scanStore.commitDraftToStorage();
   if (typeof window !== 'undefined') {
     window.open(target.href, '_blank', 'noopener');
