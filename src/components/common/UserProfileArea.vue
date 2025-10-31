@@ -18,12 +18,16 @@
     <span class="inline-flex items-center rounded-full bg-slate-200 px-2.5 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-slate-600">
       FREE
     </span>
-    <div class="flex items-center gap-3 text-xs">
+    <button
+      type="button"
+      class="flex items-center gap-3 text-left text-xs text-slate-600 transition hover:text-primary-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500/40"
+      @click="$emit('view-credits')"
+    >
       <div class="text-[13px] font-medium text-slate-700">
         {{ formattedRemaining }} / {{ formattedTotal }} credits left
       </div>
-      <div class="relative h-10 w-10">
-        <svg viewBox="0 0 36 36" class="h-full w-full">
+      <div class="relative h-10 w-10 text-primary-500">
+        <svg viewBox="0 0 36 36" class="h-full w-full text-inherit">
           <path
             class="text-slate-200"
             stroke="currentColor"
@@ -33,7 +37,7 @@
             d="M18 3a15 15 0 110 30 15 15 0 010-30z"
           />
           <path
-            class="text-primary-500"
+            class="text-current"
             stroke="currentColor"
             stroke-width="3.5"
             fill="none"
@@ -47,7 +51,7 @@
           {{ percentRemaining }}%
         </div>
       </div>
-    </div>
+    </button>
     <slot name="avatar" />
   </div>
   <div
@@ -72,7 +76,11 @@
       </button>
     </div>
     <div class="flex items-center gap-4">
-      <div class="hidden min-w-[200px] flex-1 md:block">
+      <button
+        type="button"
+        class="hidden min-w-[200px] flex-1 text-left text-slate-600 transition hover:text-primary-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500/40 md:block"
+        @click="$emit('view-credits')"
+      >
         <div class="flex items-center justify-between text-[11px] font-semibold text-slate-400">
           <span>{{ compactRemaining }} credits</span>
           <span>of {{ compactTotal }} remaining</span>
@@ -80,7 +88,7 @@
         <div class="mt-1.5 h-2 w-full overflow-hidden rounded-full bg-slate-200">
           <div class="h-full rounded-full bg-primary-500" :style="{ width: percentRemaining + '%' }"></div>
         </div>
-      </div>
+      </button>
       <slot name="avatar" />
     </div>
   </div>
@@ -104,7 +112,7 @@ const props = defineProps({
   },
 });
 
-defineEmits(['upgrade', 'feedback']);
+defineEmits(['upgrade', 'feedback', 'view-credits']);
 
 const numberFormatter = new Intl.NumberFormat('en-US');
 const compactFormatter = new Intl.NumberFormat('en-US', { notation: 'compact', maximumFractionDigits: 1 });

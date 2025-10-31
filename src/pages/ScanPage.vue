@@ -77,7 +77,7 @@
               <div
                 v-if="moreMenuOpen"
                 ref="moreMenuRef"
-                class="absolute right-0 top-full z-10 mt-2 w-60 origin-top-right rounded-2xl border border-slate-200 bg-white p-3 shadow-xl"
+                class="absolute left-full top-0 z-10 ml-3 w-60 origin-left rounded-2xl border border-slate-200 bg-white p-3 shadow-xl"
               >
                 <button type="button" class="more-menu-item" @click="navigateMorePanel('statistics')">
                   <div>
@@ -1039,7 +1039,7 @@ const integrationButtons = [
     label: 'API',
     icon: CommandLineIcon,
     class: 'bg-purple-600 text-white hover:bg-purple-500',
-    action: 'contact',
+    action: 'api',
   },
   {
     key: 'chrome',
@@ -1624,6 +1624,11 @@ const handleIntegrationAction = (integration) => {
   if (!integration) return;
   if (integration.action === 'multi-upload') {
     router.push({ name: 'multi-upload' });
+    return;
+  }
+  if (integration.action === 'api') {
+    apiWorkspaceTab.value = 'subscription';
+    setActivePanel('api');
     return;
   }
   if (integration.action === 'contact') {

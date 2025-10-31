@@ -29,6 +29,7 @@
               :credits-total="creditUsage.total"
               @upgrade="openUpgrade"
               @feedback="openFeedback"
+              @view-credits="openCredits"
             >
               <template #avatar>
                 <div class="relative" ref="userMenuContainerRef">
@@ -291,6 +292,25 @@ const openUpgrade = () => {
     return;
   }
   router.push({ name: 'dashboard', query: { panel: 'pricing' } });
+};
+
+const openCredits = () => {
+  const query = { ...(route.query || {}) };
+  query.panel = 'statistics';
+  if ('apiTab' in query) {
+    delete query.apiTab;
+  }
+  if (route.name === 'dashboard') {
+    router.push({ name: 'dashboard', query });
+    isUserMenuOpen.value = false;
+    return;
+  }
+  const target = router.resolve({ name: 'dashboard', query: { panel: 'statistics' } });
+  if (typeof window !== 'undefined') {
+    window.open(target.href, '_blank', 'noopener');
+    return;
+  }
+  router.push({ name: 'dashboard', query: { panel: 'statistics' } });
 };
 
 const openFeedback = () => {
