@@ -50,7 +50,10 @@
             </transition>
           </div>
         </nav>
-        <div class="mt-6">
+        <div class="mt-auto rounded-2xl border border-dashed border-slate-200 bg-slate-50 p-4 text-xs text-slate-500">
+          <p>拖拽 TXT / DOCX / PDF 等文件到编辑区即可自动读取。</p>
+        </div>
+        <div v-if="authStore.isAuthenticated" class="mt-6 space-y-3 border-t border-slate-200 pt-4">
           <div class="relative">
             <button
               ref="moreMenuButtonRef"
@@ -100,11 +103,6 @@
               </div>
             </transition>
           </div>
-        </div>
-        <div class="mt-auto rounded-2xl border border-dashed border-slate-200 bg-slate-50 p-4 text-xs text-slate-500">
-          <p>拖拽 TXT / DOCX / PDF 等文件到编辑区即可自动读取。</p>
-        </div>
-        <div v-if="authStore.isAuthenticated" class="mt-6 space-y-2 border-t border-slate-200 pt-4">
           <button
             type="button"
             :class="['nav-item', isPanelActive('profile') ? 'nav-item--active' : '']"
@@ -766,6 +764,54 @@
           </div>
         </div>
 
+        <div v-else-if="isPanelActive('statistics')" class="flex-1 overflow-y-auto px-4 py-6">
+          <div class="mx-auto w-full max-w-5xl space-y-6">
+            <header class="space-y-2">
+              <h2 class="text-2xl font-semibold tracking-tight text-slate-900">Usage analytics</h2>
+              <p class="text-sm text-slate-500">即将上线的统计面板将帮助你追踪检测量、成员活动与模型命中率。</p>
+            </header>
+            <div class="grid gap-4 md:grid-cols-2">
+              <div class="rounded-3xl border border-dashed border-slate-200 bg-white/70 p-6 text-sm text-slate-500">
+                <p class="font-semibold text-slate-700">Daily scans</p>
+                <p class="mt-2 text-xs text-slate-400">Stay tuned — charts will visualize你的每日检测趋势。</p>
+              </div>
+              <div class="rounded-3xl border border-dashed border-slate-200 bg-white/70 p-6 text-sm text-slate-500">
+                <p class="font-semibold text-slate-700">Model insights</p>
+                <p class="mt-2 text-xs text-slate-400">将展示各模型命中率、AI/Human 比例与异常提示。</p>
+              </div>
+            </div>
+            <div class="rounded-3xl border border-dashed border-slate-200 bg-white/70 p-6 text-sm text-slate-500">
+              <p>我们正在为统计面板完善更多细节，欢迎通过 Feedback 与我们分享你的需求。</p>
+            </div>
+          </div>
+        </div>
+
+        <div v-else-if="isPanelActive('team')" class="flex-1 overflow-y-auto px-4 py-6">
+          <div class="mx-auto w-full max-w-5xl space-y-6">
+            <header class="space-y-2">
+              <h2 class="text-2xl font-semibold tracking-tight text-slate-900">Create a Team</h2>
+              <p class="text-sm text-slate-500">协同管理配额、邀请成员并共享检测历史，团队功能建设中。</p>
+            </header>
+            <div class="rounded-3xl border border-dashed border-slate-200 bg-white/70 p-6 text-sm text-slate-500">
+              <p>团队空间将支持角色权限、共享配额与集中账单管理。敬请期待！</p>
+            </div>
+          </div>
+        </div>
+
+        <div v-else-if="isPanelActive('api')" class="flex-1 overflow-y-auto px-4 py-6">
+          <div class="mx-auto w-full max-w-6xl">
+            <ApiWorkspace
+              :tab="apiWorkspaceTab"
+              :has-api-plan="hasApiSubscription"
+              :api-key="apiDisplayKey"
+              @update:tab="setApiWorkspaceTab"
+              @start-checkout="handleApiCheckout"
+              @rotate-key="handleApiKeyRotate"
+              @view-key="handleApiKeyView"
+            />
+          </div>
+        </div>
+
         <div v-else-if="isPanelActive('pricing')" class="flex-1 overflow-y-auto bg-[#FAFAF7] px-0 py-6">
           <PricingPage embedded />
         </div>
@@ -826,6 +872,7 @@ import AppHeader from '../sections/AppHeader.vue';
 import LoginPromptModal from '../components/common/LoginPromptModal.vue';
 import ProfilePanel from '../components/dashboard/ProfilePanel.vue';
 import QAPanel from '../components/dashboard/QAPanel.vue';
+import ApiWorkspace from '../components/dashboard/ApiWorkspace.vue';
 import PricingPage from './PricingPage.vue';
 import { useAuthStore } from '../store/auth';
 import { useScanStore } from '../store/scan';
@@ -857,6 +904,7 @@ const moreMenuOpen = ref(false);
 const activePanel = ref('home');
 const activeHistoryId = ref('');
 const activeHistoryTab = ref('scan');
+const apiWorkspaceTab = ref('subscription');
 const headerVariant = computed(() => (activePanel.value === 'document' ? 'scan' : 'standard'));
 
 const editorModes = [
@@ -906,6 +954,13 @@ const userPlanTag = computed(() => {
   if (plan.includes('pro')) return 'PRO';
   return 'FREE';
 });
+
+const hasApiSubscription = computed(() => {
+  const plan = authStore.user?.plan || '';
+  return /api|enterprise|global/i.test(plan);
+});
+
+const apiDisplayKey = computed(() => authStore.user?.apiKey || 'vs_live_3f9c************************');
 
 const pickRandomQuote = () => {
   if (!motivationalQuotes.length) {
@@ -1223,6 +1278,15 @@ const buildHighlightedHtml = (tokens, sentences) => {
     .join('');
 };
 
+const parseApiTab = (value) => (value === 'key' ? 'key' : 'subscription');
+
+const isShallowEqual = (a, b) => {
+  const keysA = Object.keys(a);
+  const keysB = Object.keys(b);
+  if (keysA.length !== keysB.length) return false;
+  return keysA.every((key) => a[key] === b[key]);
+};
+
 const parsePanel = (value) => {
   if (typeof value !== 'string') return 'home';
   return panelOptions.includes(value) ? value : 'home';
@@ -1231,15 +1295,30 @@ const parsePanel = (value) => {
 const syncPanelToRoute = (panel) => {
   const query = { ...route.query };
   if (panel === 'home') {
-    if (!('panel' in query)) {
-      return;
+    if ('panel' in query) {
+      delete query.panel;
     }
-    delete query.panel;
+    if ('apiTab' in query) {
+      delete query.apiTab;
+    }
   } else {
     if (query.panel === panel) {
-      return;
+      // continue to allow apiTab sync
+    } else {
+      query.panel = panel;
     }
-    query.panel = panel;
+    if (panel === 'api') {
+      if (apiWorkspaceTab.value && apiWorkspaceTab.value !== 'subscription') {
+        query.apiTab = apiWorkspaceTab.value;
+      } else if ('apiTab' in query) {
+        delete query.apiTab;
+      }
+    } else if ('apiTab' in query) {
+      delete query.apiTab;
+    }
+  }
+  if (isShallowEqual(query, route.query)) {
+    return;
   }
   router.replace({ name: 'dashboard', query });
 };
@@ -1394,6 +1473,9 @@ onMounted(() => {
   if (initialPanel === 'home') {
     pickRandomQuote();
   }
+  if (initialPanel === 'api') {
+    apiWorkspaceTab.value = parseApiTab(route.query.apiTab);
+  }
   if (historyRecords.value.length && !activeHistoryId.value) {
     activeHistoryId.value = historyRecords.value[0].id;
   }
@@ -1428,6 +1510,21 @@ watch(
     const next = parsePanel(value);
     if (activePanel.value !== next) {
       activePanel.value = next;
+    }
+    if (next === 'api') {
+      apiWorkspaceTab.value = parseApiTab(route.query.apiTab);
+    }
+  }
+);
+
+watch(
+  () => route.query.apiTab,
+  (value) => {
+    if (activePanel.value === 'api') {
+      const next = parseApiTab(value);
+      if (apiWorkspaceTab.value !== next) {
+        apiWorkspaceTab.value = next;
+      }
     }
   }
 );
@@ -1491,6 +1588,12 @@ watch(
     }
   }
 );
+
+watch(apiWorkspaceTab, () => {
+  if (activePanel.value === 'api') {
+    syncPanelToRoute('api');
+  }
+});
 
 const parseFeatures = (value) => {
   if (typeof value !== 'string') return [];
@@ -1723,6 +1826,25 @@ const goToQA = () => {
   setActivePanel('qa');
 };
 
+const setApiWorkspaceTab = (tab) => {
+  apiWorkspaceTab.value = tab;
+};
+
+const handleApiCheckout = () => {
+  setActivePanel('pricing');
+};
+
+const handleApiKeyRotate = (timestamp) => {
+  console.info('API key rotation requested at', timestamp);
+};
+
+const handleApiKeyView = () => {
+  if (!authStore.isAuthenticated) {
+    loginMessage.value = '登录后即可查看 API 密钥。';
+    showLoginModal.value = true;
+  }
+};
+
 const startNewScan = () => {
   newMenuOpen.value = false;
   setActivePanel('document');
@@ -1747,6 +1869,9 @@ const toggleMoreMenu = () => {
 
 const navigateMorePanel = (panel) => {
   moreMenuOpen.value = false;
+  if (panel === 'api') {
+    apiWorkspaceTab.value = 'subscription';
+  }
   setActivePanel(panel);
 };
 
