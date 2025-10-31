@@ -12,7 +12,7 @@
             </svg>
           </span>
           <button type="button" class="w-full rounded-2xl px-4 py-2 text-left transition hover:bg-white hover:text-slate-900">
-            GPTZero API
+            Veritascribe API
           </button>
           <button type="button" class="w-full rounded-2xl px-4 py-2 text-left transition hover:bg-white hover:text-slate-900">
             Relevant Sources
@@ -40,9 +40,9 @@
           <h2 class="text-lg font-semibold text-slate-900">Getting Started</h2>
           <ol class="mt-4 space-y-3 text-sm text-slate-600">
             <li>No need to create an account to try out the API — you can try it directly here for limited uses.</li>
-            <li>1. Create an account at <a class="text-primary-600 underline-offset-2 hover:underline" href="https://app.gptzero.me" target="_blank" rel="noopener">https://app.gptzero.me</a></li>
-            <li>2. Sign up for an API subscription plan at <a class="text-primary-600 underline-offset-2 hover:underline" href="https://app.gptzero.me/app/api-subscription" target="_blank" rel="noopener">https://app.gptzero.me/app/api-subscription</a></li>
-            <li>3. Get your API key at <a class="text-primary-600 underline-offset-2 hover:underline" href="https://app.gptzero.me/app/api" target="_blank" rel="noopener">https://app.gptzero.me/app/api</a></li>
+            <li>1. Create an account at <a class="text-primary-600 underline-offset-2 hover:underline" href="https://app.veritascribe.com" target="_blank" rel="noopener">https://app.veritascribe.com</a></li>
+            <li>2. Sign up for an API subscription plan at <a class="text-primary-600 underline-offset-2 hover:underline" href="https://app.veritascribe.com/app/api-subscription" target="_blank" rel="noopener">https://app.veritascribe.com/app/api-subscription</a></li>
+            <li>3. Get your API key at <a class="text-primary-600 underline-offset-2 hover:underline" href="https://app.veritascribe.com/app/api" target="_blank" rel="noopener">https://app.veritascribe.com/app/api</a></li>
             <li>4. Visit the API docs to get ready-to-use code in 17+ languages.</li>
           </ol>
           <div class="mt-6 rounded-2xl border border-primary-200 bg-primary-50/70 p-4 text-sm leading-relaxed text-primary-700">

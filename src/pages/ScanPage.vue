@@ -77,7 +77,7 @@
               <div
                 v-if="moreMenuOpen"
                 ref="moreMenuRef"
-                class="absolute left-0 top-full z-10 mt-2 w-60 rounded-2xl border border-slate-200 bg-white p-3 shadow-xl"
+                class="absolute right-0 top-full z-10 mt-2 w-60 origin-top-right rounded-2xl border border-slate-200 bg-white p-3 shadow-xl"
               >
                 <button type="button" class="more-menu-item" @click="navigateMorePanel('statistics')">
                   <div>
@@ -765,36 +765,14 @@
         </div>
 
         <div v-else-if="isPanelActive('statistics')" class="flex-1 overflow-y-auto px-4 py-6">
-          <div class="mx-auto w-full max-w-5xl space-y-6">
-            <header class="space-y-2">
-              <h2 class="text-2xl font-semibold tracking-tight text-slate-900">Usage analytics</h2>
-              <p class="text-sm text-slate-500">即将上线的统计面板将帮助你追踪检测量、成员活动与模型命中率。</p>
-            </header>
-            <div class="grid gap-4 md:grid-cols-2">
-              <div class="rounded-3xl border border-dashed border-slate-200 bg-white/70 p-6 text-sm text-slate-500">
-                <p class="font-semibold text-slate-700">Daily scans</p>
-                <p class="mt-2 text-xs text-slate-400">Stay tuned — charts will visualize你的每日检测趋势。</p>
-              </div>
-              <div class="rounded-3xl border border-dashed border-slate-200 bg-white/70 p-6 text-sm text-slate-500">
-                <p class="font-semibold text-slate-700">Model insights</p>
-                <p class="mt-2 text-xs text-slate-400">将展示各模型命中率、AI/Human 比例与异常提示。</p>
-              </div>
-            </div>
-            <div class="rounded-3xl border border-dashed border-slate-200 bg-white/70 p-6 text-sm text-slate-500">
-              <p>我们正在为统计面板完善更多细节，欢迎通过 Feedback 与我们分享你的需求。</p>
-            </div>
+          <div class="mx-auto w-full max-w-6xl">
+            <StatisticsPanel />
           </div>
         </div>
 
         <div v-else-if="isPanelActive('team')" class="flex-1 overflow-y-auto px-4 py-6">
-          <div class="mx-auto w-full max-w-5xl space-y-6">
-            <header class="space-y-2">
-              <h2 class="text-2xl font-semibold tracking-tight text-slate-900">Create a Team</h2>
-              <p class="text-sm text-slate-500">协同管理配额、邀请成员并共享检测历史，团队功能建设中。</p>
-            </header>
-            <div class="rounded-3xl border border-dashed border-slate-200 bg-white/70 p-6 text-sm text-slate-500">
-              <p>团队空间将支持角色权限、共享配额与集中账单管理。敬请期待！</p>
-            </div>
+          <div class="mx-auto w-full max-w-5xl">
+            <TeamPanel />
           </div>
         </div>
 
@@ -873,6 +851,8 @@ import LoginPromptModal from '../components/common/LoginPromptModal.vue';
 import ProfilePanel from '../components/dashboard/ProfilePanel.vue';
 import QAPanel from '../components/dashboard/QAPanel.vue';
 import ApiWorkspace from '../components/dashboard/ApiWorkspace.vue';
+import StatisticsPanel from '../components/dashboard/StatisticsPanel.vue';
+import TeamPanel from '../components/dashboard/TeamPanel.vue';
 import PricingPage from './PricingPage.vue';
 import { useAuthStore } from '../store/auth';
 import { useScanStore } from '../store/scan';
