@@ -555,11 +555,50 @@
               <div class="space-y-4">
                 <div>
                   <h3 class="text-sm font-semibold text-slate-900">最近记录</h3>
-                  <p class="mt-1 text-xs text-slate-500">点击左侧记录以查看详细分析</p>
+                  <p class="mt-1 text-xs text-slate-500">筛选、搜索并点击记录恢复到报告视图</p>
                 </div>
+                <div class="space-y-3 rounded-2xl bg-slate-50 p-3">
+                  <input
+                    v-model.trim="historySearch"
+                    type="search"
+                    class="w-full rounded-xl border border-slate-200 px-3 py-2 text-xs focus:border-primary-300 focus:outline-none"
+                    placeholder="搜索任务名、来源或关键词"
+                  />
+                  <div class="grid grid-cols-2 gap-2">
+                    <select
+                      v-model="historyStatusFilter"
+                      class="w-full rounded-xl border border-slate-200 px-3 py-2 text-xs text-slate-600 focus:border-primary-300 focus:outline-none"
+                    >
+                      <option value="all">全部状态</option>
+                      <option v-for="status in historyStatusOptions" :key="status" :value="status">{{ status }}</option>
+                    </select>
+                    <select
+                      v-model="historySourceFilter"
+                      class="w-full rounded-xl border border-slate-200 px-3 py-2 text-xs text-slate-600 focus:border-primary-300 focus:outline-none"
+                    >
+                      <option value="all">全部来源</option>
+                      <option v-for="source in historySourceOptions" :key="source" :value="source">{{ source }}</option>
+                    </select>
+                  </div>
+                  <div class="grid grid-cols-2 gap-2 text-[11px] text-slate-600">
+                    <label class="flex flex-col gap-1">
+                      <span class="text-[11px] text-slate-500">开始日期</span>
+                      <input v-model="historyDateFrom" type="date" class="rounded-xl border border-slate-200 px-2 py-1 focus:border-primary-300 focus:outline-none" />
+                    </label>
+                    <label class="flex flex-col gap-1">
+                      <span class="text-[11px] text-slate-500">结束日期</span>
+                      <input v-model="historyDateTo" type="date" class="rounded-xl border border-slate-200 px-2 py-1 focus:border-primary-300 focus:outline-none" />
+                    </label>
+                  </div>
+                  <label class="flex items-center gap-2 text-xs font-semibold text-slate-600">
+                    <input v-model="historyFavoriteOnly" type="checkbox" class="h-4 w-4 rounded border-slate-300 text-amber-500 focus:ring-amber-400" />
+                    仅看收藏
+                  </label>
+                </div>
+
                 <div class="space-y-2">
                   <button
-                    v-for="record in historyRecords"
+                    v-for="record in visibleHistoryRecords"
                     :key="record.id"
                     type="button"
                     :class="[
@@ -568,15 +607,45 @@
                         ? 'border-slate-900 bg-slate-900 text-white shadow'
                         : 'border-slate-200 bg-white text-slate-600 hover:border-primary-200 hover:text-primary-600',
                     ]"
-                    @click="selectHistoryRecord(record.id)"
+                    @click="handleHistoryClick(record)"
                   >
-                    <p class="font-semibold">{{ record.title || '扫描记录' }}</p>
+                    <div class="flex items-start justify-between gap-2">
+                      <p class="font-semibold">{{ record.title || '扫描记录' }}</p>
+                      <button
+                        type="button"
+                        class="rounded-full p-1 text-slate-400 transition hover:text-amber-500"
+                        @click.stop="toggleFavorite(record)"
+                        :aria-label="record.favorite ? '取消收藏' : '收藏记录'"
+                      >
+                        <StarIconSolid v-if="record.favorite" class="h-4 w-4 text-amber-500" />
+                        <StarIcon v-else class="h-4 w-4" />
+                      </button>
+                    </div>
+                    <div class="mt-1 flex flex-wrap gap-2 text-[11px]">
+                      <span class="rounded-full px-2 py-0.5 font-semibold" :class="historyStatusClass(record.status)">
+                        {{ record.status || '已完成' }}
+                      </span>
+                      <span class="rounded-full px-2 py-0.5 font-semibold" :class="historySourceClass(record.source)">
+                        {{ record.source || '文本粘贴' }}
+                      </span>
+                    </div>
                     <p class="mt-1 text-xs" :class="record.id === activeHistoryId ? 'text-white/80' : 'text-slate-400'">
                       {{ formatHistorySummary(record) }}
                     </p>
                     <p class="mt-1 text-[11px]" :class="record.id === activeHistoryId ? 'text-white/70' : 'text-slate-400'">
                       {{ formatHistoryTimestamp(record.createdAt) }}
                     </p>
+                  </button>
+                  <p v-if="!visibleHistoryRecords.length" class="rounded-2xl border border-dashed border-slate-200 bg-white/60 px-3 py-6 text-center text-xs text-slate-500">
+                    暂无匹配记录，调整筛选条件试试。
+                  </p>
+                  <button
+                    v-else-if="canLoadMoreHistory"
+                    type="button"
+                    class="w-full rounded-full border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-600 hover:border-primary-200 hover:text-primary-600"
+                    @click="loadMoreHistory"
+                  >
+                    加载更多
                   </button>
                 </div>
               </div>
@@ -767,7 +836,9 @@ import {
   ShieldCheckIcon,
   AcademicCapIcon,
   UserGroupIcon,
+  StarIcon,
 } from '@heroicons/vue/24/outline';
+import { StarIcon as StarIconSolid } from '@heroicons/vue/24/solid';
 import AppHeader from '../sections/AppHeader.vue';
 import LoginPromptModal from '../components/common/LoginPromptModal.vue';
 import ProfilePanel from '../components/dashboard/ProfilePanel.vue';
@@ -800,6 +871,14 @@ const newMenuOpen = ref(false);
 const activePanel = ref('home');
 const activeHistoryId = ref('');
 const activeHistoryTab = ref('scan');
+const historySearch = ref('');
+const historyStatusFilter = ref('all');
+const historySourceFilter = ref('all');
+const historyFavoriteOnly = ref(false);
+const historyDateFrom = ref('');
+const historyDateTo = ref('');
+const historyPage = ref(1);
+const historyPageSize = 5;
 const headerVariant = computed(() => (activePanel.value === 'document' ? 'scan' : 'standard'));
 
 const editorModes = [
@@ -820,6 +899,9 @@ const functionOptions = [
 ];
 
 const panelOptions = ['home', 'document', 'history', 'profile', 'qa', 'pricing'];
+
+const historyStatusOptions = ['已完成', '待完善', '失败'];
+const historySourceOptions = ['文本粘贴', '上传文件', 'API 导入'];
 
 const motivationalQuotes = [
   '“To survive, you must tell stories.” — Umberto Eco.',
@@ -1039,6 +1121,42 @@ const availableResultTabs = computed(() => {
 
 const historyRecords = computed(() => scanStore.historyRecords);
 
+const filteredHistoryRecords = computed(() => {
+  const keyword = historySearch.value.trim().toLowerCase();
+  const from = historyDateFrom.value ? new Date(historyDateFrom.value) : null;
+  const to = historyDateTo.value ? new Date(historyDateTo.value) : null;
+  if (to) {
+    to.setHours(23, 59, 59, 999);
+  }
+
+  return historyRecords.value.filter((record) => {
+    if (historyFavoriteOnly.value && !record.favorite) return false;
+    if (historyStatusFilter.value !== 'all' && record.status !== historyStatusFilter.value) return false;
+    if (historySourceFilter.value !== 'all' && record.source !== historySourceFilter.value) return false;
+
+    if (from || to) {
+      const created = new Date(record.createdAt);
+      if (Number.isNaN(created)) return false;
+      if (from && created < from) return false;
+      if (to && created > to) return false;
+    }
+
+    if (keyword) {
+      const haystack = `${record.title || ''} ${record.inputText || ''} ${record.source || ''}`.toLowerCase();
+      if (!haystack.includes(keyword)) return false;
+    }
+    return true;
+  });
+});
+
+const visibleHistoryRecords = computed(() =>
+  filteredHistoryRecords.value.slice(0, Math.max(1, historyPage.value) * historyPageSize)
+);
+
+const canLoadMoreHistory = computed(
+  () => filteredHistoryRecords.value.length > visibleHistoryRecords.value.length
+);
+
 const activeHistoryRecord = computed(() => historyRecords.value.find((item) => item.id === activeHistoryId.value));
 
 const historyFunctionSummary = computed(() => {
@@ -1092,6 +1210,19 @@ const historyCharacterUsage = computed(() => {
   const length = record?.inputText ? record.inputText.length : 0;
   return `字数：${length}/${scanStore.characterLimit}`;
 });
+
+const historyStatusClass = (status) => {
+  if (status === '已完成') return 'bg-emerald-50 text-emerald-700';
+  if (status === '待完善') return 'bg-amber-50 text-amber-700';
+  if (status === '失败') return 'bg-rose-50 text-rose-700';
+  return 'bg-slate-100 text-slate-600';
+};
+
+const historySourceClass = (source) => {
+  if (source === '上传文件') return 'bg-blue-50 text-blue-700';
+  if (source === 'API 导入') return 'bg-indigo-50 text-indigo-700';
+  return 'bg-slate-100 text-slate-700';
+};
 
 const highlightBorderClass = (type) => {
   if (type === 'ai') return 'border-amber-200 bg-amber-50';
@@ -1193,10 +1324,28 @@ const setActivePanel = (panel) => {
 
 const isPanelActive = (panel) => activePanel.value === panel;
 
-const selectHistoryRecord = (id) => {
-  if (activeHistoryId.value === id) return;
+const restoreHistoryRecord = (record) => {
+  if (!record) return;
+  scanStore.setEditorHtml(record.editorHtml || plainTextToHtml(record.inputText || ''));
+  scanStore.setFunctions(record.functions || ['scan']);
+  detectionResults.value = record.analysis || null;
+  highlightedPreviewHtml.value = record.analysis?.highlightedHtml || record.editorHtml || '';
+  editorMode.value = record.analysis ? 'preview' : 'edit';
+  activeResultTab.value = availableResultTabs.value[0]?.key || 'scan';
+  setActivePanel('document');
+  nextTick(() => {
+    syncEditorFromStore();
+  });
+};
+
+const selectHistoryRecord = (id, { restore = false } = {}) => {
+  if (activeHistoryId.value === id && !restore) return;
   activeHistoryId.value = id;
   activeHistoryTab.value = 'scan';
+  if (restore) {
+    const record = historyRecords.value.find((item) => item.id === id);
+    restoreHistoryRecord(record);
+  }
 };
 
 const formatHistoryTimestamp = (value) => {
@@ -1228,6 +1377,20 @@ const formatHistorySummary = (record) => {
   }
   const { ai = 0, mixed = 0, human = 0 } = record.analysis.summary;
   return `AI ${ai}% · Mixed ${mixed}% · Human ${human}%`;
+};
+
+const loadMoreHistory = () => {
+  historyPage.value += 1;
+};
+
+const toggleFavorite = (record) => {
+  if (!record) return;
+  scanStore.toggleHistoryFavorite(record.id);
+};
+
+const handleHistoryClick = (record) => {
+  if (!record) return;
+  selectHistoryRecord(record.id, { restore: true });
 };
 
 const classifyOrder = ['ai', 'mixed', 'human'];
@@ -1399,7 +1562,14 @@ watch(isFeatureModalOpen, (open) => {
 });
 
 watch(
-  historyRecords,
+  [historySearch, historyStatusFilter, historySourceFilter, historyFavoriteOnly, historyDateFrom, historyDateTo],
+  () => {
+    historyPage.value = 1;
+  }
+);
+
+watch(
+  filteredHistoryRecords,
   (records) => {
     if (!records.length) {
       activeHistoryId.value = '';

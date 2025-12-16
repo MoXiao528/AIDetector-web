@@ -98,12 +98,15 @@ const buildSeedHistoryAnalysis = ({ summary, sentences, translation = '', polish
   };
 };
 
-  const seedHistoryRecords = [
-    {
-      id: 'history-1',
-      title: '课堂论文检测',
-      createdAt: '2024-06-12T09:24:00.000Z',
+const seedHistoryRecords = [
+  {
+    id: 'history-1',
+    title: '课堂论文检测',
+    createdAt: '2024-06-12T09:24:00.000Z',
     functions: ['scan', 'citation'],
+    status: '已完成',
+    source: '文本粘贴',
+    favorite: true,
     inputText:
       'This classroom essay evaluates the impact of AI writing assistants on student voice, yet several opening paragraphs repeat generic claims without citing classroom data.',
     editorHtml: plainTextToHtml(
@@ -150,26 +153,29 @@ const buildSeedHistoryAnalysis = ({ summary, sentences, translation = '', polish
       ],
     }),
   },
-    {
-      id: 'history-2',
-      title: '市场报告润色',
-      createdAt: '2024-06-08T13:05:00.000Z',
-      functions: ['scan', 'translate', 'polish'],
+  {
+    id: 'history-2',
+    title: '市场报告润色',
+    createdAt: '2024-06-08T13:05:00.000Z',
+    functions: ['scan', 'translate', 'polish'],
+    status: '已完成',
+    source: '上传文件',
+    favorite: false,
     inputText:
       'The quarterly market summary outlines user growth with confident but repetitive wording, and several insights were drafted collaboratively by product and AI tools.',
     editorHtml: plainTextToHtml(
       'The quarterly market summary outlines user growth with confident but repetitive wording, and several insights were drafted collaboratively by product and AI tools.'
     ),
-      analysis: buildSeedHistoryAnalysis({
-        summary: { ai: 42, mixed: 38, human: 20 },
-        sentences: [
-          {
-            id: 'history-2-s1',
-            text: 'The quarterly market summary outlines user growth with confident but repetitive wording.',
-            type: 'mixed',
-            probability: 0.58,
-            reason: '语气流畅但句式重复，可视为人机共同参与撰写。',
-          },
+    analysis: buildSeedHistoryAnalysis({
+      summary: { ai: 42, mixed: 38, human: 20 },
+      sentences: [
+        {
+          id: 'history-2-s1',
+          text: 'The quarterly market summary outlines user growth with confident but repetitive wording.',
+          type: 'mixed',
+          probability: 0.58,
+          reason: '语气流畅但句式重复，可视为人机共同参与撰写。',
+        },
         {
           id: 'history-2-s2',
           text: 'Several insights were drafted collaboratively by product and AI tools.',
@@ -197,69 +203,72 @@ const buildSeedHistoryAnalysis = ({ summary, sentences, translation = '', polish
           suggestion: 'The quarterly market summary outlines user growth with confident but repetitive wording, lacking concrete cohort comparisons.',
           reason: '补充定量信息与对比，增强说服力。',
         },
-          {
-            id: 'history-2-p2',
-            original: 'Several insights were drafted collaboratively by product and AI tools.',
-            suggestion: 'Several insights were drafted collaboratively by product and AI tools, and require explicit sourcing before publication.',
-            reason: '说明下一步动作与责任主体，便于执行。',
-          },
-        ],
-      }),
-    },
-    {
-      id: 'history-3',
-      title: '多语种翻译记录',
-      createdAt: '2024-05-29T16:42:00.000Z',
-      functions: ['scan', 'translate', 'citation'],
-      inputText:
-        'The policy brief summarizes stakeholder interviews in English before appending machine translated Mandarin excerpts that still require attribution.',
-      editorHtml: plainTextToHtml(
-        'The policy brief summarizes stakeholder interviews in English before appending machine translated Mandarin excerpts that still require attribution.'
-      ),
-      analysis: buildSeedHistoryAnalysis({
-        summary: { ai: 36, mixed: 41, human: 23 },
-        sentences: [
-          {
-            id: 'history-3-s1',
-            text: 'The policy brief summarizes stakeholder interviews in English.',
-            type: 'human',
-            probability: 0.18,
-            reason: '句子包含清晰的采访背景与语境，更贴近人工撰写。',
-          },
-          {
-            id: 'history-3-s2',
-            text: 'Machine translated Mandarin excerpts still require attribution.',
-            type: 'mixed',
-            probability: 0.61,
-            reason: '翻译语句结构自然但缺少具体出处，疑有人机混合痕迹。',
-          },
-          {
-            id: 'history-3-s3',
-            text: 'The appendix lists anonymous survey responses with identical phrasing.',
-            type: 'ai',
-            probability: 0.68,
-            reason: '大量重复短语与模板化描述，呈现 AI 生成特征。',
-          },
-        ],
-        translation:
-          '第 2 句：Machine translated Mandarin excerpts still require attribution. → 机器翻译的中文摘录仍需补充来源信息。\n第 3 句：The appendix lists anonymous survey responses with identical phrasing. → 附录列出多条措辞完全一致的匿名调查回复。',
-        citations: [
-          {
-            id: 'history-3-c1',
-            excerpt: 'Machine translated Mandarin excerpts still require attribution.',
-            status: '缺失引用',
-            note: '请补充原始采访或政策文件出处。',
-          },
-          {
-            id: 'history-3-c2',
-            excerpt: 'The appendix lists anonymous survey responses with identical phrasing.',
-            status: '待验证',
-            note: '建议提供原始调研问卷或说明整理方法。',
-          },
-        ],
-      }),
-    },
-  ];
+        {
+          id: 'history-2-p2',
+          original: 'Several insights were drafted collaboratively by product and AI tools.',
+          suggestion: 'Several insights were drafted collaboratively by product and AI tools, and require explicit sourcing before publication.',
+          reason: '说明下一步动作与责任主体，便于执行。',
+        },
+      ],
+    }),
+  },
+  {
+    id: 'history-3',
+    title: '多语种翻译记录',
+    createdAt: '2024-05-29T16:42:00.000Z',
+    functions: ['scan', 'translate', 'citation'],
+    status: '待完善',
+    source: 'API 导入',
+    favorite: false,
+    inputText:
+      'The policy brief summarizes stakeholder interviews in English before appending machine translated Mandarin excerpts that still require attribution.',
+    editorHtml: plainTextToHtml(
+      'The policy brief summarizes stakeholder interviews in English before appending machine translated Mandarin excerpts that still require attribution.'
+    ),
+    analysis: buildSeedHistoryAnalysis({
+      summary: { ai: 36, mixed: 41, human: 23 },
+      sentences: [
+        {
+          id: 'history-3-s1',
+          text: 'The policy brief summarizes stakeholder interviews in English.',
+          type: 'human',
+          probability: 0.18,
+          reason: '句子包含清晰的采访背景与语境，更贴近人工撰写。',
+        },
+        {
+          id: 'history-3-s2',
+          text: 'Machine translated Mandarin excerpts still require attribution.',
+          type: 'mixed',
+          probability: 0.61,
+          reason: '翻译语句结构自然但缺少具体出处，疑有人机混合痕迹。',
+        },
+        {
+          id: 'history-3-s3',
+          text: 'The appendix lists anonymous survey responses with identical phrasing.',
+          type: 'ai',
+          probability: 0.68,
+          reason: '大量重复短语与模板化描述，呈现 AI 生成特征。',
+        },
+      ],
+      translation:
+        '第 2 句：Machine translated Mandarin excerpts still require attribution. → 机器翻译的中文摘录仍需补充来源信息。\n第 3 句：The appendix lists anonymous survey responses with identical phrasing. → 附录列出多条措辞完全一致的匿名调查回复。',
+      citations: [
+        {
+          id: 'history-3-c1',
+          excerpt: 'Machine translated Mandarin excerpts still require attribution.',
+          status: '缺失引用',
+          note: '请补充原始采访或政策文件出处。',
+        },
+        {
+          id: 'history-3-c2',
+          excerpt: 'The appendix lists anonymous survey responses with identical phrasing.',
+          status: '待验证',
+          note: '建议提供原始调研问卷或说明整理方法。',
+        },
+      ],
+    }),
+  },
+];
 
 export const useScanStore = defineStore('scan', () => {
   const inputText = ref('');
@@ -405,6 +414,9 @@ export const useScanStore = defineStore('scan', () => {
         functions: Array.isArray(record.functions)
           ? record.functions.filter((item) => validFunctionKeys.includes(item))
           : ['scan'],
+        status: record.status || '已完成',
+        source: record.source || '文本粘贴',
+        favorite: Boolean(record.favorite),
         inputText: record.inputText || '',
         editorHtml: typeof record.editorHtml === 'string' ? record.editorHtml : plainTextToHtml(record.inputText || ''),
         analysis: record.analysis
@@ -454,7 +466,16 @@ export const useScanStore = defineStore('scan', () => {
     }
   };
 
-  const addHistoryRecord = ({ title, text, html, functions = [], analysis }) => {
+  const addHistoryRecord = ({
+    title,
+    text,
+    html,
+    functions = [],
+    analysis,
+    status = '已完成',
+    source = '文本粘贴',
+    favorite = false,
+  }) => {
     const normalizedFunctions = Array.from(
       new Set(functions.filter((item) => typeof item === 'string' && validFunctionKeys.includes(item)))
     );
@@ -497,12 +518,23 @@ export const useScanStore = defineStore('scan', () => {
           : `扫描记录 · ${new Date().toLocaleString('zh-CN', { hour12: false })}`,
       createdAt: new Date().toISOString(),
       functions: normalizedFunctions.length ? normalizedFunctions : ['scan'],
+      status,
+      source,
+      favorite: Boolean(favorite),
       inputText: text || '',
       editorHtml: html || plainTextToHtml(text || ''),
       analysis: recordAnalysis,
     };
 
     historyRecords.value = [record, ...historyRecords.value].slice(0, 30);
+    persistHistory();
+  };
+
+  const toggleHistoryFavorite = (id) => {
+    const index = historyRecords.value.findIndex((item) => item.id === id);
+    if (index === -1) return;
+    const current = historyRecords.value[index];
+    historyRecords.value.splice(index, 1, { ...current, favorite: !current.favorite });
     persistHistory();
   };
 
@@ -591,5 +623,6 @@ export const useScanStore = defineStore('scan', () => {
     commitDraftToStorage,
     historyRecords,
     addHistoryRecord,
+    toggleHistoryFavorite,
   };
 });
