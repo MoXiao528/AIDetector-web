@@ -313,7 +313,8 @@ export const useScanStore = defineStore('scan', () => {
     task.eta = Math.max(0, task.eta - 600);
     notifyTaskUpdate(task, options.onUpdate);
 
-    if (options.failureRate && Math.random() < options.failureRate) {
+    if (options.shouldFail && !options.failApplied) {
+      options.failApplied = true;
       task.error = '任务出现异常，请稍后重试。';
       finalizeTask(task, 'error', options);
       return;
@@ -332,8 +333,13 @@ export const useScanStore = defineStore('scan', () => {
       label: options.label || '扫描任务',
       duration: options.duration || DEFAULT_TASK_DURATION,
       failureRate: typeof options.failureRate === 'number' ? options.failureRate : 0,
+      shouldFail: false,
       onUpdate: options.onUpdate,
     };
+
+    if (normalizedOptions.failureRate > 0) {
+      normalizedOptions.shouldFail = Math.random() < normalizedOptions.failureRate;
+    }
 
     const id = `task-${Date.now()}-${taskSeed}`;
     taskSeed += 1;
