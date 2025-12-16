@@ -53,12 +53,27 @@
             accept=".pdf,.txt,.doc,.docx,.md,.json,.csv,.yaml,.yml,.tex,.tax"
             @change="onFileChange"
           />
-          <ul v-if="uploadedFiles.length" class="mt-8 w-full max-w-md space-y-2 text-sm text-slate-600">
-            <li v-for="file in uploadedFiles" :key="file" class="flex items-center justify-between rounded-2xl border border-slate-200 bg-white px-4 py-2">
-              <span class="truncate">{{ file }}</span>
-              <span class="text-xs text-slate-400">Ready</span>
+          <ul v-if="fileTasks.length" class="mt-8 w-full max-w-md space-y-2 text-sm text-slate-600">
+            <li
+              v-for="task in fileTasks"
+              :key="task.taskId"
+              class="rounded-2xl border border-slate-200 bg-white px-4 py-2"
+            >
+              <div class="flex items-center justify-between gap-2">
+                <span class="truncate">{{ task.name }}</span>
+                <span :class="['text-xs font-semibold', statusTextClass(task.status)]">{{ statusLabel(task.status) }}</span>
+              </div>
+              <div class="mt-2 h-2 rounded-full bg-slate-100">
+                <div
+                  class="h-2 rounded-full transition-all"
+                  :class="progressBarClass(task.status)"
+                  :style="{ width: `${task.progress}%` }"
+                ></div>
+              </div>
+              <p v-if="task.error" class="mt-1 text-xs text-rose-600">{{ task.error }}</p>
             </li>
           </ul>
+          <p v-if="uploadError" class="mt-4 text-sm text-rose-600">{{ uploadError }}</p>
         </div>
       </section>
 
@@ -110,7 +125,7 @@
 </template>
 
 <script setup>
-import { ref } from 'vue';
+import { computed, ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import AppHeader from '../sections/AppHeader.vue';
 import { useScanStore } from '../store/scan';
@@ -127,7 +142,14 @@ const scanModes = [
 const selectedMode = ref('basic');
 const fileInput = ref(null);
 const dragActive = ref(false);
-const uploadedFiles = ref([]);
+const fileTasks = ref([]);
+const pendingFiles = ref([]);
+const uploadError = ref('');
+const hasNavigated = ref(false);
+
+const allSucceeded = computed(
+  () => fileTasks.value.length > 0 && fileTasks.value.every((task) => task.status === 'success')
+);
 
 const selectMode = (mode) => {
   selectedMode.value = mode;
@@ -141,13 +163,20 @@ const openFilePicker = () => {
 const handleFiles = async (files) => {
   const list = Array.from(files || []);
   if (!list.length) return;
-  try {
-    await scanStore.readFiles(list);
-    uploadedFiles.value = list.map((file) => file.name);
-    router.push({ name: 'dashboard', query: { panel: 'document' } });
-  } catch (error) {
-    console.error(error);
-  }
+  uploadError.value = '';
+  hasNavigated.value = false;
+  pendingFiles.value = list;
+  fileTasks.value = list.map((file) => {
+    const entry = { name: file.name, taskId: '', progress: 0, status: 'queued', error: '' };
+    const taskId = scanStore.enqueueMockTask({
+      label: `上传 ${file.name}`,
+      duration: 2400 + Math.round(Math.random() * 1600),
+      failureRate: 0.1,
+      onUpdate: (task) => updateFileTask(entry.taskId || task.id, task),
+    });
+    entry.taskId = taskId;
+    return entry;
+  });
 };
 
 const onFileChange = async (event) => {
@@ -173,6 +202,61 @@ const onDrop = async (event) => {
   const files = event.dataTransfer?.files;
   await handleFiles(files);
 };
+
+const updateFileTask = (taskId, task) => {
+  if (!taskId) return;
+  const target = fileTasks.value.find((item) => item.taskId === taskId);
+  if (!target) return;
+  target.progress = Math.round(task.progress ?? 0);
+  target.status = task.status;
+  target.error = task.error || '';
+  if (task.status === 'error') {
+    uploadError.value = task.error || '上传失败，请重试。';
+  }
+};
+
+const statusLabel = (status) => {
+  const map = {
+    queued: '排队中',
+    running: '处理中',
+    success: '完成',
+    error: '失败',
+    canceled: '已取消',
+  };
+  return map[status] || '处理中';
+};
+
+const statusTextClass = (status) => {
+  if (status === 'success') return 'text-emerald-600';
+  if (status === 'error') return 'text-rose-600';
+  if (status === 'canceled') return 'text-slate-400';
+  return 'text-slate-500';
+};
+
+const progressBarClass = (status) => {
+  if (status === 'success') return 'bg-emerald-500';
+  if (status === 'error') return 'bg-rose-400';
+  return 'bg-primary-500';
+};
+
+watch(
+  fileTasks,
+  async (tasks) => {
+    if (!tasks.length || hasNavigated.value) return;
+    const hasError = tasks.some((task) => task.status === 'error');
+    if (hasError) return;
+    if (allSucceeded.value) {
+      try {
+        await scanStore.readFiles(pendingFiles.value);
+        hasNavigated.value = true;
+        router.push({ name: 'dashboard', query: { panel: 'document' } });
+      } catch (error) {
+        uploadError.value = error.message || '文件解析失败，请稍后重试。';
+      }
+    }
+  },
+  { deep: true }
+);
 
 const upgradeForMore = () => {
   router.push({ name: 'contact' });

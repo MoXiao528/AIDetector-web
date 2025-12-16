@@ -370,6 +370,20 @@
                       </button>
                     </div>
                   </div>
+                  <div v-if="activeTask" class="rounded-2xl border border-slate-200 bg-white p-4 text-sm shadow-sm">
+                    <div class="flex items-center justify-between">
+                      <p class="font-semibold text-slate-900">当前任务：{{ taskStatusLabel }}</p>
+                      <span class="text-xs text-slate-500">剩余 {{ taskEtaText || '—' }}</span>
+                    </div>
+                    <div class="mt-3 h-2 rounded-full bg-slate-100">
+                      <div class="h-2 rounded-full bg-primary-500" :style="{ width: `${taskProgress}%` }"></div>
+                    </div>
+                    <div class="mt-2 flex justify-between text-[11px] text-slate-500">
+                      <span>进度 {{ taskProgress }}%</span>
+                      <span>状态 {{ taskStatusLabel }}</span>
+                    </div>
+                    <p v-if="taskError" class="mt-2 text-xs text-rose-600">{{ taskError }}</p>
+                  </div>
                   <button
                     type="button"
                     class="w-full rounded-full bg-slate-900 px-4 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-slate-800"
@@ -381,6 +395,44 @@
                 </div>
 
                 <div v-else class="mt-6 space-y-6">
+                  <div class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+                    <div class="flex items-start justify-between gap-4">
+                      <div class="space-y-1">
+                        <p class="text-sm font-semibold text-slate-900">当前任务 · {{ taskStatusLabel }}</p>
+                        <p class="text-xs text-slate-500">预计剩余 {{ taskEtaText || '—' }}</p>
+                      </div>
+                      <div class="flex gap-2">
+                        <button
+                          type="button"
+                          class="rounded-full border border-slate-200 px-3 py-1 text-xs font-semibold text-slate-600 transition hover:border-slate-300 hover:text-slate-900"
+                          @click="retryScanTask"
+                        >
+                          重试
+                        </button>
+                        <button
+                          type="button"
+                          class="rounded-full border border-rose-200 px-3 py-1 text-xs font-semibold text-rose-600 transition hover:border-rose-300 hover:text-rose-700"
+                          :disabled="!isScanning"
+                          :class="{ 'opacity-60 cursor-not-allowed': !isScanning }"
+                          @click="cancelScanTask"
+                        >
+                          取消
+                        </button>
+                      </div>
+                    </div>
+                    <div class="mt-4 h-2 rounded-full bg-slate-100">
+                      <div
+                        class="h-2 rounded-full bg-primary-500 transition-all"
+                        :style="{ width: `${taskProgress}%` }"
+                      ></div>
+                    </div>
+                    <div class="mt-2 flex justify-between text-[11px] text-slate-500">
+                      <span>进度 {{ taskProgress }}%</span>
+                      <span>状态 {{ taskStatusLabel }}</span>
+                    </div>
+                    <p v-if="taskError" class="mt-2 text-xs text-rose-600">{{ taskError }}</p>
+                  </div>
+
                   <div class="rounded-2xl bg-slate-900 p-5 text-white shadow-lg">
                     <p class="text-xs uppercase tracking-[0.3em] text-white/70">AI 检测摘要</p>
                     <div class="mt-4 flex items-end justify-between">
@@ -479,6 +531,39 @@
                       <p class="mt-2 text-xs text-slate-500">{{ item.note }}</p>
                     </div>
                     <p class="text-[11px] text-slate-400">引用核查为占位逻辑，后续可接入真实数据库。</p>
+                  </div>
+
+                  <div class="space-y-3 rounded-2xl border border-slate-200 bg-white p-4">
+                    <div class="flex items-center justify-between gap-3">
+                      <div>
+                        <p class="text-sm font-semibold text-slate-900">Mock 结果列表</p>
+                        <p class="text-xs text-slate-500">包含句子概率、来源标签与时间戳，便于后续导出。</p>
+                      </div>
+                      <button
+                        type="button"
+                        class="inline-flex items-center rounded-full bg-slate-900 px-3 py-1.5 text-xs font-semibold text-white shadow hover:bg-slate-800"
+                        @click="exportMockResults"
+                      >
+                        导出
+                      </button>
+                    </div>
+                    <div v-if="mockResultList.length" class="space-y-3">
+                      <div
+                        v-for="item in mockResultList"
+                        :key="item.id"
+                        class="rounded-2xl border border-slate-100 bg-slate-50 px-4 py-3 text-sm"
+                      >
+                        <div class="flex items-center justify-between gap-3">
+                          <p class="flex-1 text-slate-800">{{ item.text }}</p>
+                          <span class="rounded-full bg-white px-2 py-0.5 text-[11px] font-semibold text-primary-600">{{ Math.round(item.probability * 100) }}%</span>
+                        </div>
+                        <div class="mt-2 flex flex-wrap items-center gap-3 text-[11px] text-slate-500">
+                          <span class="rounded-full bg-white px-2 py-0.5 text-slate-600">{{ item.source }}</span>
+                          <span>{{ formatHistoryTimestamp(item.timestamp) }}</span>
+                        </div>
+                      </div>
+                    </div>
+                    <p v-else class="text-xs text-slate-400">暂无 mock 结果，请先完成一次扫描。</p>
                   </div>
                 </div>
               </div>
@@ -789,7 +874,6 @@ const activeFeatureCard = ref(null);
 const activeQuote = ref('');
 
 const editorMode = ref('edit');
-const isScanning = ref(false);
 const dragActive = ref(false);
 const detectionResults = ref(null);
 const highlightedPreviewHtml = ref('');
@@ -800,7 +884,34 @@ const newMenuOpen = ref(false);
 const activePanel = ref('home');
 const activeHistoryId = ref('');
 const activeHistoryTab = ref('scan');
+const scanTaskId = ref('');
+const lastFinishedTaskId = ref('');
+const taskError = ref('');
+const mockResultList = ref([]);
 const headerVariant = computed(() => (activePanel.value === 'document' ? 'scan' : 'standard'));
+const activeTask = computed(() => scanStore.findTaskById(scanTaskId.value) || null);
+const isScanning = computed(() => {
+  if (!activeTask.value) return false;
+  return ['queued', 'running'].includes(activeTask.value.status);
+});
+const taskProgress = computed(() => Math.round(activeTask.value?.progress ?? 0));
+const taskEtaText = computed(() => {
+  if (!activeTask.value) return '';
+  const eta = activeTask.value.eta;
+  if (!eta || eta < 1000) return '少于 1 秒';
+  return `${Math.ceil(eta / 1000)} 秒`;
+});
+const taskStatusLabel = computed(() => {
+  if (!activeTask.value) return '未开始';
+  const map = {
+    queued: '排队中',
+    running: '扫描中',
+    success: '已完成',
+    error: '失败',
+    canceled: '已取消',
+  };
+  return map[activeTask.value.status] || '处理中';
+});
 
 const editorModes = [
   { key: 'edit', label: '编辑模式' },
@@ -1364,6 +1475,27 @@ watch(availableResultTabs, (tabs) => {
 });
 
 watch(
+  activeTask,
+  (task) => {
+    if (!task) return;
+    if (task.status === 'success' && lastFinishedTaskId.value !== task.id) {
+      lastFinishedTaskId.value = task.id;
+      const analysis = simulateAnalysis();
+      detectionResults.value = analysis;
+      highlightedPreviewHtml.value = analysis.highlightedHtml;
+      mockResultList.value = scanStore.buildMockResults(analysis.sentences);
+      editorMode.value = 'preview';
+      activeResultTab.value = 'scan';
+      scanStore.commitDraftToStorage();
+    }
+    if (task.status === 'error' && !taskError.value) {
+      taskError.value = '任务失败，请重试。';
+    }
+  },
+  { deep: true }
+);
+
+watch(
   () => route.query.panel,
   (value) => {
     const next = parsePanel(value);
@@ -1500,6 +1632,8 @@ const applyExample = (key) => {
   scanStore.applyExample(key);
   detectionResults.value = null;
   highlightedPreviewHtml.value = '';
+  mockResultList.value = [];
+  taskError.value = '';
   editorMode.value = 'edit';
   nextTick(() => {
     syncEditorFromStore();
@@ -1512,6 +1646,8 @@ const toggleFunction = (key) => {
   scanStore.toggleFunction(key);
   detectionResults.value = null;
   highlightedPreviewHtml.value = '';
+  mockResultList.value = [];
+  taskError.value = '';
   editorMode.value = 'edit';
 };
 
@@ -1519,6 +1655,7 @@ const onEditorInput = (event) => {
   scanStore.setEditorHtml(event.target.innerHTML);
   detectionResults.value = null;
   highlightedPreviewHtml.value = '';
+  mockResultList.value = [];
   editorMode.value = 'edit';
 };
 
@@ -1558,23 +1695,56 @@ const handleScan = async () => {
     return;
   }
 
-  isScanning.value = true;
+  startMockScanTask();
+};
+
+const startMockScanTask = () => {
+  taskError.value = '';
   detectionResults.value = null;
   highlightedPreviewHtml.value = '';
-  await new Promise((resolve) => setTimeout(resolve, 1200));
-  const analysis = simulateAnalysis();
-  detectionResults.value = analysis;
-  highlightedPreviewHtml.value = analysis.highlightedHtml;
-  editorMode.value = 'preview';
+  mockResultList.value = [];
   activeResultTab.value = 'scan';
-  isScanning.value = false;
-  scanStore.commitDraftToStorage();
+  lastFinishedTaskId.value = '';
+  if (scanTaskId.value && isScanning.value) {
+    scanStore.cancelTask(scanTaskId.value);
+  }
+  const id = scanStore.enqueueMockTask({
+    label: '扫描任务',
+    duration: 5200,
+    failureRate: 0.12,
+    onUpdate: (task) => {
+      if (task.status === 'error') {
+        taskError.value = task.error || '任务失败，请稍后重试。';
+      }
+    },
+  });
+  scanTaskId.value = id;
+};
+
+const retryScanTask = () => {
+  if (scanTaskId.value) {
+    scanStore.cancelTask(scanTaskId.value);
+  }
+  startMockScanTask();
+};
+
+const cancelScanTask = () => {
+  if (!scanTaskId.value) return;
+  scanStore.cancelTask(scanTaskId.value);
+  taskError.value = '任务已取消，请重试后继续查看结果。';
+};
+
+const exportMockResults = () => {
+  if (!mockResultList.value.length) return;
+  scanStore.downloadMockResults(mockResultList.value);
 };
 
 const resetEditor = () => {
   scanStore.resetText();
   detectionResults.value = null;
   highlightedPreviewHtml.value = '';
+  mockResultList.value = [];
+  taskError.value = '';
   editorMode.value = 'edit';
   nextTick(() => {
     syncEditorFromStore();
@@ -1588,6 +1758,7 @@ const applyPolishSuggestion = (suggestion) => {
   scanStore.setText(updated);
   detectionResults.value = null;
   highlightedPreviewHtml.value = '';
+  mockResultList.value = [];
   editorMode.value = 'edit';
   nextTick(() => {
     syncEditorFromStore();

@@ -33,6 +33,8 @@ const validFunctionKeys = ['scan', 'polish', 'translate', 'citation'];
 const CHARACTER_LIMIT = 10000;
 const STORAGE_KEY = 'ai-detector-scan-draft';
 const HISTORY_STORAGE_KEY = 'ai-detector-history-records';
+const DEFAULT_TASK_DURATION = 5200;
+const MAX_TASKS = 20;
 
 const escapeHtml = (value = '') =>
   String(value)
@@ -270,8 +272,154 @@ export const useScanStore = defineStore('scan', () => {
   const lastUploadedFileName = ref('');
   const selectedFunctions = ref(['scan']);
   const historyRecords = ref([...seedHistoryRecords]);
+  const taskQueue = ref([]);
+  const taskTimers = new Map();
+  let taskSeed = 0;
   let isRestoring = false;
   let isHydratingHistory = false;
+
+  const findTaskById = (id) => taskQueue.value.find((task) => task.id === id);
+
+  const notifyTaskUpdate = (task, onUpdate) => {
+    if (typeof onUpdate === 'function') {
+      onUpdate({ ...task });
+    }
+  };
+
+  const scheduleNextTick = (task, options) => {
+    const timer = setTimeout(() => {
+      taskTimers.delete(task.id);
+      runTaskTick(task, options);
+    }, 480);
+    taskTimers.set(task.id, timer);
+  };
+
+  const finalizeTask = (task, status, options) => {
+    task.status = status;
+    task.finishedAt = new Date().toISOString();
+    task.eta = 0;
+    task.progress = status === 'success' ? 100 : task.progress;
+    notifyTaskUpdate(task, options.onUpdate);
+  };
+
+  const runTaskTick = (task, options) => {
+    if (!task || task.status === 'canceled') {
+      return;
+    }
+
+    task.status = 'running';
+    const increment = Math.max(5, Math.round(Math.random() * 18));
+    task.progress = Math.min(100, task.progress + increment);
+    task.eta = Math.max(0, task.eta - 600);
+    notifyTaskUpdate(task, options.onUpdate);
+
+    if (options.failureRate && Math.random() < options.failureRate) {
+      task.error = '任务出现异常，请稍后重试。';
+      finalizeTask(task, 'error', options);
+      return;
+    }
+
+    if (task.progress >= 100) {
+      finalizeTask(task, 'success', options);
+      return;
+    }
+
+    scheduleNextTick(task, options);
+  };
+
+  const enqueueMockTask = (options = {}) => {
+    const normalizedOptions = {
+      label: options.label || '扫描任务',
+      duration: options.duration || DEFAULT_TASK_DURATION,
+      failureRate: typeof options.failureRate === 'number' ? options.failureRate : 0,
+      onUpdate: options.onUpdate,
+    };
+
+    const id = `task-${Date.now()}-${taskSeed}`;
+    taskSeed += 1;
+    const task = {
+      id,
+      label: normalizedOptions.label,
+      status: 'queued',
+      progress: 0,
+      eta: normalizedOptions.duration,
+      error: '',
+      createdAt: new Date().toISOString(),
+      startedAt: null,
+      finishedAt: null,
+    };
+
+    taskQueue.value = [task, ...taskQueue.value].slice(0, MAX_TASKS);
+
+    const kickoff = () => {
+      if (task.status === 'canceled') return;
+      task.startedAt = new Date().toISOString();
+      runTaskTick(task, normalizedOptions);
+    };
+
+    const timer = setTimeout(() => {
+      taskTimers.delete(id);
+      kickoff();
+    }, 280);
+    taskTimers.set(id, timer);
+
+    return id;
+  };
+
+  const cancelTask = (id) => {
+    const task = findTaskById(id);
+    if (!task) return;
+    const timer = taskTimers.get(id);
+    if (timer) {
+      clearTimeout(timer);
+      taskTimers.delete(id);
+    }
+    task.status = 'canceled';
+    task.finishedAt = new Date().toISOString();
+    task.eta = 0;
+    notifyTaskUpdate(task, null);
+  };
+
+  const retryTask = (id, overrides = {}) => {
+    const task = findTaskById(id);
+    if (!task) return null;
+    return enqueueMockTask({
+      label: task.label,
+      duration: overrides.duration || DEFAULT_TASK_DURATION,
+      failureRate: overrides.failureRate ?? 0,
+      onUpdate: overrides.onUpdate,
+    });
+  };
+
+  const buildMockResults = (sentences = []) => {
+    const sources = ['用户上传', '内部文档库', '外部搜索'];
+    const now = Date.now();
+    const payload = sentences.length
+      ? sentences
+      : [
+          { text: '占位句子示例，等待真实检测结果。', probability: 0.42 },
+          { text: '第二条占位句子，用于演示导出功能。', probability: 0.66 },
+        ];
+
+    return payload.map((item, index) => ({
+      id: item.id || `mock-result-${index}-${Date.now()}`,
+      text: item.text || item.raw || '暂无内容',
+      probability: typeof item.probability === 'number' ? item.probability : 0.5,
+      source: sources[index % sources.length],
+      timestamp: new Date(now - index * 60 * 1000).toISOString(),
+    }));
+  };
+
+  const downloadMockResults = (results = []) => {
+    if (typeof window === 'undefined' || !Array.isArray(results)) return;
+    const blob = new Blob([JSON.stringify(results, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement('a');
+    anchor.href = url;
+    anchor.download = `scan-results-${Date.now()}.json`;
+    anchor.click();
+    URL.revokeObjectURL(url);
+  };
 
   const characterCount = computed(() => inputText.value.length);
 
@@ -591,5 +739,12 @@ export const useScanStore = defineStore('scan', () => {
     commitDraftToStorage,
     historyRecords,
     addHistoryRecord,
+    taskQueue,
+    enqueueMockTask,
+    cancelTask,
+    retryTask,
+    findTaskById,
+    buildMockResults,
+    downloadMockResults,
   };
 });
