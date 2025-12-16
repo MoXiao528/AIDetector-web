@@ -4,7 +4,7 @@
       <div class="max-w-3xl">
         <h2 class="section-title !text-primary-100 drop-shadow-[0_4px_16px_rgba(15,23,42,0.45)]">灵活定价，适配不同团队规模</h2>
         <p class="section-subtitle !text-slate-200">
-          从个人创作者到企业合规团队，Veritascribe 提供透明的按需计费模式。所有套餐均包含 GPTZero 级别检测能力与全文润色服务。
+          从个人创作者到企业合规团队，Veritascribe 提供透明的按需计费模式。所有套餐均包含 RepreGuard 级别检测能力与全文润色服务。
         </p>
       </div>
       <div class="mt-16 grid gap-6 lg:grid-cols-3">
@@ -31,8 +31,12 @@
                 </li>
               </ul>
             </div>
-            <button class="mt-8 inline-flex items-center justify-center rounded-full bg-white/90 px-4 py-2 text-sm font-semibold text-slate-900 transition hover:bg-white">
-              开始试用
+            <button
+              type="button"
+              class="mt-8 inline-flex items-center justify-center rounded-full bg-white/90 px-4 py-2 text-sm font-semibold text-slate-900 transition hover:bg-white"
+              @click="openPricing"
+            >
+              查看完整方案
             </button>
           </div>
         </article>
@@ -42,6 +46,19 @@
 </template>
 
 <script setup>
+import { useRouter } from 'vue-router';
+
+const router = useRouter();
+
+const openPricing = () => {
+  const target = router.resolve({ name: 'dashboard', query: { panel: 'pricing' } });
+  if (typeof window !== 'undefined') {
+    window.open(target.href, '_blank', 'noopener');
+    return;
+  }
+  router.push({ name: 'dashboard', query: { panel: 'pricing' } });
+};
+
 const plans = [
   {
     name: '创作者',

@@ -9,13 +9,13 @@
       <div class="w-full lg:w-1/2">
         <div class="inline-flex items-center space-x-2 rounded-full border border-slate-200 bg-white/80 px-3 py-1 text-xs font-semibold text-slate-600 shadow-sm">
           <span class="flex h-2 w-2 rounded-full bg-emerald-500"></span>
-          <span>参考 GPTZero 的 AI 文本检测体验</span>
+          <span>参考 RepreGuard 的 AI 文本检测体验</span>
         </div>
         <h1 class="mt-6 text-4xl font-bold tracking-tight text-slate-900 sm:text-5xl">
           快速识别并处理 <span class="text-primary-600">AI 生成文本</span>
         </h1>
         <p class="mt-6 text-lg text-slate-600">
-          Veritascribe 将检测、润色、翻译与引用核查融合到同一工作台中。粘贴或上传文本，即刻获得 GPTZero 级别的风险分析和改写建议。
+          Veritascribe 将检测、润色、翻译与引用核查融合到同一工作台中。粘贴或上传文本，即刻获得 RepreGuard 级别的风险分析和改写建议。
         </p>
         <ul class="mt-8 grid gap-3 text-sm text-slate-600 sm:grid-cols-2">
           <li class="flex items-center space-x-2">
@@ -77,7 +77,7 @@
                 v-model="textModel"
                 rows="10"
                 class="mt-3 w-full rounded-2xl border border-slate-200 bg-slate-50/80 p-4 text-sm text-slate-700 shadow-inner focus:border-primary-400 focus:outline-none focus:ring-2 focus:ring-primary-100"
-                placeholder="粘贴文本或点击下方范例，立即体验 GPTZero 式的 AI 检测界面。"
+                placeholder="粘贴文本或点击下方范例，立即体验 RepreGuard 式的 AI 检测界面。"
               ></textarea>
             </div>
             <div class="flex flex-wrap items-center justify-between gap-3">
@@ -248,7 +248,7 @@ const openDashboard = () => {
     scanStore.setFunctions(['scan']);
   }
   const features = (scanStore.selectedFunctions.length ? scanStore.selectedFunctions : ['scan']).join(',');
-  const target = router.resolve({ name: 'dashboard', query: { features } });
+  const target = router.resolve({ name: 'dashboard', query: { features, panel: 'document' } });
   scanStore.commitDraftToStorage();
   if (typeof window !== 'undefined') {
     window.open(target.href, '_blank', 'noopener');
