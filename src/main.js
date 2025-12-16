@@ -11,7 +11,7 @@ const pinia = createPinia();
 app.use(pinia);
 app.use(router);
 
-const preferencesStore = usePreferencesStore();
+const preferencesStore = usePreferencesStore(pinia);
 preferencesStore.initialize();
 
 app.mount('#app');
