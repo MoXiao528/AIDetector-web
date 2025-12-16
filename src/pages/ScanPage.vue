@@ -1711,7 +1711,8 @@ const startMockScanTask = () => {
   const id = scanStore.enqueueMockTask({
     label: '扫描任务',
     duration: 5200,
-    failureRate: 0.12,
+    // 为了方便演示，默认不触发失败逻辑，如需模拟失败可调整为非 0 数值
+    failureRate: 0,
     onUpdate: (task) => {
       if (task.status === 'error') {
         taskError.value = task.error || '任务失败，请稍后重试。';

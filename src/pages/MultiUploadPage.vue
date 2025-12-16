@@ -171,7 +171,8 @@ const handleFiles = async (files) => {
     const taskId = scanStore.enqueueMockTask({
       label: `上传 ${file.name}`,
       duration: 2400 + Math.round(Math.random() * 1600),
-      failureRate: 0.1,
+      // 演示阶段默认关闭失败概率，若需测试错误流程可改为非 0 数值
+      failureRate: 0,
       onUpdate: (task) => updateFileTask(entry.taskId || task.id, task),
     });
     entry.taskId = taskId;
