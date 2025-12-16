@@ -2,6 +2,27 @@
   <div class="min-h-screen bg-slate-100">
     <AppHeader mode="dashboard" dashboard-context="scan" />
     <main class="mx-auto flex w-full max-w-5xl flex-col gap-10 px-4 py-10 lg:py-14">
+      <section>
+        <div class="flex flex-wrap items-center gap-3 rounded-3xl border border-slate-200 bg-white/90 p-5 shadow-sm shadow-slate-200/70">
+          <div class="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.25em] text-primary-600">
+            <span class="rounded-full bg-primary-50 px-2 py-1 text-primary-700">批量上传流程</span>
+            <span class="text-slate-400">UPLOAD → QUEUE → REVIEW → DOWNLOAD</span>
+          </div>
+          <div class="grid w-full gap-3 md:grid-cols-4">
+            <div
+              v-for="step in flowSteps"
+              :key="step.key"
+              class="flex flex-col gap-2 rounded-2xl border border-slate-200 bg-white px-3 py-3 text-sm shadow-inner"
+            >
+              <div class="flex items-center justify-between text-xs font-semibold text-slate-500">
+                <span class="inline-flex h-7 w-7 items-center justify-center rounded-full bg-slate-900 text-white">{{ step.order }}</span>
+                <span class="rounded-full bg-slate-100 px-2 py-0.5 text-[11px] text-slate-500">{{ step.label }}</span>
+              </div>
+              <p class="text-xs leading-relaxed text-slate-600">{{ step.description }}</p>
+            </div>
+          </div>
+        </div>
+      </section>
       <section class="flex justify-center">
         <div class="flex flex-wrap items-center justify-center gap-3 rounded-3xl border border-slate-200 bg-white/90 px-4 py-3 shadow-sm backdrop-blur">
           <button
@@ -122,6 +143,13 @@ const scanModes = [
   { key: 'basic', label: 'Basic scan' },
   { key: 'advanced', label: 'Advanced scan' },
   { key: 'plagiarism', label: 'Plagiarism' },
+];
+
+const flowSteps = [
+  { key: 'upload', order: 1, label: '上传', description: '拖拽或选择待检测的多份文件。' },
+  { key: 'queue', order: 2, label: '排队', description: '系统自动排队切片，保障并行处理稳定。' },
+  { key: 'complete', order: 3, label: '完成', description: '进度完成后可在历史中快速查看摘要。' },
+  { key: 'download', order: 4, label: '下载', description: '一键导出批量检测报告，便于共享。' },
 ];
 
 const selectedMode = ref('basic');

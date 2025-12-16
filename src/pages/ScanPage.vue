@@ -93,6 +93,23 @@
                 </div>
                 <p class="max-w-2xl text-sm leading-relaxed text-slate-500">{{ activeQuote }}</p>
               </div>
+              <div class="flex flex-wrap items-center gap-3 text-sm text-primary-700">
+                <button
+                  type="button"
+                  class="inline-flex items-center gap-1 rounded-full bg-primary-50 px-3 py-1 font-semibold text-primary-700 shadow-sm transition hover:-translate-y-0.5 hover:bg-primary-100"
+                  @click="showUsageExamples = true"
+                >
+                  <SparklesIcon class="h-4 w-4" />
+                  使用示例
+                </button>
+                <span class="text-xs text-slate-500">查看示例文档与结果快照，加速熟悉流程。</span>
+              </div>
+              <OnboardingStepsBar
+                v-if="showOnboarding"
+                :steps="onboardingSteps"
+                @skip="dismissOnboarding"
+                @complete="completeOnboarding"
+              />
             </header>
 
             <section class="grid gap-6 lg:grid-cols-[minmax(0,0.7fr)_minmax(0,1.3fr)] xl:grid-cols-[minmax(0,0.65fr)_minmax(0,1.4fr)] 2xl:grid-cols-[minmax(0,0.6fr)_minmax(0,1.45fr)]">
@@ -422,6 +439,18 @@
                     </button>
                   </div>
 
+                  <div class="flex flex-wrap items-center gap-3 text-xs text-slate-500">
+                    <button
+                      type="button"
+                      class="inline-flex items-center gap-2 rounded-full bg-slate-900 px-4 py-2 text-sm font-semibold text-white shadow hover:bg-slate-800"
+                      @click="exportReport"
+                    >
+                      <DocumentArrowDownIcon class="h-4 w-4" />
+                      导出报告
+                    </button>
+                    <span>下载 JSON 快照，便于与团队分享或归档。</span>
+                  </div>
+
                   <div v-if="activeResultTab === 'scan'" class="space-y-4">
                     <div
                       v-for="sentence in detectionResults.sentences"
@@ -739,6 +768,7 @@
       </main>
     </div>
     <LoginPromptModal :open="showLoginModal" :message="loginMessage" @close="showLoginModal = false" />
+    <UsageExamplesModal :open="showUsageExamples" :examples="usageExampleItems" @close="showUsageExamples = false" />
   </div>
 </template>
 
@@ -754,6 +784,7 @@ import {
   ClockIcon,
   DocumentMagnifyingGlassIcon,
   DocumentTextIcon,
+  DocumentArrowDownIcon,
   HomeIcon,
   MagnifyingGlassCircleIcon,
   LanguageIcon,
@@ -772,9 +803,12 @@ import AppHeader from '../sections/AppHeader.vue';
 import LoginPromptModal from '../components/common/LoginPromptModal.vue';
 import ProfilePanel from '../components/dashboard/ProfilePanel.vue';
 import QAPanel from '../components/dashboard/QAPanel.vue';
+import OnboardingStepsBar from '../components/dashboard/OnboardingStepsBar.vue';
+import UsageExamplesModal from '../components/common/UsageExamplesModal.vue';
 import PricingPage from './PricingPage.vue';
 import { useAuthStore } from '../store/auth';
 import { useScanStore } from '../store/scan';
+import { usageExamples as usageExampleItems } from '../utils/usageExamples';
 
 const authStore = useAuthStore();
 const scanStore = useScanStore();
@@ -787,6 +821,10 @@ const newMenuRef = ref(null);
 const newMenuButtonRef = ref(null);
 const activeFeatureCard = ref(null);
 const activeQuote = ref('');
+const showUsageExamples = ref(false);
+const showOnboarding = ref(false);
+const onboardingSteps = ref([]);
+const onboardingStorageKey = 'ai-detector-onboarding-v1';
 
 const editorMode = ref('edit');
 const isScanning = ref(false);
@@ -829,6 +867,33 @@ const motivationalQuotes = [
   '“Precision builds trust in every insight.” — Veritascribe Research.',
 ];
 
+const buildOnboardingSteps = () => [
+  {
+    key: 'upload',
+    label: '上传文档',
+    description: '拖拽或选择文件触发上传与文本提取。',
+    status: 'current',
+  },
+  {
+    key: 'scan',
+    label: '开始扫描',
+    description: '选择功能并点击“立即扫描”获得结果。',
+    status: 'upcoming',
+  },
+  {
+    key: 'review',
+    label: '查看报告',
+    description: '在标色预览和结果标签中浏览句子级洞察。',
+    status: 'upcoming',
+  },
+  {
+    key: 'export',
+    label: '导出报告',
+    description: '将检测结果导出为 JSON 文件便于分享。',
+    status: 'upcoming',
+  },
+];
+
 const userDisplayName = computed(() => {
   const profile = authStore.user?.profile;
   if (profile?.firstName || profile?.surname) {
@@ -855,6 +920,48 @@ const pickRandomQuote = () => {
   }
   const index = Math.floor(Math.random() * motivationalQuotes.length);
   activeQuote.value = motivationalQuotes[index];
+};
+
+const resetOnboardingSteps = () => {
+  onboardingSteps.value = buildOnboardingSteps();
+};
+
+const completeOnboarding = () => {
+  showOnboarding.value = false;
+  if (typeof window !== 'undefined') {
+    window.localStorage.setItem(onboardingStorageKey, 'done');
+  }
+};
+
+const dismissOnboarding = () => {
+  completeOnboarding();
+};
+
+const markOnboardingStep = (key) => {
+  if (!showOnboarding.value) return;
+  const nextSteps = onboardingSteps.value.map((step) => ({ ...step }));
+  const target = nextSteps.find((step) => step.key === key);
+  if (!target) return;
+  target.status = 'done';
+  const remaining = nextSteps.find((step) => step.status !== 'done');
+  nextSteps.forEach((step) => {
+    if (step.status !== 'done') {
+      step.status = remaining && step.key === remaining.key ? 'current' : 'upcoming';
+    }
+  });
+  onboardingSteps.value = nextSteps;
+  if (!remaining) {
+    completeOnboarding();
+  }
+};
+
+const maybeShowOnboarding = () => {
+  if (!authStore.isAuthenticated) return;
+  if (typeof window === 'undefined') return;
+  const cached = window.localStorage.getItem(onboardingStorageKey);
+  if (cached === 'done') return;
+  showOnboarding.value = true;
+  resetOnboardingSteps();
 };
 
 const featureCards = [
@@ -1342,6 +1449,7 @@ onMounted(() => {
   if (features.length) {
     scanStore.setFunctions(features);
   }
+  maybeShowOnboarding();
   document.addEventListener('click', onGlobalClick);
 });
 
@@ -1362,6 +1470,17 @@ watch(availableResultTabs, (tabs) => {
     activeResultTab.value = 'scan';
   }
 });
+
+watch(
+  () => authStore.isAuthenticated,
+  (value) => {
+    if (value) {
+      maybeShowOnboarding();
+    } else {
+      showOnboarding.value = false;
+    }
+  }
+);
 
 watch(
   () => route.query.panel,
@@ -1567,8 +1686,28 @@ const handleScan = async () => {
   highlightedPreviewHtml.value = analysis.highlightedHtml;
   editorMode.value = 'preview';
   activeResultTab.value = 'scan';
+  markOnboardingStep('scan');
+  markOnboardingStep('review');
   isScanning.value = false;
   scanStore.commitDraftToStorage();
+};
+
+const exportReport = () => {
+  if (!detectionResults.value) return;
+  const payload = {
+    summary: detectionResults.value.summary,
+    sentences: detectionResults.value.sentences,
+    translation: detectionResults.value.translation,
+    input: scanStore.inputText,
+  };
+  const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = 'ai-detection-report.json';
+  link.click();
+  URL.revokeObjectURL(url);
+  markOnboardingStep('export');
 };
 
 const resetEditor = () => {
@@ -1611,6 +1750,7 @@ const onFileChange = async (event) => {
     nextTick(() => {
       syncEditorFromStore();
     });
+    markOnboardingStep('upload');
   } catch (error) {
     console.error(error);
   } finally {
@@ -1648,6 +1788,7 @@ const onDrop = async (event) => {
     nextTick(() => {
       syncEditorFromStore();
     });
+    markOnboardingStep('upload');
   } catch (error) {
     console.error(error);
   } finally {
