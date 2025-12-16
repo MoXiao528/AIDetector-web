@@ -359,15 +359,13 @@ export const useScanStore = defineStore('scan', () => {
 
     const kickoff = () => {
       if (task.status === 'canceled') return;
-      task.startedAt = new Date().toISOString();
+      if (!task.startedAt) {
+        task.startedAt = new Date().toISOString();
+      }
       runTaskTick(task, normalizedOptions);
     };
 
-    const timer = setTimeout(() => {
-      taskTimers.delete(id);
-      kickoff();
-    }, 280);
-    taskTimers.set(id, timer);
+    kickoff();
 
     return id;
   };
