@@ -1,4 +1,4 @@
-import { createRouter, createWebHistory } from 'vue-router';
+import { createRouter, createWebHashHistory } from 'vue-router';
 
 const HomePage = () => import('../pages/HomePage.vue');
 const DashboardPage = () => import('../pages/ScanPage.vue');
@@ -11,7 +11,7 @@ const PricingPage = () => import('../pages/PricingPage.vue');
 const ProfilePage = () => import('../pages/Profile.jsx');
 
 const router = createRouter({
-  history: createWebHistory(import.meta.env.BASE_URL),
+  history: createWebHashHistory(import.meta.env.BASE_URL),
   routes: [
     { path: '/', name: 'home', component: HomePage },
     { path: '/dashboard', name: 'dashboard', component: DashboardPage },
