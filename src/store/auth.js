@@ -304,6 +304,23 @@ export const useAuthStore = defineStore('auth', () => {
     }
   };
 
+  const applySubscription = ({ plan, credits } = {}) => {
+    if (!user.value) return;
+
+    user.value = {
+      ...user.value,
+      plan: plan || user.value.plan || 'personal-free',
+    };
+
+    if (credits && typeof credits === 'object') {
+      const { total, remaining } = credits;
+      setCredits({
+        total: Number.isFinite(total) ? total : creditSnapshot.value.total,
+        remaining: Number.isFinite(remaining) ? remaining : creditSnapshot.value.remaining,
+      });
+    }
+  };
+
   const requireAuthentication = () => isAuthenticated.value;
 
   if (typeof window !== 'undefined') {
@@ -328,6 +345,7 @@ export const useAuthStore = defineStore('auth', () => {
     register,
     logout,
     updateProfile,
+    applySubscription,
     requireAuthentication,
   };
 });
