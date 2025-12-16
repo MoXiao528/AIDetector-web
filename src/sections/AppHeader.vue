@@ -311,9 +311,7 @@ const openDashboardFromMobile = () => {
 };
 
 const openAccountDetails = () => {
-  const query = { ...(route.query || {}) };
-  query.panel = 'profile';
-  router.push({ name: 'dashboard', query });
+  router.push({ name: 'profile' });
   isUserMenuOpen.value = false;
 };
 
