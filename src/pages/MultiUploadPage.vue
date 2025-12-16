@@ -74,6 +74,7 @@
             accept=".pdf,.txt,.doc,.docx,.md,.json,.csv,.yaml,.yml,.tex,.tax"
             @change="onFileChange"
           />
+          <p v-if="uploadError" class="mt-3 text-sm font-semibold text-red-600">{{ uploadError }}</p>
           <ul v-if="uploadedFiles.length" class="mt-8 w-full max-w-md space-y-2 text-sm text-slate-600">
             <li v-for="file in uploadedFiles" :key="file" class="flex items-center justify-between rounded-2xl border border-slate-200 bg-white px-4 py-2">
               <span class="truncate">{{ file }}</span>
@@ -131,13 +132,14 @@
 </template>
 
 <script setup>
-import { ref } from 'vue';
+import { computed, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import AppHeader from '../sections/AppHeader.vue';
 import { useScanStore } from '../store/scan';
 
 const router = useRouter();
 const scanStore = useScanStore();
+const BATCH_LIMIT = 3;
 
 const scanModes = [
   { key: 'basic', label: 'Basic scan' },
@@ -156,6 +158,7 @@ const selectedMode = ref('basic');
 const fileInput = ref(null);
 const dragActive = ref(false);
 const uploadedFiles = ref([]);
+const uploadError = computed(() => scanStore.uploadError);
 
 const selectMode = (mode) => {
   selectedMode.value = mode;
@@ -167,14 +170,19 @@ const openFilePicker = () => {
 };
 
 const handleFiles = async (files) => {
-  const list = Array.from(files || []);
+  const list = Array.from(files || []).filter(Boolean);
   if (!list.length) return;
+  scanStore.resetError();
+  if (list.length > BATCH_LIMIT) {
+    scanStore.uploadError = `一次最多上传 ${BATCH_LIMIT} 个文件，请减少后重试。`;
+    return;
+  }
   try {
     await scanStore.readFiles(list);
     uploadedFiles.value = list.map((file) => file.name);
     router.push({ name: 'dashboard', query: { panel: 'document' } });
   } catch (error) {
-    console.error(error);
+    scanStore.uploadError = scanStore.uploadError || '文件解析失败，请稍后重试。';
   }
 };
 
