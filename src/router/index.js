@@ -11,7 +11,7 @@ const PricingPage = () => import('../pages/PricingPage.vue');
 const ProfilePage = () => import('../pages/Profile.jsx');
 
 const router = createRouter({
-  history: createWebHashHistory(import.meta.env.BASE_URL),
+  history: createWebHashHistory(),
   routes: [
     { path: '/', name: 'home', component: HomePage },
     { path: '/dashboard', name: 'dashboard', component: DashboardPage },
