@@ -1,5 +1,5 @@
 import { computed, defineComponent, h, onMounted, reactive, ref, watch } from 'vue';
-import { usePreferencesStore } from '../store/preferences';
+import { usePreferencesStore } from '../store/preferences/index.js';
 
 export default defineComponent({
   name: 'ProfilePage',
