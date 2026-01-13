@@ -2,10 +2,13 @@
   <div :class="rootClasses">
     <AppHeader v-if="!embedded" mode="marketing" />
     <main :class="mainClasses">
-      <section v-if="showStatusBanner" class="border-b border-slate-200 bg-slate-100/70">
+      <section v-if="showStatusBanner" class="border-b border-slate-200 bg-white/80 backdrop-blur">
         <div class="mx-auto flex w-full max-w-5xl items-center justify-between gap-4 px-4 py-3 text-sm sm:px-6 lg:px-0">
           <div class="flex flex-wrap items-center gap-2">
-            <span>You’re on a <button type="button" class="font-semibold text-primary-600" @click="scrollToPlans">Free Plan</button>.</span>
+            <span>
+              You’re on a
+              <button type="button" class="font-semibold text-primary-600" @click="scrollToPlans">Free Plan</button>.
+            </span>
             <span class="text-slate-500">You have access to 10,000 words a month.</span>
           </div>
           <button type="button" class="text-slate-400 transition hover:text-slate-600" @click="showStatusBanner = false" aria-label="关闭提示">
@@ -16,17 +19,18 @@
 
       <section ref="planSection" class="mx-auto w-full max-w-6xl px-4 py-16 sm:px-6 lg:px-8">
         <div class="mx-auto max-w-2xl text-center">
-          <h1 class="text-3xl font-semibold tracking-tight text-slate-900 sm:text-4xl">Words that matter start with the right plan.</h1>
-          <p class="mt-4 text-base text-slate-600">Choose the AI detection workflow that matches your team size and compliance requirements.</p>
+          <p class="text-xs font-semibold uppercase tracking-[0.3em] text-slate-400">Pricing</p>
+          <h1 class="mt-3 text-3xl font-semibold tracking-tight text-slate-900 sm:text-4xl">灵活定价，匹配你的团队规模</h1>
+          <p class="mt-4 text-base text-slate-600">从个人到企业级合规团队，选择最合适的 RepreGuard 检测方案。</p>
         </div>
         <div class="mt-10 flex flex-col items-center gap-4 sm:flex-row sm:justify-center">
-          <div class="inline-flex items-center rounded-full bg-white p-1 shadow-sm">
+          <div class="inline-flex items-center rounded-full bg-slate-100 p-1 text-xs font-semibold text-slate-600 shadow-inner">
             <button
               v-for="option in billingOptions"
               :key="option.value"
               type="button"
               :class="[
-                'rounded-full px-4 py-1.5 text-sm font-semibold transition',
+                'rounded-full px-4 py-1.5 transition',
                 billingCycle === option.value ? option.activeClass : option.inactiveClass,
               ]"
               @click="billingCycle = option.value"
@@ -35,31 +39,40 @@
             </button>
           </div>
         </div>
-        <div class="mt-12 grid gap-6 md:grid-cols-2 xl:grid-cols-4">
+        <div class="mt-12 grid gap-6 lg:grid-cols-3">
           <article
-            v-for="plan in displayedPlans"
+            v-for="plan in displayedPlans.filter((item) => ['free', 'premium', 'professional'].includes(item.key))"
             :key="plan.key"
             :class="[
-              'flex flex-col rounded-3xl border bg-white p-6 shadow-sm transition hover:-translate-y-1 hover:shadow-xl',
-              plan.highlight ? 'border-emerald-500/60 shadow-emerald-200/50' : 'border-slate-200',
+              'relative flex flex-col rounded-3xl border bg-white p-6 shadow-sm transition hover:-translate-y-1 hover:shadow-xl',
+              plan.key === 'premium' ? 'border-primary-500 shadow-primary-200/60 ring-1 ring-primary-500' : 'border-slate-200',
             ]"
           >
             <div class="flex items-center justify-between">
-              <h2 class="text-lg font-semibold text-slate-900">{{ plan.name }}</h2>
-              <span v-if="plan.badge" class="rounded-full bg-emerald-100 px-3 py-1 text-xs font-semibold text-emerald-700">{{ plan.badge }}</span>
+              <h2 class="text-lg font-semibold text-slate-900">
+                {{ { free: 'Free', premium: 'Pro', professional: 'Enterprise' }[plan.key] || plan.name }}
+              </h2>
+              <span v-if="plan.key === 'premium'" class="rounded-full bg-primary-100 px-3 py-1 text-xs font-semibold text-primary-700">Recommended</span>
             </div>
             <p class="mt-2 text-sm text-slate-500">{{ plan.description }}</p>
-            <p class="mt-6 text-3xl font-semibold text-slate-900">{{ plan.price }}<span class="text-sm font-normal text-slate-500"> / {{ plan.period }}</span></p>
-            <p class="mt-2 text-xs uppercase tracking-wide text-emerald-600">{{ plan.limit }}</p>
+            <p class="mt-6 text-3xl font-semibold text-slate-900">
+              {{ plan.price }}<span class="text-sm font-normal text-slate-500"> / {{ plan.period }}</span>
+            </p>
+            <p class="mt-2 text-xs uppercase tracking-wide text-slate-400">{{ plan.limit }}</p>
             <ul class="mt-6 flex-1 space-y-3 text-sm text-slate-600">
-              <li v-for="feature in plan.features" :key="feature" class="flex items-start gap-2">
+              <li v-for="feature in plan.features" :key="feature" class="flex items-start gap-3">
                 <span class="mt-1 flex h-4 w-4 items-center justify-center rounded-full bg-emerald-500 text-[10px] font-semibold text-white">✓</span>
-                <span>{{ feature }}</span>
+                <span class="leading-relaxed">{{ feature }}</span>
               </li>
             </ul>
             <button
               type="button"
-              class="mt-8 inline-flex items-center justify-center rounded-full border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:border-emerald-400 hover:text-emerald-600"
+              :class="[
+                'mt-8 inline-flex items-center justify-center rounded-full px-4 py-2 text-sm font-semibold transition',
+                plan.key === 'premium'
+                  ? 'bg-primary-600 text-white shadow-lg shadow-primary-200/60 hover:bg-primary-500'
+                  : 'border border-slate-300 bg-white text-slate-700 hover:border-primary-300 hover:text-primary-600',
+              ]"
               @click="openCheckout(plan)"
             >
               立即购买 / 升级
@@ -310,7 +323,7 @@ const paymentMessage = ref('');
 const teamActionStatus = ref('');
 
 const rootClasses = computed(() =>
-  props.embedded ? 'min-h-full bg-transparent text-slate-800' : 'min-h-screen bg-[#FAFAF7] text-slate-800',
+  props.embedded ? 'min-h-full bg-transparent text-slate-800' : 'min-h-screen bg-slate-50 text-slate-800',
 );
 
 const mainClasses = computed(() => (props.embedded ? 'pb-16 pt-4' : 'pb-24'));
