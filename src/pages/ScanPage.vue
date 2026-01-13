@@ -1,32 +1,35 @@
 <template>
-  <div class="min-h-screen bg-slate-100">
+  <div class="min-h-screen bg-slate-50">
     <AppHeader mode="dashboard" :dashboard-context="headerVariant" />
     <div class="flex flex-col lg:flex-row">
-      <aside class="hidden w-64 flex-shrink-0 flex-col border-b border-slate-200 bg-white/90 px-4 py-6 shadow-sm lg:flex lg:border-b-0 lg:border-r">
+      <aside class="hidden w-20 flex-shrink-0 flex-col border-b border-slate-200 bg-white/80 px-3 py-6 shadow-sm lg:flex lg:border-b-0 lg:border-r xl:w-64">
         <nav class="space-y-2">
           <button
             type="button"
             :class="['nav-item', isPanelActive('home') ? 'nav-item--active' : '']"
             @click="setActivePanel('home')"
           >
+            <span :class="['nav-indicator', isPanelActive('home') ? 'nav-indicator--active' : '']"></span>
             <HomeIcon class="h-5 w-5" />
-            <span>Home</span>
+            <span class="nav-label">Home</span>
           </button>
           <button
             type="button"
             :class="['nav-item', isPanelActive('document') ? 'nav-item--active' : '']"
             @click="setActivePanel('document')"
           >
+            <span :class="['nav-indicator', isPanelActive('document') ? 'nav-indicator--active' : '']"></span>
             <DocumentTextIcon class="h-5 w-5" />
-            <span>Document</span>
+            <span class="nav-label">Document</span>
           </button>
           <button
             type="button"
             :class="['nav-item', isPanelActive('history') ? 'nav-item--active' : '']"
             @click="setActivePanel('history')"
           >
+            <span :class="['nav-indicator', isPanelActive('history') ? 'nav-indicator--active' : '']"></span>
             <ClockIcon class="h-5 w-5" />
-            <span>History</span>
+            <span class="nav-label">History</span>
           </button>
           <div class="relative">
             <button
@@ -35,8 +38,9 @@
               class="nav-item"
               @click="toggleNewMenu"
             >
+              <span class="nav-indicator"></span>
               <PlusIcon class="h-5 w-5" />
-              <span>New</span>
+              <span class="nav-label">New</span>
             </button>
             <transition name="fade">
               <div
@@ -59,16 +63,18 @@
             :class="['nav-item', isPanelActive('profile') ? 'nav-item--active' : '']"
             @click="goToProfile"
           >
+            <span :class="['nav-indicator', isPanelActive('profile') ? 'nav-indicator--active' : '']"></span>
             <Cog6ToothIcon class="h-5 w-5" />
-            <span>Settings</span>
+            <span class="nav-label">Settings</span>
           </button>
           <button
             type="button"
             :class="['nav-item', isPanelActive('qa') ? 'nav-item--active' : '']"
             @click="goToQA"
           >
+            <span :class="['nav-indicator', isPanelActive('qa') ? 'nav-indicator--active' : '']"></span>
             <QuestionMarkCircleIcon class="h-5 w-5" />
-            <span>问答</span>
+            <span class="nav-label">问答</span>
           </button>
         </div>
       </aside>
@@ -254,14 +260,14 @@
           <div class="border-b border-slate-200 bg-white/70 px-4 py-3 backdrop-blur">
             <div class="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
               <div class="flex flex-wrap items-center gap-2">
-                <div class="inline-flex items-center overflow-hidden rounded-full border border-slate-200 bg-white p-1 text-xs font-semibold text-slate-600">
+                <div class="inline-flex items-center overflow-hidden rounded-full bg-slate-100 p-1 text-xs font-semibold text-slate-600 shadow-inner">
                   <button
                     v-for="mode in editorModes"
                     :key="mode.key"
                     type="button"
                     :class="[
                       'rounded-full px-3 py-1 transition',
-                      editorMode === mode.key ? 'bg-slate-900 text-white shadow' : 'hover:bg-slate-100',
+                      editorMode === mode.key ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700',
                       mode.key === 'preview' && !hasResults ? 'pointer-events-none opacity-40' : '',
                     ]"
                     @click="editorMode = mode.key"
@@ -290,7 +296,7 @@
 
           <div class="flex flex-1 flex-col overflow-hidden lg:flex-row">
             <section class="flex-1 overflow-hidden px-4 py-6">
-              <div class="flex h-full flex-col overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-xl shadow-slate-200/60">
+              <div class="flex h-full flex-col overflow-hidden rounded-3xl bg-white shadow-2xl shadow-slate-200/60 ring-1 ring-slate-200/70">
                 <div class="relative flex-1 overflow-hidden">
                   <div
                     v-show="editorMode === 'edit'"
@@ -336,32 +342,60 @@
               />
             </section>
 
-            <aside class="relative w-full border-t border-slate-200 bg-white shadow-[0_-8px_24px_rgba(15,23,42,0.08)] lg:w-96 lg:border-t-0 lg:border-l lg:shadow-none">
-              <div class="h-full overflow-y-auto px-5 py-6">
-                <div class="flex items-center justify-between">
-                  <div>
-                    <h2 class="text-sm font-semibold text-slate-900">Scan Menu</h2>
-                    <p class="text-xs text-slate-500">选择功能并查看对应结果</p>
+            <aside class="relative w-full border-t border-slate-200 bg-white/95 shadow-[0_-8px_24px_rgba(15,23,42,0.08)] backdrop-blur lg:mx-6 lg:my-6 lg:w-[22rem] lg:rounded-3xl lg:border lg:border-slate-200 lg:shadow-xl">
+              <div class="flex h-full flex-col">
+                <div class="flex-1 overflow-y-auto px-5 py-6">
+                  <div class="flex items-center justify-between">
+                    <div>
+                      <h2 class="text-sm font-semibold text-slate-900">Scan Menu</h2>
+                      <p class="text-xs text-slate-500">选择功能并查看对应结果</p>
+                    </div>
                   </div>
-                </div>
 
                 <div v-if="!hasResults" class="mt-6 space-y-6">
-                  <div class="flex flex-wrap gap-2">
-                    <button
-                      v-for="option in functionOptions"
-                      :key="option.key"
-                      type="button"
-                      :class="[
-                        'function-chip',
-                        isFunctionSelected(option.key)
-                          ? option.activeClass
-                          : 'border-slate-200 bg-white text-slate-600 hover:border-primary-200 hover:text-primary-600',
-                      ]"
-                      @click="toggleFunction(option.key)"
-                    >
-                      <component :is="option.icon" class="mr-1.5 h-4 w-4" />
-                      {{ option.label }}
-                    </button>
+                  <div class="space-y-4">
+                    <div class="space-y-3">
+                      <p class="text-xs font-bold uppercase tracking-tight text-slate-400">Verification</p>
+                      <div class="grid grid-cols-2 gap-3">
+                        <template v-for="option in functionOptions" :key="option.key">
+                          <button
+                            v-if="['scan', 'citation'].includes(option.key)"
+                            type="button"
+                            :class="[
+                              'flex flex-col items-center justify-center gap-2 rounded-xl border px-3 py-3 text-xs font-semibold transition-all duration-200',
+                              isFunctionSelected(option.key)
+                                ? 'bg-primary-50 border-primary-500 text-primary-700 ring-1 ring-primary-500'
+                                : 'bg-white border-slate-200 text-slate-600 hover:border-primary-300 hover:bg-slate-50',
+                            ]"
+                            @click="toggleFunction(option.key)"
+                          >
+                            <component :is="option.icon" class="h-5 w-5" />
+                            <span class="text-center">{{ option.label }}</span>
+                          </button>
+                        </template>
+                      </div>
+                    </div>
+                    <div class="space-y-3">
+                      <p class="text-xs font-bold uppercase tracking-tight text-slate-400">Enhancement</p>
+                      <div class="grid grid-cols-2 gap-3">
+                        <template v-for="option in functionOptions" :key="option.key">
+                          <button
+                            v-if="['polish', 'translate'].includes(option.key)"
+                            type="button"
+                            :class="[
+                              'flex flex-col items-center justify-center gap-2 rounded-xl border px-3 py-3 text-xs font-semibold transition-all duration-200',
+                              isFunctionSelected(option.key)
+                                ? 'bg-primary-50 border-primary-500 text-primary-700 ring-1 ring-primary-500'
+                                : 'bg-white border-slate-200 text-slate-600 hover:border-primary-300 hover:bg-slate-50',
+                            ]"
+                            @click="toggleFunction(option.key)"
+                          >
+                            <component :is="option.icon" class="h-5 w-5" />
+                            <span class="text-center">{{ option.label }}</span>
+                          </button>
+                        </template>
+                      </div>
+                    </div>
                   </div>
                   <div class="space-y-2 rounded-2xl bg-slate-50 p-4 text-xs text-slate-500">
                     <p>已选功能：{{ selectedFunctionSummary }}</p>
@@ -387,51 +421,60 @@
                       </button>
                     </div>
                   </div>
-                  <button
-                    type="button"
-                    class="w-full rounded-full bg-slate-900 px-4 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-slate-800"
-                    @click="handleScan"
-                  >
-                    立即扫描
-                  </button>
                   <p class="text-xs text-slate-400">登录后可保存扫描记录、导出报告与管理团队额度。</p>
                 </div>
 
                 <div v-else class="mt-6 space-y-6">
-                  <div class="rounded-2xl bg-slate-900 p-5 text-white shadow-lg">
-                    <p class="text-xs uppercase tracking-[0.3em] text-white/70">AI 检测摘要</p>
-                    <div class="mt-4 flex items-end justify-between">
-                      <div>
-                        <p class="text-xl font-semibold">潜在相似句 {{ detectionResults.aiLikelyCount }} 句</p>
-                        <p class="mt-1 text-xs text-white/70">含 AI 生成或人机混合特征的句子总数</p>
-                      </div>
+                  <div class="summary-card">
+                    <div class="summary-header">
+                      <h3 class="summary-title">Detection Analysis</h3>
+                      <span class="summary-badge">Model V3.0</span>
                     </div>
-                    <div class="mt-4 grid grid-cols-3 gap-2 text-xs">
-                      <div class="rounded-xl bg-amber-500/20 p-3">
-                        <p class="text-[10px] uppercase tracking-widest text-amber-200">AI Generated</p>
-                        <p class="mt-2 text-lg font-semibold">{{ detectionResults.summary.ai }}%</p>
+                    <div class="summary-hero">
+                      <span class="summary-hero__value">{{ detectionResults.summary.ai }}%</span>
+                      <span class="summary-hero__label">AI Probability</span>
+                    </div>
+                    <div class="summary-rows">
+                      <div class="summary-row">
+                        <div class="summary-row__head">
+                          <span class="summary-row__label">AI Generated</span>
+                          <span class="summary-row__value">{{ detectionResults.summary.ai }}%</span>
+                        </div>
+                        <div class="summary-row__bar">
+                          <div class="summary-row__fill summary-row__fill--ai" :style="{ width: detectionResults.summary.ai + '%' }"></div>
+                        </div>
                       </div>
-                      <div class="rounded-xl bg-violet-500/20 p-3">
-                        <p class="text-[10px] uppercase tracking-widest text-violet-200">Mixed</p>
-                        <p class="mt-2 text-lg font-semibold">{{ detectionResults.summary.mixed }}%</p>
+                      <div class="summary-row">
+                        <div class="summary-row__head">
+                          <span class="summary-row__label">Mixed / Paraphrased</span>
+                          <span class="summary-row__value">{{ detectionResults.summary.mixed }}%</span>
+                        </div>
+                        <div class="summary-row__bar">
+                          <div class="summary-row__fill summary-row__fill--mixed" :style="{ width: detectionResults.summary.mixed + '%' }"></div>
+                        </div>
                       </div>
-                      <div class="rounded-xl bg-emerald-500/20 p-3">
-                        <p class="text-[10px] uppercase tracking-widest text-emerald-200">Human</p>
-                        <p class="mt-2 text-lg font-semibold">{{ detectionResults.summary.human }}%</p>
+                      <div class="summary-row">
+                        <div class="summary-row__head">
+                          <span class="summary-row__label">Human Written</span>
+                          <span class="summary-row__value">{{ detectionResults.summary.human }}%</span>
+                        </div>
+                        <div class="summary-row__bar">
+                          <div class="summary-row__fill summary-row__fill--human" :style="{ width: detectionResults.summary.human + '%' }"></div>
+                        </div>
                       </div>
                     </div>
                   </div>
 
-                  <div class="flex flex-wrap gap-2">
+                  <div class="summary-tabs">
                     <button
                       v-for="tab in availableResultTabs"
                       :key="tab.key"
                       type="button"
                       :class="[
-                        'rounded-full border px-3 py-1 text-xs font-semibold transition',
+                        'summary-tab',
                         activeResultTab === tab.key
-                          ? 'border-slate-900 bg-slate-900 text-white'
-                          : 'border-slate-200 text-slate-600 hover:border-primary-200 hover:text-primary-600',
+                          ? 'summary-tab--active'
+                          : 'summary-tab--inactive',
                       ]"
                       @click="activeResultTab = tab.key"
                     >
@@ -510,6 +553,16 @@
                     <p class="text-[11px] text-slate-400">引用核查为占位逻辑，后续可接入真实数据库。</p>
                   </div>
                 </div>
+              </div>
+              <div v-if="!hasResults" class="sticky bottom-0 border-t border-slate-200 bg-white/95 px-5 py-4 shadow-[0_-12px_20px_rgba(15,23,42,0.05)]">
+                <button
+                  type="button"
+                  class="w-full rounded-full bg-primary-600 px-4 py-3 text-sm font-semibold text-white shadow-lg shadow-primary-200/70 transition hover:-translate-y-0.5 hover:bg-primary-500"
+                  @click="handleScan"
+                >
+                  开始扫描
+                </button>
+              </div>
               </div>
             </aside>
           </div>
@@ -594,16 +647,16 @@
                     :class="[
                       'w-full rounded-2xl border px-3 py-3 text-left text-sm transition',
                       record.id === activeHistoryId
-                        ? 'border-slate-900 bg-slate-900 text-white shadow'
+                        ? 'border-primary-200 bg-primary-50 text-slate-900 shadow-sm'
                         : 'border-slate-200 bg-white text-slate-600 hover:border-primary-200 hover:text-primary-600',
                     ]"
                     @click="selectHistoryRecord(record.id)"
                   >
                     <p class="font-semibold">{{ record.title || '扫描记录' }}</p>
-                    <p class="mt-1 text-xs" :class="record.id === activeHistoryId ? 'text-white/80' : 'text-slate-400'">
+                    <p class="mt-1 text-xs" :class="record.id === activeHistoryId ? 'text-slate-600' : 'text-slate-400'">
                       {{ formatHistorySummary(record) }}
                     </p>
-                    <p class="mt-1 text-[11px]" :class="record.id === activeHistoryId ? 'text-white/70' : 'text-slate-400'">
+                    <p class="mt-1 text-[11px]" :class="record.id === activeHistoryId ? 'text-slate-500' : 'text-slate-400'">
                       {{ formatHistoryTimestamp(record.createdAt) }}
                     </p>
                   </button>
@@ -634,40 +687,53 @@
                 </header>
 
                 <div v-if="activeHistoryRecord.analysis" class="space-y-6">
-                  <div class="rounded-2xl bg-slate-900 p-5 text-white shadow-lg">
-                    <p class="text-xs uppercase tracking-[0.3em] text-white/70">AI 检测摘要</p>
-                    <div class="mt-4 flex items-end justify-between">
-                      <div>
-                        <p class="text-xl font-semibold">潜在相似句 {{ activeHistoryRecord.analysis.aiLikelyCount }} 句</p>
-                        <p class="mt-1 text-xs text-white/70">含 AI 生成或人机混合特征的句子总数</p>
+                  <div class="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
+                    <p class="text-xs uppercase tracking-[0.3em] text-slate-400">AI 检测摘要</p>
+                    <div class="mt-4 flex flex-wrap items-center gap-5">
+                      <div
+                        class="h-24 w-24 rounded-full p-1"
+                        :style="{
+                          background: `conic-gradient(#ef4444 0 ${activeHistoryRecord.analysis.summary.ai}%, #f59e0b ${activeHistoryRecord.analysis.summary.ai}% ${activeHistoryRecord.analysis.summary.ai + activeHistoryRecord.analysis.summary.mixed}%, #10b981 ${activeHistoryRecord.analysis.summary.ai + activeHistoryRecord.analysis.summary.mixed}% 100%)`,
+                        }"
+                      >
+                        <div class="flex h-full w-full items-center justify-center rounded-full bg-white shadow-sm">
+                          <div class="text-center">
+                            <p class="text-[11px] font-semibold text-slate-400">AI</p>
+                            <p class="text-lg font-semibold text-slate-900">{{ activeHistoryRecord.analysis.summary.ai }}%</p>
+                          </div>
+                        </div>
                       </div>
-                    </div>
-                    <div class="mt-4 grid grid-cols-3 gap-2 text-xs">
-                      <div class="rounded-xl bg-amber-500/20 p-3">
-                        <p class="text-[10px] uppercase tracking-widest text-amber-200">AI Generated</p>
-                        <p class="mt-2 text-lg font-semibold">{{ activeHistoryRecord.analysis.summary.ai }}%</p>
-                      </div>
-                      <div class="rounded-xl bg-violet-500/20 p-3">
-                        <p class="text-[10px] uppercase tracking-widest text-violet-200">Mixed</p>
-                        <p class="mt-2 text-lg font-semibold">{{ activeHistoryRecord.analysis.summary.mixed }}%</p>
-                      </div>
-                      <div class="rounded-xl bg-emerald-500/20 p-3">
-                        <p class="text-[10px] uppercase tracking-widest text-emerald-200">Human</p>
-                        <p class="mt-2 text-lg font-semibold">{{ activeHistoryRecord.analysis.summary.human }}%</p>
+                      <div class="flex-1 space-y-2">
+                        <p class="text-lg font-semibold text-slate-900">潜在相似句 {{ activeHistoryRecord.analysis.aiLikelyCount }} 句</p>
+                        <p class="text-xs text-slate-500">含 AI 生成或人机混合特征的句子总数</p>
+                        <div class="grid grid-cols-3 gap-2 text-xs">
+                          <div class="rounded-xl border border-rose-100 bg-rose-50 p-3">
+                            <p class="text-[10px] uppercase tracking-widest text-rose-500">AI Generated</p>
+                            <p class="mt-2 text-lg font-semibold text-rose-600">{{ activeHistoryRecord.analysis.summary.ai }}%</p>
+                          </div>
+                          <div class="rounded-xl border border-amber-100 bg-amber-50 p-3">
+                            <p class="text-[10px] uppercase tracking-widest text-amber-500">Mixed</p>
+                            <p class="mt-2 text-lg font-semibold text-amber-600">{{ activeHistoryRecord.analysis.summary.mixed }}%</p>
+                          </div>
+                          <div class="rounded-xl border border-emerald-100 bg-emerald-50 p-3">
+                            <p class="text-[10px] uppercase tracking-widest text-emerald-500">Human</p>
+                            <p class="mt-2 text-lg font-semibold text-emerald-600">{{ activeHistoryRecord.analysis.summary.human }}%</p>
+                          </div>
+                        </div>
                       </div>
                     </div>
                   </div>
 
-                  <div class="flex flex-wrap gap-2">
+                  <div class="inline-flex flex-wrap items-center gap-2 rounded-full bg-slate-100 p-1 text-xs font-semibold text-slate-600 shadow-inner">
                     <button
                       v-for="tab in availableHistoryTabs"
                       :key="tab.key"
                       type="button"
                       :class="[
-                        'rounded-full border px-3 py-1 text-xs font-semibold transition',
+                        'rounded-full px-3 py-1 transition',
                         activeHistoryTab === tab.key
-                          ? 'border-slate-900 bg-slate-900 text-white'
-                          : 'border-slate-200 text-slate-600 hover:border-primary-200 hover:text-primary-600',
+                          ? 'bg-white text-slate-900 shadow-sm'
+                          : 'text-slate-500 hover:text-slate-700',
                       ]"
                       @click="activeHistoryTab = tab.key"
                     >
@@ -1842,10 +1908,19 @@ const onGlobalClick = (event) => {
 }
 
 .nav-item {
-  @apply flex w-full items-center gap-3 rounded-2xl border border-transparent px-3 py-2 text-sm font-semibold text-slate-600 transition hover:border-primary-200 hover:text-primary-600;
+  @apply relative flex w-full items-center justify-center gap-3 rounded-2xl border border-transparent px-3 py-2 text-xs font-semibold text-slate-600 transition hover:bg-slate-100 xl:justify-start xl:text-sm;
 }
 .nav-item--active {
-  @apply border-slate-900 bg-slate-900 text-white shadow;
+  @apply bg-primary-50 text-slate-900;
+}
+.nav-label {
+  @apply hidden xl:inline;
+}
+.nav-indicator {
+  @apply h-6 w-1 rounded-full bg-transparent transition;
+}
+.nav-indicator--active {
+  @apply bg-primary-500;
 }
 .menu-item {
   @apply flex w-full items-center justify-between rounded-xl px-3 py-2 text-sm text-slate-600 transition hover:bg-slate-100;
@@ -1860,7 +1935,8 @@ const onGlobalClick = (event) => {
 }
 
 .editor-surface {
-  @apply h-full overflow-y-auto px-6 pt-6 pb-48 text-sm leading-relaxed text-slate-700 focus:outline-none;
+  @apply h-full overflow-y-auto px-8 pt-8 pb-48 text-base leading-7 text-slate-700 focus:outline-none;
+  font-family: 'Plus Jakarta Sans', 'Inter', system-ui, sans-serif;
 }
 
 .editor-surface:empty::before {
@@ -1869,7 +1945,7 @@ const onGlobalClick = (event) => {
 }
 
 .preview-surface {
-  @apply h-full overflow-y-auto px-6 pt-6 pb-48 text-sm leading-relaxed text-slate-700;
+  @apply h-full overflow-y-auto px-8 pt-8 pb-48 text-base leading-7 text-slate-700;
 }
 
 .highlight-chip {
@@ -1878,6 +1954,86 @@ const onGlobalClick = (event) => {
 
 .function-chip {
   @apply inline-flex items-center rounded-full border px-3 py-1 text-xs font-semibold transition;
+}
+
+.summary-card {
+  @apply rounded-3xl border border-slate-200 bg-white p-6 shadow-sm;
+}
+
+.summary-header {
+  @apply flex flex-wrap items-center justify-between gap-2;
+}
+
+.summary-title {
+  @apply text-sm font-semibold text-slate-900;
+}
+
+.summary-badge {
+  @apply rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-medium text-slate-500;
+}
+
+.summary-hero {
+  @apply mt-5 flex flex-wrap items-baseline gap-3;
+}
+
+.summary-hero__value {
+  @apply text-4xl font-semibold tracking-tight text-slate-900;
+}
+
+.summary-hero__label {
+  @apply text-sm font-medium text-slate-500;
+}
+
+.summary-rows {
+  @apply mt-6 space-y-5;
+}
+
+.summary-row__head {
+  @apply mb-2 flex flex-wrap items-center justify-between gap-2 text-xs font-medium;
+}
+
+.summary-row__label {
+  @apply text-slate-700;
+}
+
+.summary-row__value {
+  @apply text-slate-900;
+}
+
+.summary-row__bar {
+  @apply h-2 w-full overflow-hidden rounded-full bg-slate-100;
+}
+
+.summary-row__fill {
+  @apply h-full rounded-full;
+}
+
+.summary-row__fill--ai {
+  @apply bg-amber-500;
+}
+
+.summary-row__fill--mixed {
+  @apply bg-violet-500;
+}
+
+.summary-row__fill--human {
+  @apply bg-emerald-500;
+}
+
+.summary-tabs {
+  @apply inline-flex flex-wrap items-center gap-2 rounded-full bg-slate-100 p-2 text-xs font-semibold text-slate-600 shadow-inner;
+}
+
+.summary-tab {
+  @apply rounded-full px-4 py-2 transition;
+}
+
+.summary-tab--active {
+  @apply bg-white text-slate-900 shadow-sm;
+}
+
+.summary-tab--inactive {
+  @apply text-slate-500 hover:text-slate-700;
 }
 
 .rounded-4xl {

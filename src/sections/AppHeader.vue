@@ -1,16 +1,38 @@
 <template>
-  <header class="sticky top-0 z-40 border-b border-slate-200/60 bg-white/80 backdrop-blur">
-    <div class="mx-auto w-full max-w-7xl px-12 sm:px-14">
+  <header class="sticky top-0 z-40 border-b border-slate-200/60 bg-white/80 shadow-sm backdrop-blur-md">
+    <div class="mx-auto w-full max-w-7xl px-6 sm:px-10">
       <div class="flex h-16 items-center justify-between gap-6">
         <RouterLink :to="{ name: 'home' }" class="flex items-center space-x-3">
-          <span class="inline-flex h-9 w-9 items-center justify-center rounded-full bg-primary-500 font-semibold text-white">V</span>
+          <span class="inline-flex h-9 w-9 items-center justify-center rounded-full bg-primary-600 font-semibold text-white shadow-sm">V</span>
           <span class="text-lg font-semibold tracking-tight text-slate-900">{{ t('common.brand') }}</span>
         </RouterLink>
-        <nav v-if="showMarketingNav" class="hidden flex-1 items-center justify-center space-x-8 text-sm font-medium text-slate-600 md:flex">
-          <RouterLink :to="{ name: 'home', hash: '#capabilities' }" class="hover:text-slate-900">{{ t('header.nav.capabilities') }}</RouterLink>
-          <RouterLink :to="{ name: 'home', hash: '#workflow' }" class="hover:text-slate-900">{{ t('header.nav.workflow') }}</RouterLink>
-          <RouterLink :to="{ name: 'home', hash: '#showcase' }" class="hover:text-slate-900">{{ t('header.nav.showcase') }}</RouterLink>
-          <RouterLink :to="{ name: 'home', hash: '#pricing' }" class="hover:text-slate-900">{{ t('header.nav.pricing') }}</RouterLink>
+        <nav v-if="showMarketingNav" class="hidden flex-1 items-center justify-center md:flex">
+          <div class="flex items-center gap-2 rounded-full bg-white/70 px-2 py-1 text-sm font-medium text-slate-600 shadow-sm ring-1 ring-slate-200/60">
+            <RouterLink
+              :to="{ name: 'home', hash: '#capabilities' }"
+              class="rounded-full px-3 py-1 transition hover:bg-primary-50 hover:text-primary-700"
+            >
+              {{ t('header.nav.capabilities') }}
+            </RouterLink>
+            <RouterLink
+              :to="{ name: 'home', hash: '#workflow' }"
+              class="rounded-full px-3 py-1 transition hover:bg-primary-50 hover:text-primary-700"
+            >
+              {{ t('header.nav.workflow') }}
+            </RouterLink>
+            <RouterLink
+              :to="{ name: 'home', hash: '#showcase' }"
+              class="rounded-full px-3 py-1 transition hover:bg-primary-50 hover:text-primary-700"
+            >
+              {{ t('header.nav.showcase') }}
+            </RouterLink>
+            <RouterLink
+              :to="{ name: 'home', hash: '#pricing' }"
+              class="rounded-full px-3 py-1 transition hover:bg-primary-50 hover:text-primary-700"
+            >
+              {{ t('header.nav.pricing') }}
+            </RouterLink>
+          </div>
         </nav>
         <div class="hidden flex-1 items-center justify-end gap-3 md:flex">
           <label class="sr-only" for="locale-select">{{ t('common.language') }}</label>
@@ -25,7 +47,7 @@
           <div v-if="isMarketing || isAuth" class="flex items-center justify-end">
             <button
               type="button"
-              class="inline-flex items-center justify-center rounded-full bg-slate-900 px-5 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-slate-700"
+              class="inline-flex items-center justify-center rounded-full bg-primary-600 px-5 py-2 text-sm font-semibold text-white shadow-glow transition hover:bg-primary-500"
               @click="openDashboard"
             >
               {{ t('header.buttons.dashboard') }}
@@ -44,7 +66,7 @@
                   <div class="relative" ref="userMenuContainerRef">
                     <button
                       type="button"
-                      class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-primary-500 text-sm font-semibold text-white shadow-sm"
+                      class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-primary-600 text-sm font-semibold text-white shadow-sm"
                       @click="toggleUserMenu"
                     >
                       {{ userInitials }}
@@ -55,7 +77,7 @@
                         class="absolute right-0 mt-3 w-72 rounded-3xl border border-slate-200 bg-white/95 p-4 text-sm text-slate-600 shadow-xl backdrop-blur"
                       >
                         <div class="flex items-center gap-3">
-                          <div class="flex h-12 w-12 items-center justify-center rounded-full bg-primary-500 text-base font-semibold text-white">
+                          <div class="flex h-12 w-12 items-center justify-center rounded-full bg-primary-600 text-base font-semibold text-white">
                             {{ userInitials }}
                           </div>
                           <div class="flex-1">
@@ -99,8 +121,13 @@
               </UserProfileArea>
             </template>
             <template v-else>
-              <div class="flex items-center gap-4">
-                <RouterLink to="/login" class="text-sm font-medium text-slate-600 transition hover:text-slate-900">{{ t('header.buttons.login') }}</RouterLink>
+              <div class="flex items-center gap-3">
+                <RouterLink
+                  to="/login"
+                  class="inline-flex items-center justify-center rounded-full border border-primary-200 px-4 py-2 text-sm font-semibold text-primary-700 transition hover:border-primary-300 hover:bg-primary-50"
+                >
+                  {{ t('header.buttons.login') }}
+                </RouterLink>
                 <RouterLink
                   to="/register"
                   class="inline-flex items-center justify-center rounded-full bg-primary-600 px-4 py-2 text-sm font-semibold text-white shadow-glow transition hover:bg-primary-500"
@@ -113,19 +140,30 @@
         </div>
         <button
           type="button"
-          class="inline-flex items-center justify-center rounded-full border border-slate-200 p-2 text-slate-600 md:hidden"
+          class="group inline-flex items-center justify-center rounded-full border border-slate-200 bg-white/70 p-2 text-slate-600 shadow-sm transition hover:border-primary-200 hover:text-primary-700 md:hidden"
           @click="toggleMobileMenu"
         >
           <span class="sr-only">{{ t('common.openMenu') }}</span>
-          <svg class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 5.75h16.5M3.75 12h16.5m-16.5 6.25h16.5" />
-          </svg>
+          <span class="relative h-5 w-5">
+            <span
+              class="absolute left-0 top-1 h-0.5 w-5 rounded-full bg-current transition duration-200"
+              :class="isMobileMenuOpen ? 'translate-y-2 rotate-45' : ''"
+            ></span>
+            <span
+              class="absolute left-0 top-2.5 h-0.5 w-5 rounded-full bg-current transition duration-200"
+              :class="isMobileMenuOpen ? 'opacity-0' : 'opacity-100'"
+            ></span>
+            <span
+              class="absolute left-0 top-4 h-0.5 w-5 rounded-full bg-current transition duration-200"
+              :class="isMobileMenuOpen ? '-translate-y-2 -rotate-45' : ''"
+            ></span>
+          </span>
         </button>
       </div>
     </div>
     <transition name="fade">
       <div v-if="isMobileMenuOpen" class="md:hidden">
-        <div class="mx-auto mt-2 max-w-7xl space-y-3 rounded-3xl border border-slate-200 bg-white/95 p-4 shadow-lg">
+        <div class="mx-auto mt-2 max-w-7xl space-y-3 rounded-3xl border border-slate-200 bg-white/95 p-4 shadow-lg backdrop-blur-md">
           <div class="flex items-center justify-end">
             <label class="sr-only" for="locale-select-mobile">{{ t('common.language') }}</label>
             <select
@@ -142,24 +180,24 @@
               v-for="link in marketingLinks"
               :key="link.label"
               :to="link.to"
-              class="block rounded-2xl px-4 py-3 text-sm font-medium text-slate-700 hover:bg-primary-50"
+              class="block rounded-2xl px-4 py-3 text-sm font-medium text-slate-700 transition hover:bg-primary-50 hover:text-primary-700"
               @click="closeMobileMenu"
             >
               {{ link.label }}
             </RouterLink>
-          <button
-            type="button"
-            class="w-full rounded-2xl bg-slate-900 px-4 py-3 text-sm font-semibold text-white hover:bg-slate-800"
-            @click="openDashboardFromMobile"
-          >
-            {{ t('header.buttons.mobileDashboard') }}
-          </button>
-        </template>
-        <template v-else>
-          <div v-if="authStore.isAuthenticated" class="space-y-3">
+            <button
+              type="button"
+              class="w-full rounded-2xl bg-primary-600 px-4 py-3 text-sm font-semibold text-white shadow-glow transition hover:bg-primary-500"
+              @click="openDashboardFromMobile"
+            >
+              {{ t('header.buttons.mobileDashboard') }}
+            </button>
+          </template>
+          <template v-else>
+            <div v-if="authStore.isAuthenticated" class="space-y-3">
               <div class="space-y-3 rounded-2xl bg-slate-100 px-4 py-4 text-sm text-slate-600">
                 <div class="flex items-center gap-3">
-                  <div class="flex h-11 w-11 items-center justify-center rounded-full bg-primary-500 text-sm font-semibold text-white">
+                  <div class="flex h-11 w-11 items-center justify-center rounded-full bg-primary-600 text-sm font-semibold text-white">
                     {{ userInitials }}
                   </div>
                   <div>
@@ -172,7 +210,7 @@
                   class="flex w-full items-center justify-between rounded-2xl border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-700 transition hover:border-primary-200 hover:text-primary-600"
                   @click="openAccountDetailsFromMobile"
                 >
-                  <span>Account Details</span>
+                  <span>{{ t('common.accountDetails') }}</span>
                   <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" />
                   </svg>
@@ -190,7 +228,7 @@
               </div>
               <button
                 type="button"
-                class="w-full rounded-2xl bg-slate-900 px-4 py-3 text-sm font-semibold text-white hover:bg-slate-800"
+                class="w-full rounded-2xl bg-slate-900 px-4 py-3 text-sm font-semibold text-white transition hover:bg-slate-800"
                 @click="logoutFromMobile"
               >
                 {{ t('header.buttons.logout') }}
@@ -199,14 +237,14 @@
             <div v-else class="flex items-center space-x-3">
               <RouterLink
                 to="/login"
-                class="flex-1 rounded-2xl border border-slate-200 px-4 py-3 text-center text-sm font-semibold text-slate-700"
+                class="flex-1 rounded-2xl border border-primary-200 px-4 py-3 text-center text-sm font-semibold text-primary-700 transition hover:bg-primary-50"
                 @click="closeMobileMenu"
               >
                 {{ t('header.buttons.login') }}
               </RouterLink>
               <RouterLink
                 to="/register"
-                class="flex-1 rounded-2xl bg-primary-600 px-4 py-3 text-center text-sm font-semibold text-white"
+                class="flex-1 rounded-2xl bg-primary-600 px-4 py-3 text-center text-sm font-semibold text-white shadow-glow transition hover:bg-primary-500"
                 @click="closeMobileMenu"
               >
                 {{ t('header.buttons.register') }}

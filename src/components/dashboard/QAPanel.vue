@@ -1,5 +1,5 @@
 <template>
-  <section class="rounded-3xl border border-slate-200 bg-white p-10 shadow-xl shadow-slate-200/60">
+  <section class="rounded-3xl border border-slate-200 bg-white/95 p-10 shadow-lg shadow-slate-200/60 backdrop-blur">
     <div class="flex flex-col gap-8">
       <header class="space-y-3">
         <p class="inline-flex items-center rounded-full bg-emerald-50 px-4 py-1 text-xs font-semibold uppercase tracking-[0.3em] text-emerald-600">
@@ -14,7 +14,7 @@
             v-model="search"
             type="search"
             placeholder="搜索关键字，例如“扫描报告”或“批量上传”"
-            class="w-full rounded-2xl border border-slate-200 px-4 py-2 pl-10 text-sm text-slate-700 focus:border-primary-300 focus:outline-none focus:ring-2 focus:ring-primary-200"
+            class="w-full rounded-2xl border border-slate-200 bg-white px-4 py-2 pl-10 text-sm text-slate-700 shadow-sm focus:border-primary-300 focus:outline-none focus:ring-2 focus:ring-primary-200"
           />
           <svg class="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
             <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-4.35-4.35m0 0A7.5 7.5 0 1116.65 7.5a7.5 7.5 0 010 9.15z" />
@@ -25,7 +25,7 @@
         <article
           v-for="item in filteredFaqs"
           :key="item.id"
-          class="rounded-2xl border border-slate-200 bg-slate-50/80 p-5 transition hover:border-primary-200 hover:bg-white"
+          class="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
         >
           <h2 class="text-base font-semibold text-slate-900">{{ item.question }}</h2>
           <p class="mt-2 text-sm leading-relaxed text-slate-600">{{ item.answer }}</p>
@@ -36,7 +36,7 @@
           </div>
         </article>
       </div>
-      <footer class="rounded-2xl bg-slate-900/90 p-6 text-sm text-slate-100">
+      <footer class="rounded-2xl border border-slate-200 bg-slate-900 p-6 text-sm text-slate-100 shadow-lg">
         <p class="font-semibold">还有其他问题？</p>
         <p class="mt-2 text-slate-200">
           可以在页面右上角点击 Contact Us，或发送邮件至

@@ -1,5 +1,5 @@
 <template>
-  <section class="bg-white py-24">
+  <section class="py-24">
     <div class="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
       <div class="flex flex-col gap-8 lg:flex-row lg:items-end lg:justify-between">
         <div class="max-w-3xl">
@@ -13,11 +13,11 @@
           <span>全部评价已通过真实性核验</span>
         </div>
       </div>
-      <div class="mt-12 grid gap-6 lg:grid-cols-3">
+      <div class="mt-12 columns-1 gap-6 space-y-6 md:columns-2 lg:columns-3">
         <article
           v-for="testimonial in testimonials"
           :key="testimonial.author"
-          class="flex h-full flex-col justify-between rounded-3xl border border-slate-200 bg-white p-6 shadow-sm transition hover:-translate-y-1 hover:shadow-lg"
+          class="break-inside-avoid rounded-2xl border border-slate-200 bg-white p-6 shadow-sm transition hover:-translate-y-1 hover:shadow-md"
         >
           <div>
             <p class="text-sm text-slate-600">“{{ testimonial.quote }}”</p>
