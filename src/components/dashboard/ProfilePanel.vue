@@ -1,24 +1,24 @@
 <template>
   <div class="space-y-10">
     <div v-if="!authStore.isAuthenticated" class="rounded-3xl border border-dashed border-primary-200 bg-white/90 p-10 text-center shadow-sm shadow-slate-200/60">
-      <h1 class="text-lg font-semibold text-slate-900">请登录后管理个人资料</h1>
-      <p class="mt-3 text-sm text-slate-500">登录账户即可更新姓名、组织、岗位与行业信息。</p>
+      <h1 class="text-lg font-semibold text-slate-900">{{ t('profilePanel.guest.title') }}</h1>
+      <p class="mt-3 text-sm text-slate-500">{{ t('profilePanel.guest.subtitle') }}</p>
       <RouterLink
         to="/login"
         class="mt-6 inline-flex items-center justify-center rounded-full bg-primary-600 px-5 py-2 text-sm font-semibold text-white shadow hover:bg-primary-500"
       >
-        前往登录
+        {{ t('profilePanel.guest.cta') }}
       </RouterLink>
     </div>
     <div v-else class="space-y-10">
       <section>
-        <h1 class="text-2xl font-semibold text-slate-900">Profile</h1>
-        <p class="mt-2 text-sm text-slate-500">完善个人资料，帮助团队快速了解你的身份与需求。</p>
+        <h1 class="text-2xl font-semibold text-slate-900">{{ t('profilePanel.title') }}</h1>
+        <p class="mt-2 text-sm text-slate-500">{{ t('profilePanel.subtitle') }}</p>
       </section>
       <form class="space-y-6 rounded-3xl border border-slate-200 bg-white p-8 shadow-lg shadow-slate-200/60" @submit.prevent="handleSubmit">
         <div class="grid gap-6 md:grid-cols-2">
           <div class="space-y-2">
-            <label class="text-sm font-semibold text-slate-700" for="first-name">First Name</label>
+            <label class="text-sm font-semibold text-slate-700" for="first-name">{{ t('profilePanel.fields.firstName') }}</label>
             <input
               id="first-name"
               v-model="profileForm.firstName"
@@ -27,7 +27,7 @@
             />
           </div>
           <div class="space-y-2">
-            <label class="text-sm font-semibold text-slate-700" for="surname">Surname</label>
+            <label class="text-sm font-semibold text-slate-700" for="surname">{{ t('profilePanel.fields.surname') }}</label>
             <input
               id="surname"
               v-model="profileForm.surname"
@@ -36,7 +36,7 @@
             />
           </div>
           <div class="space-y-2">
-            <label class="text-sm font-semibold text-slate-700" for="email">Email</label>
+            <label class="text-sm font-semibold text-slate-700" for="email">{{ t('profilePanel.fields.email') }}</label>
             <input
               id="email"
               :value="email"
@@ -46,37 +46,34 @@
             />
           </div>
           <div class="space-y-2">
-            <label class="text-sm font-semibold text-slate-700" for="organization">Organization</label>
-            <select
-              id="organization"
+            <label class="text-sm font-semibold text-slate-700" for="organization">{{ t('profilePanel.fields.organization') }}</label>
+            <BaseListbox
+              button-id="organization"
               v-model="profileForm.organization"
-              class="w-full rounded-2xl border border-slate-200 px-4 py-2 text-sm text-slate-700 focus:border-primary-300 focus:outline-none focus:ring-2 focus:ring-primary-200"
-            >
-              <option value="">请选择组织类型</option>
-              <option v-for="option in organizationOptions" :key="option" :value="option">{{ option }}</option>
-            </select>
+              :options="organizationOptions"
+              :placeholder="t('profilePanel.placeholders.organization')"
+              :aria-label="t('profilePanel.fields.organization')"
+            />
           </div>
           <div class="space-y-2">
-            <label class="text-sm font-semibold text-slate-700" for="role">Role</label>
-            <select
-              id="role"
+            <label class="text-sm font-semibold text-slate-700" for="role">{{ t('profilePanel.fields.role') }}</label>
+            <BaseListbox
+              button-id="role"
               v-model="profileForm.role"
-              class="w-full rounded-2xl border border-slate-200 px-4 py-2 text-sm text-slate-700 focus:border-primary-300 focus:outline-none focus:ring-2 focus:ring-primary-200"
-            >
-              <option value="">请选择角色</option>
-              <option v-for="option in roleOptions" :key="option" :value="option">{{ option }}</option>
-            </select>
+              :options="roleOptions"
+              :placeholder="t('profilePanel.placeholders.role')"
+              :aria-label="t('profilePanel.fields.role')"
+            />
           </div>
           <div class="space-y-2">
-            <label class="text-sm font-semibold text-slate-700" for="industry">Industry</label>
-            <select
-              id="industry"
+            <label class="text-sm font-semibold text-slate-700" for="industry">{{ t('profilePanel.fields.industry') }}</label>
+            <BaseListbox
+              button-id="industry"
               v-model="profileForm.industry"
-              class="w-full rounded-2xl border border-slate-200 px-4 py-2 text-sm text-slate-700 focus:border-primary-300 focus:outline-none focus:ring-2 focus:ring-primary-200"
-            >
-              <option value="">请选择行业</option>
-              <option v-for="option in industryOptions" :key="option" :value="option">{{ option }}</option>
-            </select>
+              :options="industryOptions"
+              :placeholder="t('profilePanel.placeholders.industry')"
+              :aria-label="t('profilePanel.fields.industry')"
+            />
           </div>
         </div>
         <div class="space-y-3">
@@ -95,7 +92,7 @@
               <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" />
               <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z" />
             </svg>
-            更新资料
+            {{ t('profilePanel.actions.save') }}
           </button>
           <p v-if="successMessage" class="text-sm text-emerald-600">{{ successMessage }}</p>
           <p v-if="errorMessage" class="text-sm text-rose-500">{{ errorMessage }}</p>
@@ -108,9 +105,12 @@
 <script setup>
 import { computed, reactive, ref, watch } from 'vue';
 import { RouterLink } from 'vue-router';
+import { useI18n } from '../../i18n';
 import { useAuthStore } from '../../store/auth';
+import BaseListbox from '../common/BaseListbox.vue';
 
 const authStore = useAuthStore();
+const { t } = useI18n();
 
 const profileForm = reactive({
   firstName: '',
@@ -120,9 +120,27 @@ const profileForm = reactive({
   industry: '',
 });
 
-const organizationOptions = ['高校教育', '媒体出版', '企业团队', '自由职业者', '政府/机构'];
-const roleOptions = ['教师', '学生', '研究人员', '内容创作者', '产品经理'];
-const industryOptions = ['教育', '科技', '媒体', '咨询', '市场营销'];
+const organizationOptions = computed(() => [
+  { value: 'education', label: t('profilePanel.options.organization.education') },
+  { value: 'media', label: t('profilePanel.options.organization.media') },
+  { value: 'enterprise', label: t('profilePanel.options.organization.enterprise') },
+  { value: 'freelance', label: t('profilePanel.options.organization.freelance') },
+  { value: 'government', label: t('profilePanel.options.organization.government') },
+]);
+const roleOptions = computed(() => [
+  { value: 'teacher', label: t('profilePanel.options.role.teacher') },
+  { value: 'student', label: t('profilePanel.options.role.student') },
+  { value: 'researcher', label: t('profilePanel.options.role.researcher') },
+  { value: 'creator', label: t('profilePanel.options.role.creator') },
+  { value: 'pm', label: t('profilePanel.options.role.pm') },
+]);
+const industryOptions = computed(() => [
+  { value: 'education', label: t('profilePanel.options.industry.education') },
+  { value: 'tech', label: t('profilePanel.options.industry.tech') },
+  { value: 'media', label: t('profilePanel.options.industry.media') },
+  { value: 'consulting', label: t('profilePanel.options.industry.consulting') },
+  { value: 'marketing', label: t('profilePanel.options.industry.marketing') },
+]);
 
 const successMessage = ref('');
 const errorMessage = ref('');
@@ -162,9 +180,9 @@ const handleSubmit = async () => {
       role: profileForm.role,
       industry: profileForm.industry,
     });
-    successMessage.value = '个人资料已更新。';
+    successMessage.value = t('profilePanel.feedback.success');
   } catch (error) {
-    errorMessage.value = error.message || '更新失败，请稍后再试。';
+    errorMessage.value = error.message || t('profilePanel.feedback.error');
   } finally {
     isSaving.value = false;
   }

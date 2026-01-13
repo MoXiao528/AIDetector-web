@@ -6,11 +6,11 @@
     </div>
     <div class="relative mx-auto max-w-5xl px-4 text-center sm:px-6 lg:px-8">
       <span class="inline-flex items-center justify-center rounded-full bg-white/10 px-4 py-1 text-xs font-semibold uppercase tracking-[0.3em] text-white/80">
-        免费试用开启
+        {{ t('callToAction.badge') }}
       </span>
-      <h2 class="mt-6 text-3xl font-semibold sm:text-4xl">30 天高级功能体验，含 10 万字检测额度</h2>
+      <h2 class="mt-6 text-3xl font-semibold sm:text-4xl">{{ t('callToAction.title') }}</h2>
       <p class="mt-4 text-lg text-white/80">
-        接入 Veritascribe，开启可信内容生产旅程。无需信用卡，可随时取消。
+        {{ t('callToAction.subtitle') }}
       </p>
       <form
         class="mx-auto mt-10 flex max-w-2xl flex-col gap-3 rounded-full bg-white/10 p-2 backdrop-blur md:flex-row"
@@ -18,22 +18,24 @@
       >
         <input
           type="email"
-          placeholder="输入工作邮箱，立即获得试用链接"
+          :placeholder="t('callToAction.placeholder')"
           class="flex-1 rounded-full border border-white/10 bg-white/90 px-6 py-3 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none"
         />
         <button type="submit" class="rounded-full bg-slate-900 px-8 py-3 text-sm font-semibold text-white transition hover:bg-slate-800">
-          领取试用
+          {{ t('callToAction.cta') }}
         </button>
       </form>
-      <p class="mt-6 text-xs text-white/70">支持企业邮箱单点登录 · 适用于高校/媒体/企业场景</p>
+      <p class="mt-6 text-xs text-white/70">{{ t('callToAction.note') }}</p>
     </div>
   </section>
 </template>
 
 <script setup>
 import { useRouter } from 'vue-router';
+import { useI18n } from '../i18n';
 
 const router = useRouter();
+const { t } = useI18n();
 
 const goToRegister = () => {
   router.push('/register');

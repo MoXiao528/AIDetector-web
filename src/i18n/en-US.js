@@ -1,6 +1,7 @@
 export default {
   common: {
     brand: 'Veritascribe',
+    brandInitial: 'V',
     dashboard: 'Dashboard',
     login: 'Log In',
     register: 'Sign Up',
@@ -44,207 +45,471 @@ export default {
       prompt: 'Drag TXT / DOCX / PDF files into the editor to import automatically.',
     },
   },
+  profileArea: {
+    upgradePremium: 'Upgrade to Premium',
+    freeBadge: 'FREE',
+    creditsLeft: '{remaining} / {total} credits left',
+    feedback: 'Feedback',
+    upgrade: 'Upgrade',
+    credits: '{value} credits',
+    remainingOf: 'of {value} remaining',
+  },
+  loginPrompt: {
+    title: 'Please log in to continue',
+    close: 'Close',
+    login: 'Log in',
+    register: 'Sign up',
+    default: 'Log in to access AI detection, polishing, and translation features.',
+  },
+  usageExamples: {
+    badge: 'Usage Examples',
+    title: 'See how real documents and detection results appear',
+    subtitle: 'Examples span academic, marketing, and technical documents to help you understand output formats.',
+    snapshot: 'Result snapshot',
+    labels: {
+      ai: 'AI {value}%',
+      mixed: 'Mixed {value}%',
+      human: 'Human {value}%',
+    },
+    snapshotValue: 'Snapshot: {value}',
+    footerNote: 'Each example can be loaded into the editor with one click for practice.',
+    cta: 'Got it',
+  },
+  contactPage: {
+    badge: 'Contact Us',
+    title: 'Tell us what you’re thinking',
+    subtitle: 'Whether it is product ideas, feedback, or partnerships, we will reply within 2 business days. You can also reach us at',
+    subtitleSuffix: 'to contact us directly.',
+    faq: {
+      title: 'Common questions',
+      items: [
+        'How can I see detailed explanations in AI reports?',
+        'What is the difference between team and personal quotas?',
+        'How do I request an education-specific plan?',
+      ],
+      cta: 'Go to Q&A Center →',
+    },
+    form: {
+      name: 'Name',
+      email: 'Email',
+      topic: 'Topic',
+      message: 'Details',
+      submit: 'Submit feedback',
+    },
+    topics: {
+      product: 'Product feedback',
+      support: 'Technical support',
+      partnership: 'Partnership inquiry',
+      other: 'Other',
+    },
+    feedback: {
+      success: 'Thanks for your feedback. We will contact you shortly.',
+      error: 'Submission failed. Please try again later.',
+    },
+  },
+  multiUpload: {
+    flow: {
+      badge: 'Batch upload flow',
+      sequence: 'UPLOAD → QUEUE → REVIEW → DOWNLOAD',
+      steps: {
+        upload: {
+          label: 'Upload',
+          description: 'Drag or select multiple files for detection.',
+        },
+        queue: {
+          label: 'Queue',
+          description: 'Files are queued and sliced to keep processing stable.',
+        },
+        complete: {
+          label: 'Review',
+          description: 'Check the batch summary once processing completes.',
+        },
+        download: {
+          label: 'Download',
+          description: 'Export the batch report in one click for sharing.',
+        },
+      },
+    },
+    modes: {
+      basic: 'Basic scan',
+      advanced: 'Advanced scan',
+      plagiarism: 'Plagiarism',
+    },
+    uploader: {
+      titlePrefix: 'Drag and drop or',
+      cta: 'Choose files',
+      formats: 'Supported formats: pdf, txt, doc, docx',
+      ready: 'Ready',
+    },
+    limits: {
+      title: '3 File Batch Limit',
+      badge: 'FREE',
+      subtitle: 'Upgrade for 250 files at once',
+      cta: 'Upgrade for more',
+    },
+    languages: {
+      title: 'Supported languages:',
+      subtitle: 'English, French, and Spanish',
+      cta: 'Request more languages',
+    },
+    errors: {
+      limit: 'You can upload up to {limit} files at once. Please reduce and retry.',
+      parse: 'File parsing failed. Please try again later.',
+    },
+  },
+  qaPanel: {
+    badge: 'Knowledge Base',
+    title: 'Q&A Center',
+    subtitle: 'Answers to the most common detection, polishing, translation, and citation checks—so you can master the workspace quickly.',
+    searchPlaceholder: 'Search keywords, e.g. “scan report” or “batch upload”',
+    faqs: [
+      {
+        id: 'scan-report',
+        question: 'How do I view detailed AI detection reports after a scan?',
+        answer:
+          'In Dashboard, switch to “Highlight Preview” or open the Scan results tab to view probabilities, reasons, and color coding for each sentence. Use the polish and translate tabs to switch results quickly.',
+        tags: ['Detection', 'Reports', 'Highlights'],
+      },
+      {
+        id: 'multi-upload',
+        question: 'Can I upload multiple documents for batch detection?',
+        answer: 'Select New → Multi File Upload in the left nav to batch upload TXT, DOCX, or PDF files. The system will chain them into the editor automatically.',
+        tags: ['Batch upload', 'Workflow'],
+      },
+      {
+        id: 'login-required',
+        question: 'Why do I need to log in before scanning?',
+        answer: 'To protect document security and preserve history, scanning, polishing, and translation require an account. If you click “Start Scan” while logged out, you will be prompted to sign in.',
+        tags: ['Security', 'Login'],
+      },
+      {
+        id: 'citation-check',
+        question: 'Where do citation check results come from?',
+        answer: 'The current version uses placeholder logic to demonstrate the citation workflow. Future versions will connect to authoritative databases for automatic cross-references.',
+        tags: ['Citations', 'Roadmap'],
+      },
+      {
+        id: 'editor-tools',
+        question: 'What formatting tools does the editor support?',
+        answer: 'The floating toolbar includes bold, italics, alignment, lists, and font sizing, plus drag-and-drop import.',
+        tags: ['Editor', 'Guides'],
+      },
+    ],
+    footer: {
+      title: 'Still have questions?',
+      prefix: 'Click Contact Us in the top-right or email',
+      suffix: ', and we will respond within 2 business days.',
+    },
+  },
+  onboarding: {
+    title: 'New user guide',
+    subtitle: 'Follow the steps to upload, scan, review results, and export reports.',
+    skip: 'Maybe later',
+    complete: 'I’ve got it',
+    status: {
+      done: 'Done',
+      current: 'In progress',
+      pending: 'Not started',
+    },
+  },
+  profilePanel: {
+    guest: {
+      title: 'Log in to manage your profile',
+      subtitle: 'Sign in to update your name, organization, role, and industry.',
+      cta: 'Go to login',
+    },
+    title: 'Profile',
+    subtitle: 'Complete your profile so the team understands your role and needs.',
+    fields: {
+      firstName: 'First Name',
+      surname: 'Surname',
+      email: 'Email',
+      organization: 'Organization',
+      role: 'Role',
+      industry: 'Industry',
+    },
+    placeholders: {
+      organization: 'Select organization type',
+      role: 'Select role',
+      industry: 'Select industry',
+    },
+    options: {
+      organization: {
+        education: 'Higher education',
+        media: 'Media publishing',
+        enterprise: 'Enterprise team',
+        freelance: 'Freelancer',
+        government: 'Government / Agency',
+      },
+      role: {
+        teacher: 'Teacher',
+        student: 'Student',
+        researcher: 'Researcher',
+        creator: 'Content creator',
+        pm: 'Product manager',
+      },
+      industry: {
+        education: 'Education',
+        tech: 'Technology',
+        media: 'Media',
+        consulting: 'Consulting',
+        marketing: 'Marketing',
+      },
+    },
+    actions: {
+      save: 'Update profile',
+    },
+    feedback: {
+      success: 'Profile updated successfully.',
+      error: 'Update failed. Please try again later.',
+    },
+  },
+  appFooter: {
+    description: 'An AI content detection and intelligent writing platform for academia, media, and enterprises.',
+    subscribe: {
+      title: 'Subscribe for updates',
+      placeholder: 'Enter your email for product news',
+      cta: 'Subscribe',
+    },
+    copyright: '© {year} Veritascribe. All rights reserved.',
+    columns: {
+      product: {
+        title: 'Product',
+        links: [
+          { label: 'Capabilities', href: '#capabilities' },
+          { label: 'Workflow', href: '#workflow' },
+          { label: 'Pricing', href: '#pricing' },
+          { label: 'Start trial', href: '#trial' },
+        ],
+      },
+      company: {
+        title: 'Company',
+        links: [
+          { label: 'Higher education', href: '#showcase' },
+          { label: 'Newsrooms', href: '#showcase' },
+          { label: 'Enterprise compliance', href: '#showcase' },
+          { label: 'API platform', href: '#' },
+        ],
+      },
+      resources: {
+        title: 'Resources',
+        links: [
+          { label: 'FAQ', href: '#faq' },
+          { label: 'Whitepaper', href: '#' },
+          { label: 'Security', href: '#' },
+          { label: 'Contact', href: '#' },
+        ],
+      },
+    },
+  },
   hero: {
-    title: 'Detect AI-generated content with RepreGuard',
-    subtitle:
-      'Identify, score, and explain AI-written passages across documents, assignments, and creative drafts.',
-    primary: 'Start scanning',
-    secondary: 'View pricing',
-    stats: {
-      accuracy: 'Model accuracy benchmarked across GPT, Claude, and Gemini outputs.',
-      turnaround: 'Real-time scoring and highlighted explanations.',
-      universities: 'Trusted by universities worldwide.',
-    },
-  },
-  trust: {
-    title: 'Trusted by compliance and security teams',
-    items: ['SOC 2 certified', 'FERPA-aligned data handling', 'GDPR ready', 'Data encrypted at rest'],
-  },
-  capabilities: {
-    title: 'Capabilities that go beyond detection',
-    description: 'Guide writers with transparent AI probabilities, source attributions, and content policies.',
-    items: [
-      {
-        title: 'Mixed-model AI detection',
-        description: 'Blend multiple detectors to lower false positives with transparent scores.',
-      },
-      {
-        title: 'Content safety checks',
-        description: 'Flag hallucinations, policy violations, and risky claims automatically.',
-      },
-      {
-        title: 'Plagiarism and citations',
-        description: 'Scan for copied passages and missing citations side by side.',
-      },
-      {
-        title: 'Writing insights',
-        description: 'Return human-readable feedback for clarity, tone, and originality.',
-      },
+    badge: '🏆 #1 AI Detector · New V2.0 is live',
+    titlePrefix: 'Detect and resolve',
+    titleHighlight: 'AI-generated text',
+    subtitle: 'Veritascribe unifies detection, polishing, translation, and citation checks into one workspace. Paste or upload text and get RepreGuard-grade risk analysis and rewrite guidance.',
+    primaryCta: 'Explore the workspace',
+    secondaryCta: 'View polishing workflow →',
+    trust: 'Trusted by 2,000+ creators',
+    highlights: [
+      'Paragraph-level AI probability heatmaps',
+      'Preserves paragraph structure and citations',
+      'Supports TXT / DOC / PDF formats',
+      'Polish and translation share the same context',
     ],
-  },
-  workflow: {
-    title: 'How teams review AI content',
-    steps: [
-      {
-        title: 'Import any file',
-        description: 'Drag TXT, DOCX, or PDF files to begin scanning instantly.',
-      },
-      {
-        title: 'Review flagged areas',
-        description: 'Check heatmaps, probability scores, and suggested citations.',
-      },
-      {
-        title: 'Share reports',
-        description: 'Export clean reports for students, writers, or compliance.',
-      },
-    ],
-  },
-  showcase: {
-    title: 'Built for classrooms and publishers',
-    cards: [
-      {
-        title: 'Higher education',
-        description: 'Keep academic integrity with transparent AI scoring.',
-      },
-      {
-        title: 'Newsrooms',
-        description: 'Check sourcing and originality before publishing.',
-      },
-      {
-        title: 'Enterprises',
-        description: 'Meet compliance requirements with auditable reports.',
-      },
-    ],
-  },
-  testimonials: {
-    title: 'Teams stay confident with RepreGuard',
-    quote:
-      'RepreGuard reduces our AI false positive rate while giving reviewers clear, actionable explanations.',
-    author: 'Director of Academic Integrity, US University',
-  },
-  pricingPreview: {
-    title: 'Simple pricing to start detecting today',
-    subtitle: 'Choose the plan that matches your review volume.',
-    cta: 'View full pricing',
-  },
-  cta: {
-    title: 'Ready to scan your next document?',
-    subtitle: 'Detect AI-generated text, flag risks, and export transparent reports.',
-    button: 'Start scanning',
-  },
-  footer: {
-    links: ['Product', 'Security', 'Support', 'Status', 'Documentation'],
-    copyright: '© 2024 RepreGuard. All rights reserved.',
-  },
-  pricingPage: {
-    statusBanner: {
-      onPlan: "You're on a {plan}.",
-      limit: 'You have access to 10,000 words a month.',
-      close: 'Close banner',
+    previewBadge: 'Live scan preview',
+    form: {
+      label: 'Paste or enter text',
+      reset: 'Reset',
+      placeholder: 'Paste text or click an example below to preview the RepreGuard AI detection experience.',
     },
-    hero: {
-      title: 'Words that matter start with the right plan.',
-      subtitle: 'Choose the AI detection workflow that matches your team size and compliance requirements.',
+    examples: {
+      title: 'Try these examples:',
+      wordCount: 'Words: {current}/{limit}',
+      selectedFunctions: 'Selected: {value}',
+      uploaded: 'Uploaded: {name}',
     },
-    billing: {
-      annual: 'Annual (Save 45%)',
-      monthly: 'Monthly',
+    uploading: 'Reading...',
+    upload: 'Upload file',
+    scan: 'Scan',
+    functions: {
+      scan: 'AI Scan',
+      polish: 'Polish',
+      translate: 'Translate',
+      citation: 'Citation check',
     },
-    plans: {
-      free: {
-        name: 'FREE',
-        description: 'Essential RepreGuard safeguards for individuals testing AI content.',
-        limit: '10,000 words per month',
-        features: ['Basic AI Scan', '5 Free Advanced Scans'],
+    avatars: {
+      first: 'A',
+      second: 'L',
+      third: 'M',
+    },
+  },
+  capabilitiesSection: {
+    badge: 'Full-stack capability matrix',
+    title: 'Detection, polishing, translation — the unified writing hub',
+    subtitle: 'Blending semantic models, style evaluation, and cross-language alignment, Veritascribe equips every role with a full toolchain from creation to review.',
+    cta: 'Explore the workflow',
+    cards: {
+      deepDetection: {
+        title: 'Deep AI detection',
+        description: 'Powered by RepreGuard comparisons to surface paragraph-level AI traces with explanations.',
+        tag: 'Detection',
+        points: ['Lexical, syntactic, and semantic evidence chains', 'Probability heatmaps and sentence reports', 'PDF, DOCX, and Markdown support'],
       },
-      essential: {
-        name: 'ESSENTIAL',
-        description: 'Expanded detection muscle with RepreGuard mixed-model comparisons.',
-        limit: '150,000 words per month',
-        features: [
-          'Basic AI Scan',
-          'Up to 150,000 words per month',
-          'Premium AI detection models',
-          'Plagiarism scanning',
-          'Advanced Grammar and Writing feedback',
-        ],
+      polish: {
+        title: 'Intelligent polishing',
+        description: 'Context-aware suggestions with style presets to keep writing natural and reliable.',
+        tag: 'Polish',
+        points: ['Three adjustable intensity levels', 'Preserves terms and citations', 'One-click human-style rewrites'],
       },
-      premium: {
-        name: 'PREMIUM',
-        description: 'Our most popular toolkit powered by RepreGuard deep scan layers.',
-        limit: '300,000 words per month',
-        features: [
-          'Everything in Essential',
-          'Up to 300,000 words per month',
-          'AI watermarking detection',
-          'Advanced source corroboration',
-          'Citation assistant and writing feedback',
-        ],
+      translate: {
+        title: 'Collaborative translation',
+        description: 'Translate 20+ languages while highlighting AI risks and recommending human edits.',
+        tag: 'Translate',
+        points: ['Terminology sync and memory', 'Instant bilingual exports', 'Shared translation memories'],
+      },
+    },
+  },
+  workflowSection: {
+    title: 'Trusted content starts here',
+    subtitle: 'Collaboration workflows designed for education, media, and enterprise review so teams can detect, polish, translate, and archive in one place.',
+    steps: {
+      import: {
+        title: 'Import in bulk and get paragraph-level reports',
+        description: 'Paste text, upload files, or connect an API to generate AI probability heatmaps and flags automatically.',
+        chips: ['API access', 'Multi-format upload', 'Paragraph heatmaps'],
+      },
+      polish: {
+        title: 'Polish with human tone intact',
+        description: 'Choose tone targets and industry lexicons, export side-by-side drafts with human style preserved.',
+        chips: ['Style transfer', 'Lexicon management', 'Side-by-side export'],
+      },
+      translate: {
+        title: 'Collaborative translation review',
+        description: 'Flag risky sentences during translation, assign tasks, and track versions collaboratively.',
+        chips: ['Translation memory', 'Inline annotations', 'Version tracking'],
+      },
+    },
+    snapshot: {
+      badge: 'Workspace snapshot',
+      title: 'Team compliance health 92%',
+      subtitle: 'Monitor compliance in real time and surface anomalies for review.',
+      metrics: {
+        documents: 'Documents scanned this week',
+        risk: 'High-risk passages',
+        polish: 'Polish completion rate',
+      },
+      values: {
+        documents: '482 files',
+        risk: '12 flags',
+        polish: '87%',
+      },
+      cta: 'Go to dashboard',
+    },
+  },
+  showcaseSection: {
+    title: 'AI content governance for real-world scenarios',
+    subtitle: 'From educators to newsrooms and legal teams, Veritascribe offers ready-to-use templates and reports that reduce review costs and lift writing quality.',
+    cta: 'Download the playbook',
+    metricLabel: 'Key metric · {value}',
+    more: 'Learn more',
+    cases: {
+      education: {
+        title: 'Academic integrity review',
+        description: 'Run automated checks and polishing before submission, exporting traceable reports and human rewrite suggestions.',
+        tag: 'Higher Education',
+        metric: 'Covered 420 universities',
+        points: ['Turnitin/RepreGuard dual-engine checks', 'Batch thesis and assignment uploads', 'Shareable PDF review reports'],
+      },
+      newsroom: {
+        title: 'Newsroom copy review',
+        description: 'Detect AI passages in real time and offer human-style rewrites to keep brand voice consistent.',
+        tag: 'Newsroom',
+        metric: 'Publishing efficiency +38%',
+        points: ['Newsroom style templates', 'Automatic risk highlights', 'CMS workflow integration'],
       },
       enterprise: {
-        name: 'ENTERPRISE',
-        description: 'Custom detection, policy enforcement, and integrations for teams.',
-        limit: 'Custom volume and compliance controls',
-        features: [
-          'SSO/SAML',
-          'Admin analytics dashboards',
-          'Custom AI model evaluation',
-          'API & LMS integrations',
-          'Dedicated success manager',
-        ],
+        title: 'Enterprise compliance & brand safety',
+        description: 'Review marketing and external statements to ensure AI output meets brand and compliance standards.',
+        tag: 'Enterprise',
+        metric: 'Compliance risk -62%',
+        points: ['Custom sensitive word lists', 'Multi-role approval flows', 'Audit logs and exports'],
       },
     },
-    badges: {
-      bestValue: 'Most Popular',
-    },
-    periods: {
-      month: 'month',
-      year: 'year',
-    },
-    table: {
-      title: 'Compare Plans',
-      subtitle: 'See which RepreGuard-powered toolkit fits your workflow.',
-      feature: 'Feature',
-      sections: [
-        {
-          name: 'Detection',
-          rows: [
-            'Basic AI Scan',
-            'Advanced Scan',
-            'AI watermarking detection',
-            'Multiple detection models',
-            'Bulk scanning',
-          ],
-        },
-        {
-          name: 'Collaboration',
-          rows: ['Report export', 'Commenting', 'Team seats'],
-        },
-        {
-          name: 'Support',
-          rows: ['Email support', 'Dedicated success manager'],
-        },
-      ],
-    },
-    cards: {
-      teams: {
-        title: 'Teams Plans',
-        badge: 'BEST FOR SCHOOLS',
-        description: 'Purchase multiple plans for your organization.',
-        price: 'Starting at $24.99 / user / month',
-        actions: {
-          schedule: 'Schedule Demo',
-          open: 'Team Plans',
-        },
+  },
+  testimonialsSection: {
+    title: 'Industry voices and real feedback',
+    subtitle: 'How universities, media, and enterprise teams use Veritascribe to speed up review, polishing, and translation workflows.',
+    badge: 'All testimonials verified for authenticity',
+    items: {
+      first: {
+        quote: 'Paragraph-level AI heatmaps let us pinpoint suspicious content faster, doubling review efficiency.',
+        author: 'Jingyi Wang',
+        role: 'Fudan University · Academic Integrity',
+        metric: 'Review speed +102%',
+        context: 'Using since 2023',
       },
-      api: {
-        title: 'API Plans',
-        description: 'View our API plans, which allow you to integrate RepreGuard with your organization’s software.',
-        actions: {
-          schedule: 'Schedule Demo',
-          open: 'API Plans',
-        },
+      second: {
+        quote: 'We can polish and translate while on deadline, keeping every article on-brand before publishing.',
+        author: 'Laura Chen',
+        role: 'South China Morning Post · Senior Editor',
+        metric: 'Style consistency 95%',
+        context: 'Cross-language newsroom',
       },
+      third: {
+        quote: 'After API integration, marketing assets are automatically scanned and archived, reducing legal load dramatically.',
+        author: 'Yuchen Liu',
+        role: 'NIO · Compliance Lead',
+        metric: 'Compliance risk -58%',
+        context: 'Across 12 business units',
+      },
+    },
+  },
+  pricingPreview: {
+    title: 'Flexible pricing for every team size',
+    subtitle: 'From solo creators to enterprise compliance teams, Veritascribe offers transparent usage-based plans with full RepreGuard detection and polishing.',
+    badge: 'Most popular',
+    period: ' / month',
+    cta: 'View full pricing',
+    plans: {
+      creator: {
+        name: 'Creator',
+        description: 'Best for individuals and freelancers with core detection and polishing tools.',
+        price: '$129',
+        features: ['200k words per month', 'Real-time polishing and translation', 'Export PDF reports'],
+      },
+      team: {
+        name: 'Team',
+        description: 'Ideal for small teams with collaboration and API access.',
+        price: '$429',
+        features: ['800k words per month', '10 team seats', 'API & Webhook integrations', 'Style and glossary management'],
+      },
+      enterprise: {
+        name: 'Enterprise',
+        description: 'Compliance suite for enterprise and universities with expert support.',
+        price: 'Custom',
+        features: ['Unlimited detection volume', 'Private deployments', 'SAML SSO', '24/7 success support'],
+      },
+    },
+  },
+  callToAction: {
+    badge: 'Free trial open',
+    title: '30 days of premium features with 100k words included',
+    subtitle: 'Connect to Veritascribe and start building trusted content. No credit card required, cancel anytime.',
+    placeholder: 'Enter work email to receive your trial link',
+    cta: 'Claim trial',
+    note: 'Supports enterprise SSO · Built for education, media, and enterprise',
+  },
+  trustIndicators: {
+    title: 'Trusted by institutions worldwide',
+    logos: ['Tsinghua University Press', 'Xinhua News Agency', 'Oxford Press', 'Tencent EDU', 'Huawei Cloud', 'South China Morning Post'],
+  },
+  homePage: {
+    examples: {
+      badge: 'Usage examples',
+      title: 'Understand the detection experience fast',
+      subtitle: 'See example documents and snapshots to understand the full flow from upload to export.',
+      cta: 'View examples',
+      tryNow: 'Try now',
     },
   },
   scan: {
@@ -259,29 +524,28 @@ export default {
       multiUpload: 'Bulk upload',
     },
     sidebarTip: 'Drag TXT / DOCX / PDF files into the editor to import automatically.',
+    home: {
+      examplesCta: 'Usage examples',
+      examplesHint: 'Review example documents and snapshots to get familiar quickly.',
+    },
     welcome: {
       title: 'Welcome, {name}',
-      plan: '{plan} Plan',
-      quotes: [
-        'Quality feedback builds trust faster than strict scoring.',
-        'Explain the why behind every AI probability.',
-        'Flag the risk and provide a remediation path.',
-      ],
     },
+    quotes: [
+      '“To survive, you must tell stories.” — Umberto Eco.',
+      '“Writing is thinking. To write well is to think clearly.” — David McCullough.',
+      '“The secret of getting ahead is getting started.” — Mark Twain.',
+      '“Clarity precedes mastery.” — Robin Sharma.',
+      '“Precision builds trust in every insight.” — Veritascribe Research.',
+    ],
     quickLaunch: {
       badge: 'Quick launch',
       title: 'New scan',
-      description: 'Have text ready? Jump back into the editor to start a RepreGuard check.',
+      description: 'Have text or files ready? Jump back into the editor to start a RepreGuard scan.',
     },
     features: {
       title: 'Feature Capsules',
       subtitle: 'Tap to learn more',
-      cards: [
-        { title: 'Plagiarism scan', subtitle: 'Cross-checks academic sources.', tag: 'New' },
-        { title: 'AI explainability', subtitle: 'Rationales for probability scores.', tag: 'Beta' },
-        { title: 'Writing coach', subtitle: 'Actionable writing suggestions.' },
-        { title: 'Policy checks', subtitle: 'Maps content to custom policies.' },
-      ],
     },
     educator: {
       badge: 'New for Educators',
@@ -291,12 +555,214 @@ export default {
     },
     integrations: {
       title: 'More ways to scan...',
-      buttons: [
-        { label: 'Google Docs Add-on' },
-        { label: 'Export report' },
-        { label: 'Share to LMS' },
-        { label: 'Download CSV' },
-      ],
+      buttons: {
+        multiUpload: 'Multi-file Upload',
+        api: 'API',
+        chrome: 'Chrome',
+        canvas: 'Canvas',
+        moodle: 'Moodle',
+        zapier: 'Zapier',
+        docs: 'Google Docs',
+        classroom: 'Google Classroom',
+      },
+    },
+    featureModal: {
+      placeholder: 'Demo animation placeholder',
+    },
+    featureCards: {
+      advanced: {
+        title: 'Advanced scan',
+        subtitle: 'Multi-model rechecks to catch subtle AI traces',
+        tooltip: 'Advanced scan',
+        modalTitle: 'Unlock Advanced Scan. Diagnose authorship with depth.',
+        modalSubtitle: 'Layer multi-model comparisons to surface nuance and authorship signals instantly.',
+        buttonLabel: 'Upgrade to try',
+      },
+      xl: {
+        title: 'XL Documents',
+        subtitle: 'Segmented detection for 50-page documents',
+        tooltip: 'XL support',
+        modalTitle: 'Scan XL Documents. Go beyond a basic AI checker.',
+        modalSubtitle: 'Scan up to 50 pages, page by page, simultaneously.',
+        buttonLabel: 'Upgrade to try',
+      },
+      vocabulary: {
+        title: 'AI Vocabulary',
+        subtitle: 'Curated lexicons keep tone consistent',
+        tooltip: 'Vocabulary helper',
+        tag: 'ENABLED',
+        modalTitle: 'Grow an AI Vocabulary. Keep tone precise and consistent.',
+        modalSubtitle: 'Activate curated phrases that reinforce your institution’s voice across every document.',
+        buttonLabel: 'Try it now — it’s free',
+      },
+      citation: {
+        title: 'Citation check',
+        subtitle: 'Cross-check citations for trusted sources',
+        tooltip: 'Citation check',
+        modalTitle: 'Run Citation Check. Trust every sourced claim.',
+        modalSubtitle: 'Automatically cross-reference statements with academic databases before submission.',
+        buttonLabel: 'Upgrade to try',
+      },
+      plagiarism: {
+        title: 'Plagiarism',
+        subtitle: 'Cross-platform checks to protect originality',
+        tooltip: 'Plagiarism scan',
+        modalTitle: 'Deploy Plagiarism Guard. Compare across millions of sources.',
+        modalSubtitle: 'Scan assignments against research archives and LMS submissions simultaneously.',
+        buttonLabel: 'Upgrade to try',
+      },
+    },
+    editor: {
+      reset: 'Reset',
+      placeholder: 'Drag files or paste text to start intelligent detection.',
+      previewEmpty: 'View highlighted results here once the scan is complete.',
+      dropTitle: 'Release to upload document',
+      dropSubtitle: 'Supports TXT / DOCX / PDF / Markdown formats',
+      autosave: 'Drafts auto-save so refresh will not lose content.',
+      selectedFunctions: 'Selected: {value}',
+      examples: 'Try these examples',
+      loginHint: 'Log in to save scan history, export reports, and manage team credits.',
+      wordCount: 'Words: {current}/{limit}',
+      uploaded: 'Uploaded: {name}',
+      modes: {
+        edit: 'Edit mode',
+        preview: 'Highlight preview',
+      },
+    },
+    results: {
+      menuTitle: 'Scan menu',
+      menuSubtitle: 'Select functions and view results',
+      verification: 'Verification',
+      enhancement: 'Enhancement',
+      summary: {
+        title: 'Detection Analysis',
+        badge: 'Model V3.0',
+        label: 'AI Probability',
+        ai: 'AI Generated',
+        mixed: 'Mixed / Paraphrased',
+        human: 'Human Written',
+        aiLabel: 'AI',
+        mixedShort: 'Mixed',
+        humanShort: 'Human',
+      },
+      export: 'Export report',
+      exportHint: 'Download the JSON snapshot for sharing or archiving.',
+      probability: 'Probability {value}%',
+      translation: 'Translation results',
+      polish: 'Polish suggestions',
+      apply: 'Apply',
+      applyHint: 'Rescan after applying to refresh results.',
+      citation: 'Citation check',
+      citationHint: 'Citation checking is placeholder logic and can connect to real databases later.',
+      startScan: 'Start scan',
+    },
+    toolbar: {
+      bulleted: '• List',
+      numbered: '1. List',
+      alignLeft: 'Align left',
+      alignCenter: 'Center',
+      alignRight: 'Align right',
+      fontSize: 'Font size',
+      fontSizes: {
+        small: '12px',
+        base: '14px',
+        lg: '16px',
+        xl: '18px',
+        '2xl': '24px',
+      },
+      upload: 'Upload file',
+      scanning: 'Scanning...',
+      start: 'Start scan',
+    },
+    history: {
+      title: 'History',
+      subtitle: 'Review recent scan, polish, and translation tasks',
+      back: 'Back to editor',
+      recentTitle: 'Recent records',
+      recentSubtitle: 'Select a record to view detailed analysis',
+      recordFallback: 'Scan record',
+      savedBadge: 'Saved Result',
+      functions: 'Functions: {value}',
+      saved: 'Saved',
+      previewTitle: 'Original highlight preview',
+      summaryTitle: 'AI detection summary',
+      aiLikely: 'Potential AI-like sentences {value}',
+      aiLikelyHint: 'Total sentences with AI or mixed characteristics',
+      emptyRecord: 'No history results available yet. Please try again later.',
+      empty: 'No history yet. Complete a scan to review results here.',
+      summaryLine: 'AI {ai}% · Mixed {mixed}% · Human {human}%',
+      fileLabel: 'File · {name}',
+    },
+    emptyState: 'Select a panel on the left to continue.',
+    loginPrompt: {
+      default: 'Log in to view full detection results.',
+      loginFirst: 'Please log in to start scanning and view results.',
+      inputFirst: 'Enter text or upload a file before scanning.',
+    },
+    user: {
+      guest: 'Guest',
+    },
+    planTags: {
+      team: 'TEAM',
+      edu: 'EDU',
+      pro: 'PRO',
+      free: 'FREE',
+    },
+    separator: ', ',
+    onboarding: {
+      upload: {
+        label: 'Upload document',
+        description: 'Drag or select files to upload and extract text.',
+      },
+      scan: {
+        label: 'Start scan',
+        description: 'Select functions and click “Start scan” to get results.',
+      },
+      review: {
+        label: 'Review report',
+        description: 'Browse sentence-level insights in the preview and result tabs.',
+      },
+      export: {
+        label: 'Export report',
+        description: 'Export detection results to JSON for sharing.',
+      },
+    },
+    functions: {
+      scan: 'AI Scan',
+      polish: 'Polish',
+      translate: 'Translate',
+      citation: 'Citation check',
+    },
+    citation: {
+      status: {
+        missing: 'Missing citation',
+        pending: 'Pending verification',
+        found: 'Source found',
+      },
+      fallbacks: {
+        missing: ['Missing citation', '缺失引用'],
+        pending: ['Pending verification', '待验证'],
+        found: ['Source found', '已找到线索'],
+      },
+    },
+    simulation: {
+      reasons: {
+        ai: 'Repetitive structure and lack of concrete details suggest templated generation.',
+        mixed: 'Some sentences are natural but include common model transitions and generalizations.',
+        human: 'Personal details and nuance read like genuine human writing.',
+      },
+      emptyTranslation: 'No analyzable sentences yet. Please enter text and rescan.',
+      emptyContent: 'No content yet. Please enter text.',
+      translationLine: 'Sentence {index}: {text} → {translated} [Sample translation]',
+      polishSuggestion: '{text}, add more concrete facts and data to strengthen credibility.',
+      polishReasonHuman: 'Refine tone to keep style consistent.',
+      polishReasonAi: 'Rewrite structure and add detail to reduce AI traces.',
+      citationNoteMissing: 'No authoritative sources detected. Please add citations.',
+      citationNotePending: 'Please add sources or verify existing citations.',
+      citationNoteFound: 'Potential source found. Please confirm formatting.',
+    },
+    export: {
+      filename: 'ai-detection-report.json',
     },
   },
   auth: {
@@ -313,6 +779,10 @@ export default {
       errors: {
         missing: 'Please enter your account and password.',
         failed: 'Login failed, please try again later.',
+      },
+      notice: {
+        title: 'Security reminder',
+        body: 'Keep your account details private. After login, your scan history and team quotas sync automatically.',
       },
     },
     register: {
@@ -331,6 +801,220 @@ export default {
       errors: {
         missing: 'Please fill in all fields.',
         failed: 'Registration failed, please try again.',
+      },
+      notice: {
+        title: 'Registration note',
+        body: 'Your trial quota activates immediately after registration so you can test detection, polishing, and translation.',
+      },
+    },
+  },
+  pricingPage: {
+    statusBanner: {
+      onPlan: 'You’re on a',
+      planName: 'Free Plan',
+      limit: 'You have access to 10,000 words per month.',
+      close: 'Close banner',
+    },
+    hero: {
+      badge: 'Pricing',
+      title: 'Flexible pricing for every team size',
+      subtitle: 'Choose the RepreGuard plan that fits your team and compliance needs.',
+    },
+    billing: {
+      annual: 'Annual (Save 45%)',
+      monthly: 'Monthly',
+    },
+    plans: {
+      free: {
+        name: 'FREE',
+        displayName: 'Free',
+        description: 'Essential RepreGuard safeguards for individuals testing AI content.',
+        limit: '10,000 words per month',
+        price: {
+          annual: '$0.00',
+          monthly: '$0.00',
+        },
+        features: ['Basic AI Scan', '5 Free Advanced Scans'],
+      },
+      essential: {
+        name: 'ESSENTIAL',
+        displayName: 'Essential',
+        description: 'Expanded detection muscle with RepreGuard mixed-model comparisons.',
+        limit: '150,000 words per month',
+        price: {
+          annual: '$99.96',
+          monthly: '$9.99',
+        },
+        features: [
+          'Basic AI Scan',
+          'Up to 150,000 words per month',
+          'Premium AI detection models',
+          'Plagiarism scanning',
+          'Advanced grammar and writing feedback',
+        ],
+      },
+      premium: {
+        name: 'PREMIUM',
+        displayName: 'Pro',
+        description: 'Our most popular toolkit powered by RepreGuard deep scan layers.',
+        limit: '300,000 words per month',
+        price: {
+          annual: '$155.88',
+          monthly: '$15.99',
+        },
+        features: [
+          'Everything in Essential',
+          'Up to 300,000 words per month',
+          'Advanced AI deep scan',
+          'Multilingual AI detection',
+          'Download AI reports',
+        ],
+      },
+      professional: {
+        name: 'PROFESSIONAL',
+        displayName: 'Enterprise',
+        description: 'Scale your compliance team with enterprise-grade workflows.',
+        limit: '500,000 words per month',
+        price: {
+          annual: '$299.88',
+          monthly: '$29.99',
+        },
+        features: [
+          'All of Premium',
+          'Up to 10 million words overage',
+          'Scan up to 250 files at once',
+          'Page-by-page scanning',
+          'Enterprise-grade security LMS integration',
+        ],
+      },
+    },
+    badges: {
+      bestValue: 'Recommended',
+    },
+    periods: {
+      month: 'month',
+      year: 'year',
+    },
+    actions: {
+      purchase: 'Purchase / Upgrade',
+    },
+    cards: {
+      teams: {
+        title: 'Teams Plans',
+        badge: 'BEST FOR SCHOOLS',
+        description: 'Purchase multiple plans for your organization.',
+        price: 'Starting at $24.99 / user / month',
+        actions: {
+          schedule: 'Schedule Demo',
+          open: 'Team Plans',
+        },
+      },
+      api: {
+        title: 'API Plans',
+        description: 'View our API plans to integrate RepreGuard with your organization’s software.',
+        actions: {
+          schedule: 'Schedule Demo',
+          open: 'API Plans',
+        },
+      },
+    },
+    teamBlock: {
+      title: 'Team collaboration',
+      subtitle: 'Add members and manage seats right from the pricing page.',
+      badge: 'TEAM',
+      copy: 'Copy invite link',
+      manage: 'Seat management',
+      hint: 'Invite members or adjust seat count anytime.',
+      toast: {
+        copied: 'Invite link copied. Share it with your team.',
+        link: 'Invite link: {link}',
+        seat: 'Seat management opened. We will reserve seats for your team.',
+      },
+    },
+    table: {
+      title: 'Compare Plans',
+      subtitle: 'See which RepreGuard toolkit fits your workflow.',
+      feature: 'Feature',
+      plans: ['FREE', 'ESSENTIAL', 'PREMIUM', 'PROFESSIONAL'],
+      sections: [
+        {
+          name: 'Detection features',
+          rows: [
+            { label: 'Words per month', values: ['10,000', '150,000', '300,000', '500,000'] },
+            { label: 'Character limit per scan', values: ['10,000', '50,000', '50,000', '150,000'] },
+            { label: 'Multi-model AI detection (Gemini, Claude, LLaMA, etc.)', values: [true, true, true, true] },
+            { label: 'Mixed AI and human text detection', values: [true, true, true, true] },
+            { label: 'Sentence-level AI highlighting', values: [true, true, true, true] },
+            { label: 'AI Vocabulary Scan', values: [false, false, true, true] },
+            { label: 'Paraphraser and AI bypasser detection', values: [false, false, true, true] },
+            { label: 'Batch upload file limit', values: ['3', '3', '50', '250'] },
+            { label: 'Advanced AI scan', values: ['5 Free', '5 Free', true, true] },
+            { label: 'Downloadable AI report', values: [false, false, true, true] },
+            { label: 'Plagiarism checker', values: [false, true, true, true] },
+            { label: 'Page by page scanning', values: [false, false, false, true] },
+          ],
+        },
+        {
+          name: 'Writing features',
+          rows: [
+            { label: 'Grammar check', values: [true, true, true, true] },
+            { label: 'Writing feedback', values: [false, true, true, true] },
+            { label: 'Find sources and auto-generate citations', values: [false, false, true, true] },
+          ],
+        },
+        {
+          name: 'Collaboration features',
+          rows: [
+            { label: 'Enterprise-grade security and privacy', values: [false, true, true, true] },
+            { label: 'Roles, account provisioning, shared billing across teams', values: [false, false, false, true] },
+            { label: 'Custom LMS integration (Canvas, Google Classroom, Moodle)', values: [false, false, false, true] },
+          ],
+        },
+      ],
+    },
+    paymentMethods: {
+      alipay: {
+        label: 'Alipay',
+        description: 'Ideal for domestic accounts with real-time settlement.',
+      },
+      wechat: {
+        label: 'WeChat Pay',
+        description: 'Scan or in-app payments optimized for mobile.',
+      },
+      card: {
+        label: 'Credit Card / PayPal',
+        description: 'Use international credit cards or PayPal for checkout.',
+      },
+    },
+    checkout: {
+      badge: 'Checkout',
+      subtitle: 'Choose billing cycle and payment method to create your order.',
+      close: 'Close checkout modal',
+      billing: 'Billing cycle',
+      paymentMethod: 'Payment method',
+      summary: 'Order summary',
+      confirm: 'Confirm payment',
+      note: 'For enterprise procurement, contact our team advisor.',
+      quotaFallback: 'Usage-based quota',
+      team: {
+        title: 'Team quick access',
+        subtitle: 'Invite members and assign seats from the team dashboard after payment.',
+      },
+      status: {
+        creating: 'Creating order...',
+        paying: 'Awaiting payment confirmation...',
+        success: 'Payment successful. Quota refreshed.',
+        failed: 'Payment failed: {message}',
+        failedFallback: 'Please try again later.',
+        canceled: 'Payment canceled. You can resubmit.',
+      },
+      messages: {
+        orderCreated: 'Order created. Awaiting payment result...',
+        refreshing: 'Payment successful. Refreshing plan...',
+        updated: 'Plan and quota updated.',
+        canceled: 'Payment canceled.',
+        failed: 'Payment failed. Please try again later.',
+        error: 'Payment error. Please try again later.',
       },
     },
   },

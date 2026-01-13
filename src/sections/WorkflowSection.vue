@@ -2,9 +2,9 @@
   <section id="workflow" class="py-24">
     <div class="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
       <div class="max-w-3xl">
-        <h2 class="section-title">可信内容从这里开始</h2>
+        <h2 class="section-title">{{ t('workflowSection.title') }}</h2>
         <p class="section-subtitle">
-          面向教学、媒体与企业审核场景设计的协作流程，让团队在一套产品中完成检测、润色、翻译与输出备案。
+          {{ t('workflowSection.subtitle') }}
         </p>
       </div>
       <div class="mt-16 grid gap-8 lg:grid-cols-[1.4fr_1fr]">
@@ -35,22 +35,22 @@
         </div>
         <aside class="flex flex-col justify-between rounded-2xl border border-slate-200 bg-white p-8 shadow-sm">
           <div>
-            <p class="text-xs font-semibold uppercase tracking-[0.3em] text-primary-600">识别工作台快照</p>
-            <h3 class="mt-4 text-2xl font-semibold tracking-tight text-slate-900">团队合规健康度 92%</h3>
-            <p class="mt-3 text-sm text-slate-600">实时监控团队写作合规性，自动推送异常段落与人工复核任务。</p>
+            <p class="text-xs font-semibold uppercase tracking-[0.3em] text-primary-600">{{ t('workflowSection.snapshot.badge') }}</p>
+            <h3 class="mt-4 text-2xl font-semibold tracking-tight text-slate-900">{{ t('workflowSection.snapshot.title') }}</h3>
+            <p class="mt-3 text-sm text-slate-600">{{ t('workflowSection.snapshot.subtitle') }}</p>
           </div>
           <dl class="mt-8 space-y-5">
             <div class="flex items-center justify-between">
-              <dt class="text-sm font-medium text-slate-500">本周检测文档</dt>
-              <dd class="text-xl font-semibold text-slate-900">482 份</dd>
+              <dt class="text-sm font-medium text-slate-500">{{ t('workflowSection.snapshot.metrics.documents') }}</dt>
+              <dd class="text-xl font-semibold text-slate-900">{{ t('workflowSection.snapshot.values.documents') }}</dd>
             </div>
             <div class="flex items-center justify-between">
-              <dt class="text-sm font-medium text-slate-500">高风险段落</dt>
-              <dd class="text-xl font-semibold text-slate-900">12 处</dd>
+              <dt class="text-sm font-medium text-slate-500">{{ t('workflowSection.snapshot.metrics.risk') }}</dt>
+              <dd class="text-xl font-semibold text-slate-900">{{ t('workflowSection.snapshot.values.risk') }}</dd>
             </div>
             <div class="flex items-center justify-between">
-              <dt class="text-sm font-medium text-slate-500">润色完成率</dt>
-              <dd class="text-xl font-semibold text-slate-900">87%</dd>
+              <dt class="text-sm font-medium text-slate-500">{{ t('workflowSection.snapshot.metrics.polish') }}</dt>
+              <dd class="text-xl font-semibold text-slate-900">{{ t('workflowSection.snapshot.values.polish') }}</dd>
             </div>
           </dl>
           <button
@@ -58,7 +58,7 @@
             class="mt-10 inline-flex items-center justify-center rounded-full bg-primary-600 px-4 py-3 text-sm font-semibold text-white shadow-sm shadow-primary-200/60 transition hover:-translate-y-0.5 hover:bg-primary-500"
             @click="openDashboard"
           >
-            前往识别页面
+            {{ t('workflowSection.snapshot.cta') }}
           </button>
         </aside>
       </div>
@@ -67,29 +67,32 @@
 </template>
 
 <script setup>
+import { computed } from 'vue';
 import { useRouter } from 'vue-router';
+import { useI18n } from '../i18n';
 import { useScanStore } from '../store/scan';
-
-const steps = [
-  {
-    title: '批量导入文本，获取段落级检测报告',
-    description: '支持粘贴文本、上传文档或接入 API，系统自动生成 AI 概率热力图与可疑段落说明。',
-    chips: ['API 接入', '多格式上传', '段落热力图']
-  },
-  {
-    title: '一键润色并保留人类风格',
-    description: '选择目标语气与行业词库，自动润色语句并保持人工写作习惯，导出对照稿。',
-    chips: ['风格迁移', '词库管理', '对照稿导出']
-  },
-  {
-    title: '多语言翻译与审校协作',
-    description: '翻译文本时同步标注高风险句子，审校成员可直接批注、指派任务并追踪版本。',
-    chips: ['翻译记忆', '协同批注', '版本追踪']
-  }
-];
 
 const router = useRouter();
 const scanStore = useScanStore();
+const { t } = useI18n();
+
+const steps = computed(() => [
+  {
+    title: t('workflowSection.steps.import.title'),
+    description: t('workflowSection.steps.import.description'),
+    chips: t('workflowSection.steps.import.chips'),
+  },
+  {
+    title: t('workflowSection.steps.polish.title'),
+    description: t('workflowSection.steps.polish.description'),
+    chips: t('workflowSection.steps.polish.chips'),
+  },
+  {
+    title: t('workflowSection.steps.translate.title'),
+    description: t('workflowSection.steps.translate.description'),
+    chips: t('workflowSection.steps.translate.chips'),
+  },
+]);
 
 const openDashboard = () => {
   scanStore.commitDraftToStorage();

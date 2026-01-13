@@ -13,14 +13,14 @@
           <path d="M12 4l2.09 4.23 4.67.68-3.38 3.29.8 4.64L12 14.77l-4.18 2.2.8-4.64-3.38-3.29 4.67-.68L12 4z" />
         </svg>
       </span>
-      <span>Upgrade to Premium</span>
+      <span>{{ t('profileArea.upgradePremium') }}</span>
     </button>
     <span class="inline-flex items-center rounded-full bg-slate-200 px-2.5 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-slate-600">
-      FREE
+      {{ t('profileArea.freeBadge') }}
     </span>
     <div class="flex items-center gap-3 text-xs">
       <div class="text-[13px] font-medium text-slate-700">
-        {{ formattedRemaining }} / {{ formattedTotal }} credits left
+        {{ t('profileArea.creditsLeft', { remaining: formattedRemaining, total: formattedTotal }) }}
       </div>
       <div class="relative h-10 w-10">
         <svg viewBox="0 0 36 36" class="h-full w-full">
@@ -60,7 +60,7 @@
         class="hidden items-center justify-center rounded-full border border-slate-200 bg-white px-3.5 py-1.5 text-[13px] font-semibold text-slate-600 transition hover:border-slate-300 hover:text-slate-800 sm:inline-flex"
         @click="$emit('feedback')"
       >
-        Feedback
+        {{ t('profileArea.feedback') }}
       </button>
       <button
         type="button"
@@ -68,14 +68,14 @@
         @click="$emit('upgrade')"
       >
         <span aria-hidden="true">⚡</span>
-        <span>Upgrade</span>
+        <span>{{ t('profileArea.upgrade') }}</span>
       </button>
     </div>
     <div class="flex items-center gap-4">
       <div class="hidden min-w-[200px] flex-1 md:block">
         <div class="flex items-center justify-between text-[11px] font-semibold text-slate-400">
-          <span>{{ compactRemaining }} credits</span>
-          <span>of {{ compactTotal }} remaining</span>
+          <span>{{ t('profileArea.credits', { value: compactRemaining }) }}</span>
+          <span>{{ t('profileArea.remainingOf', { value: compactTotal }) }}</span>
         </div>
         <div class="mt-1.5 h-2 w-full overflow-hidden rounded-full bg-slate-200">
           <div class="h-full rounded-full bg-primary-500" :style="{ width: percentRemaining + '%' }"></div>
@@ -88,6 +88,7 @@
 
 <script setup>
 import { computed } from 'vue';
+import { useI18n } from '../../i18n';
 
 const props = defineProps({
   variant: {
@@ -106,8 +107,9 @@ const props = defineProps({
 
 defineEmits(['upgrade', 'feedback']);
 
-const numberFormatter = new Intl.NumberFormat('en-US');
-const compactFormatter = new Intl.NumberFormat('en-US', { notation: 'compact', maximumFractionDigits: 1 });
+const { t, locale } = useI18n();
+const numberFormatter = computed(() => new Intl.NumberFormat(locale.value));
+const compactFormatter = computed(() => new Intl.NumberFormat(locale.value, { notation: 'compact', maximumFractionDigits: 1 }));
 
 const boundedTotal = computed(() => (Number.isFinite(props.creditsTotal) && props.creditsTotal > 0 ? props.creditsTotal : 0));
 const boundedRemaining = computed(() => {
@@ -123,10 +125,10 @@ const percentRemaining = computed(() => {
 const circumference = 2 * Math.PI * 15;
 const strokeOffset = computed(() => circumference * ((100 - percentRemaining.value) / 100));
 
-const formattedRemaining = computed(() => numberFormatter.format(Math.round(boundedRemaining.value)));
-const formattedTotal = computed(() => numberFormatter.format(Math.round(boundedTotal.value)));
-const compactRemaining = computed(() => compactFormatter.format(Math.round(boundedRemaining.value)));
-const compactTotal = computed(() => compactFormatter.format(Math.round(boundedTotal.value)));
+const formattedRemaining = computed(() => numberFormatter.value.format(Math.round(boundedRemaining.value)));
+const formattedTotal = computed(() => numberFormatter.value.format(Math.round(boundedTotal.value)));
+const compactRemaining = computed(() => compactFormatter.value.format(Math.round(boundedRemaining.value)));
+const compactTotal = computed(() => compactFormatter.value.format(Math.round(boundedTotal.value)));
 </script>
 
 <style scoped>

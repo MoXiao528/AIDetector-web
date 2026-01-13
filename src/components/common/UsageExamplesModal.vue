@@ -8,9 +8,9 @@
       <div class="w-full max-w-4xl rounded-3xl bg-white shadow-2xl">
         <div class="flex items-start justify-between border-b border-slate-200 px-6 py-4">
           <div>
-            <p class="text-xs font-semibold uppercase tracking-[0.3em] text-primary-600">使用示例</p>
-            <h3 class="mt-2 text-xl font-semibold text-slate-900">看看实际文档与检测结果如何呈现</h3>
-            <p class="mt-1 text-sm text-slate-500">示例涵盖学术、营销与技术文档，帮助你快速理解输出格式。</p>
+            <p class="text-xs font-semibold uppercase tracking-[0.3em] text-primary-600">{{ t('usageExamples.badge') }}</p>
+            <h3 class="mt-2 text-xl font-semibold text-slate-900">{{ t('usageExamples.title') }}</h3>
+            <p class="mt-1 text-sm text-slate-500">{{ t('usageExamples.subtitle') }}</p>
           </div>
           <button
             type="button"
@@ -39,13 +39,19 @@
                 <p class="text-sm leading-relaxed text-slate-600">{{ example.description }}</p>
               </div>
               <div class="rounded-2xl bg-white/80 p-4 shadow-inner">
-                <p class="text-[11px] font-semibold uppercase tracking-[0.25em] text-slate-400">结果快照</p>
+                <p class="text-[11px] font-semibold uppercase tracking-[0.25em] text-slate-400">{{ t('usageExamples.snapshot') }}</p>
                 <div class="mt-3 space-y-2 text-sm text-slate-700">
                   <div class="flex items-center gap-2 text-xs text-slate-500">
-                    <span class="inline-flex items-center rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-semibold text-amber-700">AI {{ example.ai }}%</span>
-                    <span class="inline-flex items-center rounded-full bg-violet-100 px-2 py-0.5 text-[11px] font-semibold text-violet-700">Mixed {{ example.mixed }}%</span>
-                    <span class="inline-flex items-center rounded-full bg-emerald-100 px-2 py-0.5 text-[11px] font-semibold text-emerald-700">Human {{ example.human }}%</span>
-                    <span class="ml-auto text-[11px] text-slate-400">快照：{{ example.snapshot }}</span>
+                    <span class="inline-flex items-center rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-semibold text-amber-700">
+                      {{ t('usageExamples.labels.ai', { value: example.ai }) }}
+                    </span>
+                    <span class="inline-flex items-center rounded-full bg-violet-100 px-2 py-0.5 text-[11px] font-semibold text-violet-700">
+                      {{ t('usageExamples.labels.mixed', { value: example.mixed }) }}
+                    </span>
+                    <span class="inline-flex items-center rounded-full bg-emerald-100 px-2 py-0.5 text-[11px] font-semibold text-emerald-700">
+                      {{ t('usageExamples.labels.human', { value: example.human }) }}
+                    </span>
+                    <span class="ml-auto text-[11px] text-slate-400">{{ t('usageExamples.snapshotValue', { value: example.snapshot }) }}</span>
                   </div>
                   <p class="rounded-2xl border border-dashed border-slate-200 bg-slate-50/80 p-3 text-xs leading-relaxed text-slate-600">
                     {{ example.snippet }}
@@ -59,14 +65,14 @@
         <div class="flex items-center justify-between border-t border-slate-200 bg-slate-50 px-6 py-4 text-sm text-slate-500">
           <div class="flex items-center gap-2">
             <span class="inline-flex h-6 w-6 items-center justify-center rounded-full bg-primary-600 text-[11px] font-semibold text-white">i</span>
-            <span>每个示例都可在编辑器中一键载入，方便练习。</span>
+            <span>{{ t('usageExamples.footerNote') }}</span>
           </div>
           <button
             type="button"
             class="rounded-full bg-primary-600 px-4 py-2 text-sm font-semibold text-white shadow hover:bg-primary-500"
             @click="$emit('close')"
           >
-            明白了
+            {{ t('usageExamples.cta') }}
           </button>
         </div>
       </div>
@@ -75,6 +81,8 @@
 </template>
 
 <script setup>
+import { useI18n } from '../../i18n';
+
 defineProps({
   open: {
     type: Boolean,
@@ -85,4 +93,6 @@ defineProps({
     default: () => [],
   },
 });
+
+const { t } = useI18n();
 </script>

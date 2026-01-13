@@ -11,14 +11,14 @@
           <div class="flex flex-col justify-between gap-6">
             <div>
               <div class="flex h-12 w-12 items-center justify-center rounded-2xl bg-primary-600 text-xl font-semibold text-white">
-                V
+                {{ t('common.brandInitial') }}
               </div>
               <h1 class="mt-6 text-3xl font-semibold">{{ t('auth.register.title') }}</h1>
               <p class="mt-2 text-sm text-slate-500">{{ t('auth.register.subtitle') }}</p>
             </div>
             <div class="rounded-2xl border border-slate-200 bg-slate-50 p-5 text-xs text-slate-500">
-              <p class="font-semibold text-slate-700">注册提示</p>
-              <p class="mt-2">注册后将立即开通试用额度，可体验 AI 检测、润色与翻译功能。</p>
+              <p class="font-semibold text-slate-700">{{ t('auth.register.notice.title') }}</p>
+              <p class="mt-2">{{ t('auth.register.notice.body') }}</p>
             </div>
           </div>
           <div>

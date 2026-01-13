@@ -3,13 +3,13 @@
     <div class="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
       <div class="flex flex-col gap-8 lg:flex-row lg:items-end lg:justify-between">
         <div class="max-w-3xl">
-          <h2 class="section-title">为真实场景打造的 AI 内容管控方案</h2>
+          <h2 class="section-title">{{ t('showcaseSection.title') }}</h2>
           <p class="section-subtitle">
-            无论你是高校教师、媒体编辑还是企业法务，Veritascribe 都能提供开箱即用的模板与报告，降低审核成本并提升写作效率。
+            {{ t('showcaseSection.subtitle') }}
           </p>
         </div>
         <a href="#" class="inline-flex items-center text-sm font-semibold text-primary-600 transition hover:text-primary-500">
-          下载方案手册
+          {{ t('showcaseSection.cta') }}
           <svg class="ml-1 h-4 w-4" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" />
           </svg>
@@ -37,9 +37,9 @@
               </li>
             </ul>
             <div class="mt-8 flex items-center justify-between text-sm text-primary-600">
-              <span>关键指标 · {{ useCase.metric }}</span>
+              <span>{{ t('showcaseSection.metricLabel', { value: useCase.metric }) }}</span>
               <span class="inline-flex items-center text-slate-500">
-                了解更多
+                {{ t('showcaseSection.more') }}
                 <svg class="ml-1 h-4 w-4" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" />
                 </svg>
@@ -53,27 +53,32 @@
 </template>
 
 <script setup>
-const useCases = [
+import { computed } from 'vue';
+import { useI18n } from '../i18n';
+
+const { t } = useI18n();
+
+const useCases = computed(() => [
   {
-    title: '高校学术诚信审查',
-    description: '在提交论文前完成自动检测与润色，一键导出可追溯检测报告并生成人工修改建议。',
-    tag: 'Higher Education',
-    metric: '已覆盖 420 所高校',
-    points: ['Turnitin/RepreGuard 双引擎对比', '批量上传毕业论文与作业', '可共享的 PDF 审核报告']
+    title: t('showcaseSection.cases.education.title'),
+    description: t('showcaseSection.cases.education.description'),
+    tag: t('showcaseSection.cases.education.tag'),
+    metric: t('showcaseSection.cases.education.metric'),
+    points: t('showcaseSection.cases.education.points'),
   },
   {
-    title: '媒体编辑部校对',
-    description: '实时检测稿件是否包含 AI 段落，并为编辑提供人工风格改写建议，保障品牌声音一致。',
-    tag: 'Newsroom',
-    metric: '稿件发布效率提升 38%',
-    points: ['新闻写作风格模板', '可疑段落自动标注', '对接 CMS 工作流']
+    title: t('showcaseSection.cases.newsroom.title'),
+    description: t('showcaseSection.cases.newsroom.description'),
+    tag: t('showcaseSection.cases.newsroom.tag'),
+    metric: t('showcaseSection.cases.newsroom.metric'),
+    points: t('showcaseSection.cases.newsroom.points'),
   },
   {
-    title: '企业合规与品牌保护',
-    description: '审查营销物料与对外声明，确保 AI 生成内容符合品牌语言与合规规范。',
-    tag: 'Enterprise',
-    metric: '合规风险降低 62%',
-    points: ['自定义敏感词库', '多角色审批流', '行为审计与导出']
-  }
-];
+    title: t('showcaseSection.cases.enterprise.title'),
+    description: t('showcaseSection.cases.enterprise.description'),
+    tag: t('showcaseSection.cases.enterprise.tag'),
+    metric: t('showcaseSection.cases.enterprise.metric'),
+    points: t('showcaseSection.cases.enterprise.points'),
+  },
+]);
 </script>

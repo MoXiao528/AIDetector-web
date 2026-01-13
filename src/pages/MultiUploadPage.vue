@@ -1,12 +1,12 @@
 <template>
-  <div class="min-h-screen bg-slate-100">
+  <div class="min-h-screen bg-slate-50">
     <AppHeader mode="dashboard" dashboard-context="scan" />
     <main class="mx-auto flex w-full max-w-5xl flex-col gap-10 px-4 py-10 lg:py-14">
       <section>
         <div class="flex flex-wrap items-center gap-3 rounded-3xl border border-slate-200 bg-white/90 p-5 shadow-sm shadow-slate-200/70">
           <div class="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.25em] text-primary-600">
-            <span class="rounded-full bg-primary-50 px-2 py-1 text-primary-700">批量上传流程</span>
-            <span class="text-slate-400">UPLOAD → QUEUE → REVIEW → DOWNLOAD</span>
+            <span class="rounded-full bg-primary-50 px-2 py-1 text-primary-700">{{ t('multiUpload.flow.badge') }}</span>
+            <span class="text-slate-400">{{ t('multiUpload.flow.sequence') }}</span>
           </div>
           <div class="grid w-full gap-3 md:grid-cols-4">
             <div
@@ -64,8 +64,11 @@
           <div class="flex h-16 w-16 items-center justify-center rounded-2xl border border-dashed border-current text-3xl font-light">
             ＋
           </div>
-          <p class="mt-6 text-lg font-semibold text-slate-700">Drag and Drop or <button type="button" class="text-primary-600 hover:underline" @click="openFilePicker">Choose Files</button></p>
-          <p class="mt-2 text-sm text-slate-400">Supported formats: pdf, txt, doc, docx</p>
+          <p class="mt-6 text-lg font-semibold text-slate-700">
+            {{ t('multiUpload.uploader.titlePrefix') }}
+            <button type="button" class="text-primary-600 hover:underline" @click="openFilePicker">{{ t('multiUpload.uploader.cta') }}</button>
+          </p>
+          <p class="mt-2 text-sm text-slate-400">{{ t('multiUpload.uploader.formats') }}</p>
           <input
             ref="fileInput"
             type="file"
@@ -78,7 +81,7 @@
           <ul v-if="uploadedFiles.length" class="mt-8 w-full max-w-md space-y-2 text-sm text-slate-600">
             <li v-for="file in uploadedFiles" :key="file" class="flex items-center justify-between rounded-2xl border border-slate-200 bg-white px-4 py-2">
               <span class="truncate">{{ file }}</span>
-              <span class="text-xs text-slate-400">Ready</span>
+              <span class="text-xs text-slate-400">{{ t('multiUpload.uploader.ready') }}</span>
             </li>
           </ul>
         </div>
@@ -93,17 +96,19 @@
               </svg>
             </div>
             <div>
-              <p class="text-sm font-semibold text-slate-900">3 File Batch Limit</p>
-              <span class="ml-2 rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-semibold text-slate-500">FREE</span>
+              <p class="text-sm font-semibold text-slate-900">{{ t('multiUpload.limits.title') }}</p>
+              <span class="ml-2 rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-semibold text-slate-500">
+                {{ t('multiUpload.limits.badge') }}
+              </span>
             </div>
           </div>
-          <p class="text-sm text-slate-500">Upgrade for 250 files at once</p>
+          <p class="text-sm text-slate-500">{{ t('multiUpload.limits.subtitle') }}</p>
           <button
             type="button"
             class="inline-flex w-max items-center gap-2 rounded-full border border-primary-500 px-4 py-2 text-sm font-semibold text-primary-600 transition hover:bg-primary-50"
             @click="upgradeForMore"
           >
-            Upgrade for more
+            {{ t('multiUpload.limits.cta') }}
           </button>
         </div>
         <div class="flex flex-col gap-4 border-t border-slate-200 pt-6 md:border-l md:border-t-0 md:pl-8 md:pt-0">
@@ -114,8 +119,8 @@
               </svg>
             </div>
             <div>
-              <p class="text-sm font-semibold text-slate-900">Supported languages:</p>
-              <p class="text-sm text-slate-500">English, French and Spanish</p>
+              <p class="text-sm font-semibold text-slate-900">{{ t('multiUpload.languages.title') }}</p>
+              <p class="text-sm text-slate-500">{{ t('multiUpload.languages.subtitle') }}</p>
             </div>
           </div>
           <button
@@ -123,7 +128,7 @@
             class="w-max text-sm font-semibold text-primary-600 underline-offset-4 hover:underline"
             @click="requestMoreLanguages"
           >
-            Request more languages
+            {{ t('multiUpload.languages.cta') }}
           </button>
         </div>
       </section>
@@ -134,25 +139,27 @@
 <script setup>
 import { computed, ref } from 'vue';
 import { useRouter } from 'vue-router';
+import { useI18n } from '../i18n';
 import AppHeader from '../sections/AppHeader.vue';
 import { useScanStore } from '../store/scan';
 
 const router = useRouter();
 const scanStore = useScanStore();
 const BATCH_LIMIT = 3;
+const { t } = useI18n();
 
-const scanModes = [
-  { key: 'basic', label: 'Basic scan' },
-  { key: 'advanced', label: 'Advanced scan' },
-  { key: 'plagiarism', label: 'Plagiarism' },
-];
+const scanModes = computed(() => [
+  { key: 'basic', label: t('multiUpload.modes.basic') },
+  { key: 'advanced', label: t('multiUpload.modes.advanced') },
+  { key: 'plagiarism', label: t('multiUpload.modes.plagiarism') },
+]);
 
-const flowSteps = [
-  { key: 'upload', order: 1, label: '上传', description: '拖拽或选择待检测的多份文件。' },
-  { key: 'queue', order: 2, label: '排队', description: '系统自动排队切片，保障并行处理稳定。' },
-  { key: 'complete', order: 3, label: '完成', description: '进度完成后可在历史中快速查看摘要。' },
-  { key: 'download', order: 4, label: '下载', description: '一键导出批量检测报告，便于共享。' },
-];
+const flowSteps = computed(() => [
+  { key: 'upload', order: 1, label: t('multiUpload.flow.steps.upload.label'), description: t('multiUpload.flow.steps.upload.description') },
+  { key: 'queue', order: 2, label: t('multiUpload.flow.steps.queue.label'), description: t('multiUpload.flow.steps.queue.description') },
+  { key: 'complete', order: 3, label: t('multiUpload.flow.steps.complete.label'), description: t('multiUpload.flow.steps.complete.description') },
+  { key: 'download', order: 4, label: t('multiUpload.flow.steps.download.label'), description: t('multiUpload.flow.steps.download.description') },
+]);
 
 const selectedMode = ref('basic');
 const fileInput = ref(null);
@@ -174,7 +181,7 @@ const handleFiles = async (files) => {
   if (!list.length) return;
   scanStore.resetError();
   if (list.length > BATCH_LIMIT) {
-    scanStore.uploadError = `一次最多上传 ${BATCH_LIMIT} 个文件，请减少后重试。`;
+    scanStore.uploadError = t('multiUpload.errors.limit', { limit: BATCH_LIMIT });
     return;
   }
   try {
@@ -182,7 +189,7 @@ const handleFiles = async (files) => {
     uploadedFiles.value = list.map((file) => file.name);
     router.push({ name: 'dashboard', query: { panel: 'document' } });
   } catch (error) {
-    scanStore.uploadError = scanStore.uploadError || '文件解析失败，请稍后重试。';
+    scanStore.uploadError = scanStore.uploadError || t('multiUpload.errors.parse');
   }
 };
 
@@ -211,7 +218,7 @@ const onDrop = async (event) => {
 };
 
 const upgradeForMore = () => {
-  router.push({ name: 'contact' });
+  router.push({ name: 'pricing' });
 };
 
 const requestMoreLanguages = () => {
