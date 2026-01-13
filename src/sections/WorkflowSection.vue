@@ -1,5 +1,5 @@
 <template>
-  <section id="workflow" class="bg-white py-24">
+  <section id="workflow" class="py-24">
     <div class="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
       <div class="max-w-3xl">
         <h2 class="section-title">可信内容从这里开始</h2>
@@ -8,7 +8,8 @@
         </p>
       </div>
       <div class="mt-16 grid gap-8 lg:grid-cols-[1.4fr_1fr]">
-        <div class="grid gap-6">
+        <div class="relative grid gap-6 pl-6">
+          <div class="absolute left-6 top-0 h-full w-px border-l-2 border-dashed border-slate-200"></div>
           <article
             v-for="(step, index) in steps"
             :key="step.title"

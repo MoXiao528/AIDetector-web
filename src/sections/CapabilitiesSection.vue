@@ -1,5 +1,5 @@
 <template>
-  <section id="capabilities" class="relative bg-slate-50 py-24">
+  <section id="capabilities" class="relative py-24">
     <div class="absolute inset-x-0 -top-20 -z-10 h-40 bg-gradient-to-b from-primary-100/60 to-transparent"></div>
     <div class="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
       <div class="max-w-3xl">
@@ -15,7 +15,7 @@
         <article
           v-for="(capability, index) in capabilities"
           :key="capability.title"
-          class="group flex h-full flex-col rounded-2xl border border-slate-200 bg-white p-6 shadow-sm transition hover:-translate-y-1 hover:shadow-md"
+          class="group flex h-full flex-col rounded-2xl border border-slate-100 bg-white p-6 shadow-sm transition-all hover:-translate-y-1 hover:shadow-md"
         >
           <div class="flex items-center justify-between">
             <div
