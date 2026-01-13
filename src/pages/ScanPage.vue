@@ -343,31 +343,59 @@
             </section>
 
             <aside class="relative w-full border-t border-slate-200 bg-white/95 shadow-[0_-8px_24px_rgba(15,23,42,0.08)] backdrop-blur lg:mx-6 lg:my-6 lg:w-[22rem] lg:rounded-3xl lg:border lg:border-slate-200 lg:shadow-xl">
-              <div class="h-full overflow-y-auto px-5 py-6">
-                <div class="flex items-center justify-between">
-                  <div>
-                    <h2 class="text-sm font-semibold text-slate-900">Scan Menu</h2>
-                    <p class="text-xs text-slate-500">选择功能并查看对应结果</p>
+              <div class="flex h-full flex-col">
+                <div class="flex-1 overflow-y-auto px-5 py-6">
+                  <div class="flex items-center justify-between">
+                    <div>
+                      <h2 class="text-sm font-semibold text-slate-900">Scan Menu</h2>
+                      <p class="text-xs text-slate-500">选择功能并查看对应结果</p>
+                    </div>
                   </div>
-                </div>
 
                 <div v-if="!hasResults" class="mt-6 space-y-6">
-                  <div class="flex flex-wrap gap-2">
-                    <button
-                      v-for="option in functionOptions"
-                      :key="option.key"
-                      type="button"
-                      :class="[
-                        'function-chip',
-                        isFunctionSelected(option.key)
-                          ? option.activeClass
-                          : 'border-slate-200 bg-white text-slate-600 hover:border-primary-200 hover:text-primary-600',
-                      ]"
-                      @click="toggleFunction(option.key)"
-                    >
-                      <component :is="option.icon" class="mr-1.5 h-4 w-4" />
-                      {{ option.label }}
-                    </button>
+                  <div class="space-y-4">
+                    <div class="space-y-3">
+                      <p class="text-xs font-bold uppercase tracking-tight text-slate-400">Verification</p>
+                      <div class="grid grid-cols-2 gap-3">
+                        <template v-for="option in functionOptions" :key="option.key">
+                          <button
+                            v-if="['scan', 'citation'].includes(option.key)"
+                            type="button"
+                            :class="[
+                              'flex flex-col items-center justify-center gap-2 rounded-xl border px-3 py-3 text-xs font-semibold transition-all duration-200',
+                              isFunctionSelected(option.key)
+                                ? 'bg-primary-50 border-primary-500 text-primary-700 ring-1 ring-primary-500'
+                                : 'bg-white border-slate-200 text-slate-600 hover:border-primary-300 hover:bg-slate-50',
+                            ]"
+                            @click="toggleFunction(option.key)"
+                          >
+                            <component :is="option.icon" class="h-5 w-5" />
+                            <span class="text-center">{{ option.label }}</span>
+                          </button>
+                        </template>
+                      </div>
+                    </div>
+                    <div class="space-y-3">
+                      <p class="text-xs font-bold uppercase tracking-tight text-slate-400">Enhancement</p>
+                      <div class="grid grid-cols-2 gap-3">
+                        <template v-for="option in functionOptions" :key="option.key">
+                          <button
+                            v-if="['polish', 'translate'].includes(option.key)"
+                            type="button"
+                            :class="[
+                              'flex flex-col items-center justify-center gap-2 rounded-xl border px-3 py-3 text-xs font-semibold transition-all duration-200',
+                              isFunctionSelected(option.key)
+                                ? 'bg-primary-50 border-primary-500 text-primary-700 ring-1 ring-primary-500'
+                                : 'bg-white border-slate-200 text-slate-600 hover:border-primary-300 hover:bg-slate-50',
+                            ]"
+                            @click="toggleFunction(option.key)"
+                          >
+                            <component :is="option.icon" class="h-5 w-5" />
+                            <span class="text-center">{{ option.label }}</span>
+                          </button>
+                        </template>
+                      </div>
+                    </div>
                   </div>
                   <div class="space-y-2 rounded-2xl bg-slate-50 p-4 text-xs text-slate-500">
                     <p>已选功能：{{ selectedFunctionSummary }}</p>
@@ -393,13 +421,6 @@
                       </button>
                     </div>
                   </div>
-                  <button
-                    type="button"
-                    class="w-full rounded-full bg-primary-600 px-4 py-3 text-sm font-semibold text-white shadow-lg shadow-primary-200/70 transition hover:-translate-y-0.5 hover:bg-primary-500"
-                    @click="handleScan"
-                  >
-                    立即扫描
-                  </button>
                   <p class="text-xs text-slate-400">登录后可保存扫描记录、导出报告与管理团队额度。</p>
                 </div>
 
@@ -532,6 +553,16 @@
                     <p class="text-[11px] text-slate-400">引用核查为占位逻辑，后续可接入真实数据库。</p>
                   </div>
                 </div>
+              </div>
+              <div v-if="!hasResults" class="sticky bottom-0 border-t border-slate-200 bg-white/95 px-5 py-4 shadow-[0_-12px_20px_rgba(15,23,42,0.05)]">
+                <button
+                  type="button"
+                  class="w-full rounded-full bg-primary-600 px-4 py-3 text-sm font-semibold text-white shadow-lg shadow-primary-200/70 transition hover:-translate-y-0.5 hover:bg-primary-500"
+                  @click="handleScan"
+                >
+                  开始扫描
+                </button>
+              </div>
               </div>
             </aside>
           </div>
