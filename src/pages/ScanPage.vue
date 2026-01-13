@@ -405,37 +405,40 @@
 
                 <div v-else class="mt-6 space-y-6">
                   <div class="summary-card">
-                    <p class="summary-eyebrow">AI 检测摘要</p>
-                    <div class="summary-grid">
-                      <div
-                        class="score-ring"
-                        :style="{
-                          background: `conic-gradient(#ef4444 0 ${detectionResults.summary.ai}%, #f59e0b ${detectionResults.summary.ai}% ${detectionResults.summary.ai + detectionResults.summary.mixed}%, #10b981 ${detectionResults.summary.ai + detectionResults.summary.mixed}% 100%)`,
-                        }"
-                      >
-                        <div class="score-ring__inner">
-                          <div class="score-ring__text">
-                            <p class="score-ring__label">AI</p>
-                            <p class="score-ring__value">{{ detectionResults.summary.ai }}%</p>
-                          </div>
+                    <div class="summary-header">
+                      <h3 class="summary-title">Detection Analysis</h3>
+                      <span class="summary-badge">Model V3.0</span>
+                    </div>
+                    <div class="summary-hero">
+                      <span class="summary-hero__value">{{ detectionResults.summary.ai }}%</span>
+                      <span class="summary-hero__label">AI Probability</span>
+                    </div>
+                    <div class="summary-rows">
+                      <div class="summary-row">
+                        <div class="summary-row__head">
+                          <span class="summary-row__label">AI Generated</span>
+                          <span class="summary-row__value">{{ detectionResults.summary.ai }}%</span>
+                        </div>
+                        <div class="summary-row__bar">
+                          <div class="summary-row__fill summary-row__fill--ai" :style="{ width: detectionResults.summary.ai + '%' }"></div>
                         </div>
                       </div>
-                      <div class="summary-content">
-                        <p class="summary-title">潜在相似句 {{ detectionResults.aiLikelyCount }} 句</p>
-                        <p class="summary-subtitle">含 AI 生成或人机混合特征的句子总数</p>
-                        <div class="summary-stats">
-                          <div class="summary-stat summary-stat--ai">
-                            <p class="summary-stat__label">AI Generated</p>
-                            <p class="summary-stat__value">{{ detectionResults.summary.ai }}%</p>
-                          </div>
-                          <div class="summary-stat summary-stat--mixed">
-                            <p class="summary-stat__label">Mixed</p>
-                            <p class="summary-stat__value">{{ detectionResults.summary.mixed }}%</p>
-                          </div>
-                          <div class="summary-stat summary-stat--human">
-                            <p class="summary-stat__label">Human</p>
-                            <p class="summary-stat__value">{{ detectionResults.summary.human }}%</p>
-                          </div>
+                      <div class="summary-row">
+                        <div class="summary-row__head">
+                          <span class="summary-row__label">Mixed / Paraphrased</span>
+                          <span class="summary-row__value">{{ detectionResults.summary.mixed }}%</span>
+                        </div>
+                        <div class="summary-row__bar">
+                          <div class="summary-row__fill summary-row__fill--mixed" :style="{ width: detectionResults.summary.mixed + '%' }"></div>
+                        </div>
+                      </div>
+                      <div class="summary-row">
+                        <div class="summary-row__head">
+                          <span class="summary-row__label">Human Written</span>
+                          <span class="summary-row__value">{{ detectionResults.summary.human }}%</span>
+                        </div>
+                        <div class="summary-row__bar">
+                          <div class="summary-row__fill summary-row__fill--human" :style="{ width: detectionResults.summary.human + '%' }"></div>
                         </div>
                       </div>
                     </div>
@@ -1926,72 +1929,64 @@ const onGlobalClick = (event) => {
   @apply rounded-3xl border border-slate-200 bg-white p-6 shadow-sm;
 }
 
-.summary-eyebrow {
-  @apply text-xs uppercase tracking-[0.3em] text-slate-400;
-}
-
-.summary-grid {
-  @apply mt-4 grid gap-6 md:grid-cols-[auto_1fr] md:items-center;
-}
-
-.score-ring {
-  @apply h-24 w-24 rounded-full p-1;
-}
-
-.score-ring__inner {
-  @apply flex h-full w-full items-center justify-center rounded-full bg-white shadow-sm;
-}
-
-.score-ring__text {
-  @apply text-center;
-}
-
-.score-ring__label {
-  @apply text-xs font-semibold text-slate-400;
-}
-
-.score-ring__value {
-  @apply text-xl font-semibold text-slate-900 leading-tight;
-}
-
-.summary-content {
-  @apply min-w-0 space-y-3;
+.summary-header {
+  @apply flex flex-wrap items-center justify-between gap-2;
 }
 
 .summary-title {
-  @apply text-lg font-semibold text-slate-900 leading-snug;
+  @apply text-sm font-semibold text-slate-900;
 }
 
-.summary-subtitle {
-  @apply text-sm text-slate-500 leading-relaxed;
+.summary-badge {
+  @apply rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-medium text-slate-500;
 }
 
-.summary-stats {
-  @apply grid gap-3 sm:grid-cols-3;
+.summary-hero {
+  @apply mt-5 flex flex-wrap items-baseline gap-3;
 }
 
-.summary-stat {
-  @apply min-w-[120px] rounded-xl border p-3 text-center;
+.summary-hero__value {
+  @apply text-4xl font-semibold tracking-tight text-slate-900;
 }
 
-.summary-stat__label {
-  @apply text-[11px] uppercase tracking-widest;
+.summary-hero__label {
+  @apply text-sm font-medium text-slate-500;
 }
 
-.summary-stat__value {
-  @apply mt-2 text-lg font-semibold;
+.summary-rows {
+  @apply mt-6 space-y-5;
 }
 
-.summary-stat--ai {
-  @apply border-rose-100 bg-rose-50 text-rose-600;
+.summary-row__head {
+  @apply mb-2 flex flex-wrap items-center justify-between gap-2 text-xs font-medium;
 }
 
-.summary-stat--mixed {
-  @apply border-amber-100 bg-amber-50 text-amber-600;
+.summary-row__label {
+  @apply text-slate-700;
 }
 
-.summary-stat--human {
-  @apply border-emerald-100 bg-emerald-50 text-emerald-600;
+.summary-row__value {
+  @apply text-slate-900;
+}
+
+.summary-row__bar {
+  @apply h-2 w-full overflow-hidden rounded-full bg-slate-100;
+}
+
+.summary-row__fill {
+  @apply h-full rounded-full;
+}
+
+.summary-row__fill--ai {
+  @apply bg-amber-500;
+}
+
+.summary-row__fill--mixed {
+  @apply bg-violet-500;
+}
+
+.summary-row__fill--human {
+  @apply bg-emerald-500;
 }
 
 .summary-tabs {
