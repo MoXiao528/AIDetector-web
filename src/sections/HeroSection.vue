@@ -1,23 +1,42 @@
 <template>
   <section class="relative overflow-hidden bg-gradient-to-b from-white via-slate-50 to-slate-100 pb-24 pt-20">
     <div class="absolute inset-0 -z-10">
-      <div class="absolute left-1/2 top-0 h-96 w-[48rem] -translate-x-1/2 rounded-full bg-primary-200/40 blur-3xl"></div>
+      <div class="absolute left-1/2 top-0 h-96 w-[50rem] -translate-x-1/2 rounded-full bg-primary-200/40 blur-3xl"></div>
       <div class="absolute -left-20 bottom-0 h-72 w-72 rounded-full bg-primary-400/20 blur-3xl"></div>
       <div class="absolute -right-20 top-1/3 h-80 w-80 rounded-full bg-sky-200/40 blur-3xl"></div>
     </div>
-    <div class="mx-auto flex max-w-6xl flex-col-reverse items-center gap-16 px-4 sm:px-6 lg:flex-row lg:items-start lg:gap-24 lg:px-8">
-      <div class="w-full lg:w-1/2">
+    <div class="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
+      <div class="mx-auto flex max-w-3xl flex-col items-center text-center">
         <div class="inline-flex items-center space-x-2 rounded-full border border-slate-200 bg-white/80 px-3 py-1 text-xs font-semibold text-slate-600 shadow-sm">
           <span class="flex h-2 w-2 rounded-full bg-emerald-500"></span>
           <span>参考 RepreGuard 的 AI 文本检测体验</span>
         </div>
         <h1 class="mt-6 text-4xl font-bold tracking-tight text-slate-900 sm:text-5xl">
-          快速识别并处理 <span class="text-primary-600">AI 生成文本</span>
+          快速识别并处理
+          <span class="bg-gradient-to-r from-primary-500 via-primary-400 to-sky-400 bg-clip-text text-transparent">AI 生成文本</span>
         </h1>
         <p class="mt-6 text-lg text-slate-600">
           Veritascribe 将检测、润色、翻译与引用核查融合到同一工作台中。粘贴或上传文本，即刻获得 RepreGuard 级别的风险分析和改写建议。
         </p>
-        <ul class="mt-8 grid gap-3 text-sm text-slate-600 sm:grid-cols-2">
+        <div class="mt-10 flex flex-wrap items-center justify-center gap-4">
+          <button
+            type="button"
+            class="inline-flex items-center justify-center rounded-full bg-primary-600 px-6 py-3 text-sm font-semibold text-white shadow-sm shadow-primary-200/60 transition hover:-translate-y-0.5 hover:bg-primary-500"
+            @click="goToScan('scan')"
+          >
+            体验识别工作台
+          </button>
+          <button
+            type="button"
+            class="inline-flex items-center justify-center rounded-full border border-slate-200 bg-white px-6 py-3 text-sm font-semibold text-slate-700 shadow-sm transition hover:-translate-y-0.5 hover:border-primary-200 hover:text-primary-700"
+            @click="goToScan('polish')"
+          >
+            查看润色工作流 →
+          </button>
+        </div>
+      </div>
+      <div class="mt-14 grid gap-6 lg:grid-cols-[1.1fr_0.9fr] lg:items-start">
+        <ul class="grid gap-4 rounded-3xl border border-slate-200 bg-white/90 p-6 text-sm text-slate-600 shadow-sm shadow-slate-200/60 sm:grid-cols-2">
           <li class="flex items-center space-x-2">
             <svg class="h-4 w-4 text-emerald-500" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
@@ -43,21 +62,7 @@
             <span>润色与翻译共享同一份上下文</span>
           </li>
         </ul>
-        <div class="mt-10 flex flex-wrap items-center gap-4">
-          <button
-            type="button"
-            class="inline-flex items-center justify-center rounded-full bg-primary-600 px-6 py-3 text-sm font-semibold text-white shadow-glow transition hover:bg-primary-500"
-            @click="goToScan('scan')"
-          >
-            体验识别工作台
-          </button>
-          <button type="button" class="text-sm font-semibold text-slate-700" @click="goToScan('polish')">
-            查看润色工作流 →
-          </button>
-        </div>
-      </div>
-      <div class="w-full lg:w-1/2">
-        <div class="relative rounded-3xl border border-slate-200 bg-white/90 p-6 shadow-xl shadow-primary-200/40 backdrop-blur">
+        <div class="relative rounded-3xl border border-slate-200 bg-white/95 p-6 shadow-xl shadow-primary-200/40 backdrop-blur">
           <div class="absolute -top-10 right-8 hidden rounded-full bg-white/90 px-4 py-2 text-xs font-semibold text-slate-500 shadow-md sm:flex">
             实时扫描预览
           </div>

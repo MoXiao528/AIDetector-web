@@ -10,11 +10,11 @@
           <p class="text-sm text-slate-300">面向学术、媒体与企业的 AI 内容检测与智能写作平台。</p>
           <div class="space-y-3 rounded-2xl border border-white/10 bg-white/5 p-4">
             <p class="text-xs uppercase tracking-[0.2em] text-slate-400">订阅更新</p>
-            <div class="flex flex-col gap-3 sm:flex-row">
+            <div class="flex items-center gap-3">
               <input
                 type="email"
                 placeholder="输入邮箱获取产品动态"
-                class="h-11 w-full rounded-full border border-white/10 bg-white/10 px-4 text-sm text-white placeholder:text-slate-400 focus:border-primary-400 focus:outline-none"
+                class="h-11 w-full flex-1 rounded-full border border-white/10 bg-white/10 px-4 text-sm text-white placeholder:text-slate-400 focus:border-primary-400 focus:outline-none"
               />
               <button type="button" class="h-11 rounded-full bg-primary-600 px-5 text-sm font-semibold text-white shadow-glow transition hover:bg-primary-500">
                 订阅

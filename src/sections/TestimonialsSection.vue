@@ -13,11 +13,11 @@
           <span>全部评价已通过真实性核验</span>
         </div>
       </div>
-      <div class="mt-12 grid gap-6 lg:grid-cols-3">
+      <div class="mt-12 columns-1 gap-6 space-y-6 md:columns-2 lg:columns-3">
         <article
           v-for="testimonial in testimonials"
           :key="testimonial.author"
-          class="flex h-full flex-col justify-between rounded-3xl border border-slate-200 bg-white p-6 shadow-sm transition hover:-translate-y-1 hover:shadow-lg"
+          class="break-inside-avoid rounded-2xl border border-slate-200 bg-white p-6 shadow-sm transition hover:-translate-y-1 hover:shadow-md"
         >
           <div>
             <p class="text-sm text-slate-600">“{{ testimonial.quote }}”</p>
