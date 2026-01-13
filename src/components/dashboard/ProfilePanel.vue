@@ -1,6 +1,6 @@
 <template>
   <div class="space-y-10">
-    <div v-if="!authStore.isAuthenticated" class="rounded-3xl border border-dashed border-primary-200 bg-white/80 p-10 text-center shadow-sm">
+    <div v-if="!authStore.isAuthenticated" class="rounded-3xl border border-dashed border-primary-200 bg-white/90 p-10 text-center shadow-sm shadow-slate-200/60">
       <h1 class="text-lg font-semibold text-slate-900">请登录后管理个人资料</h1>
       <p class="mt-3 text-sm text-slate-500">登录账户即可更新姓名、组织、岗位与行业信息。</p>
       <RouterLink
@@ -15,7 +15,7 @@
         <h1 class="text-2xl font-semibold text-slate-900">Profile</h1>
         <p class="mt-2 text-sm text-slate-500">完善个人资料，帮助团队快速了解你的身份与需求。</p>
       </section>
-      <form class="space-y-6 rounded-3xl border border-slate-200 bg-white p-8 shadow-xl shadow-slate-200/50" @submit.prevent="handleSubmit">
+      <form class="space-y-6 rounded-3xl border border-slate-200 bg-white p-8 shadow-lg shadow-slate-200/60" @submit.prevent="handleSubmit">
         <div class="grid gap-6 md:grid-cols-2">
           <div class="space-y-2">
             <label class="text-sm font-semibold text-slate-700" for="first-name">First Name</label>

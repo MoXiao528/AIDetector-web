@@ -1,5 +1,5 @@
 <template>
-  <div class="rounded-3xl border border-slate-200 bg-white/90 p-5 shadow-md shadow-slate-200/70">
+  <div class="rounded-3xl border border-slate-200 bg-white/90 p-5 shadow-sm shadow-slate-200/60 backdrop-blur">
     <div class="flex flex-wrap items-center gap-3">
       <div class="flex items-center gap-2 text-sm font-semibold text-slate-900">
         <span class="inline-flex h-8 w-8 items-center justify-center rounded-2xl bg-primary-600 text-white shadow">→</span>
@@ -10,7 +10,7 @@
         <button type="button" class="rounded-full px-3 py-1 text-slate-500 hover:bg-slate-100" @click="$emit('skip')">稍后再说</button>
         <button
           type="button"
-          class="rounded-full bg-slate-900 px-3 py-1 font-semibold text-white shadow hover:bg-slate-800"
+          class="rounded-full bg-slate-900 px-3 py-1 font-semibold text-white shadow-sm hover:bg-slate-800"
           @click="$emit('complete')"
         >
           我已熟悉
