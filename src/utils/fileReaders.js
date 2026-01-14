@@ -1,3 +1,5 @@
+import { globalT } from '../i18n';
+
 const TEXT_LIKE_EXTENSIONS = [
   'txt',
   'md',
@@ -24,7 +26,7 @@ const readAsText = (file) =>
   new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.onload = () => resolve(reader.result);
-    reader.onerror = () => reject(new Error('无法读取文件内容')); 
+    reader.onerror = () => reject(new Error(globalT('errors.readFailed')));
     reader.readAsText(file);
   });
 
@@ -32,7 +34,7 @@ const readAsArrayBuffer = (file) =>
   new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.onload = () => resolve(reader.result);
-    reader.onerror = () => reject(new Error('无法读取文件内容'));
+    reader.onerror = () => reject(new Error(globalT('errors.readFailed')));
     reader.readAsArrayBuffer(file);
   });
 
@@ -48,7 +50,7 @@ const extractDocxText = async (file) => {
     return div.textContent || '';
   } catch (error) {
     console.error('Failed to parse DOCX', error);
-    throw new Error('暂不支持该 Word 文档格式，请转换为 .docx 后重试。');
+    throw new Error(globalT('errors.unsupportedDocx'));
   }
 };
 
@@ -60,14 +62,15 @@ const extractPdfText = async (file) => {
     pdfjsLib.GlobalWorkerOptions.workerSrc = worker.default;
   }
   const pdf = await pdfjsLib.getDocument({ data: buffer }).promise;
-  let text = '';
-  for (let pageNumber = 1; pageNumber <= pdf.numPages; pageNumber += 1) {
-    const page = await pdf.getPage(pageNumber);
-    const content = await page.getTextContent();
-    const pageText = content.items.map((item) => item.str).join(' ');
-    text += `${pageText}\n`;
-  }
-  return text.trim();
+  const pageNumbers = Array.from({ length: pdf.numPages }, (_, index) => index + 1);
+  const pageTexts = await Promise.all(
+    pageNumbers.map(async (pageNumber) => {
+      const page = await pdf.getPage(pageNumber);
+      const content = await page.getTextContent();
+      return content.items.map((item) => item.str).join(' ');
+    })
+  );
+  return pageTexts.join('\n').trim();
 };
 
 const extractUnknownText = async (file) => {
@@ -79,7 +82,7 @@ export const readTextFromFile = async (file) => {
   const extension = file.name.split('.').pop()?.toLowerCase();
 
   if (!extension) {
-    throw new Error('无法识别的文件格式');
+    throw new Error(globalT('errors.unknownFormat'));
   }
 
   if (TEXT_LIKE_EXTENSIONS.includes(extension)) {

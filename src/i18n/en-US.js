@@ -1018,4 +1018,10 @@ export default {
       },
     },
   },
+  errors: {
+    readFailed: 'Unable to read file content',
+    unsupportedDocx: 'This Word format is not supported. Please convert to .docx and try again.',
+    unknownFormat: 'Unrecognized file format',
+    fileParseError: 'File parsing failed. Please try again later.',
+  },
 };

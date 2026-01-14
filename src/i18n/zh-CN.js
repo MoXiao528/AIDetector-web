@@ -985,4 +985,10 @@ export default {
       },
     },
   },
+  errors: {
+    readFailed: '无法读取文件内容',
+    unsupportedDocx: '暂不支持该 Word 文档格式，请转换为 .docx 后重试。',
+    unknownFormat: '无法识别的文件格式',
+    fileParseError: '文件解析失败，请稍后重试。',
+  },
 };
