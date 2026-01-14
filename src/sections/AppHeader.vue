@@ -3,7 +3,7 @@
     <div class="mx-auto w-full max-w-7xl px-6 sm:px-10">
       <div class="flex h-16 items-center justify-between gap-6">
         <RouterLink :to="{ name: 'home' }" class="flex items-center space-x-3">
-          <span class="inline-flex h-9 w-9 items-center justify-center rounded-full bg-primary-600 font-semibold text-white shadow-sm">V</span>
+          <span class="inline-flex h-9 w-9 items-center justify-center rounded-full bg-primary-600 font-semibold text-white shadow-sm">{{ t('common.brandInitial') }}</span>
           <span class="text-lg font-semibold tracking-tight text-slate-900">{{ t('common.brand') }}</span>
         </RouterLink>
         <nav v-if="showMarketingNav" class="hidden flex-1 items-center justify-center md:flex">
@@ -36,14 +36,13 @@
         </nav>
         <div class="hidden flex-1 items-center justify-end gap-3 md:flex">
           <label class="sr-only" for="locale-select">{{ t('common.language') }}</label>
-          <select
-            id="locale-select"
+          <BaseListbox
+            button-id="locale-select"
             v-model="selectedLocale"
-            class="rounded-full border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 shadow-sm transition hover:border-primary-200"
-          >
-            <option value="en-US">{{ t('languages.en') }}</option>
-            <option value="zh-CN">{{ t('languages.zh') }}</option>
-          </select>
+            :options="languageOptions"
+            :aria-label="t('common.language')"
+            button-class="min-w-[160px] whitespace-nowrap rounded-full text-xs"
+          />
           <div v-if="isMarketing || isAuth" class="flex items-center justify-end">
             <button
               type="button"
@@ -166,14 +165,13 @@
         <div class="mx-auto mt-2 max-w-7xl space-y-3 rounded-3xl border border-slate-200 bg-white/95 p-4 shadow-lg backdrop-blur-md">
           <div class="flex items-center justify-end">
             <label class="sr-only" for="locale-select-mobile">{{ t('common.language') }}</label>
-            <select
-              id="locale-select-mobile"
+            <BaseListbox
+              button-id="locale-select-mobile"
               v-model="selectedLocale"
-              class="w-full rounded-2xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-700 shadow-sm"
-            >
-              <option value="en-US">{{ t('languages.en') }}</option>
-              <option value="zh-CN">{{ t('languages.zh') }}</option>
-            </select>
+              :options="languageOptions"
+              :aria-label="t('common.language')"
+              button-class="w-full"
+            />
           </div>
           <template v-if="isMarketing || isAuth">
             <RouterLink
@@ -263,6 +261,7 @@ import { useRoute, useRouter } from 'vue-router';
 import { useI18n } from '../i18n';
 import { useAuthStore } from '../store/auth';
 import UserProfileArea from '../components/common/UserProfileArea.vue';
+import BaseListbox from '../components/common/BaseListbox.vue';
 
 const props = defineProps({
   mode: {
@@ -309,6 +308,11 @@ const marketingLinks = computed(() => [
   { label: t('header.nav.pricing'), to: { name: 'home', hash: '#pricing' } },
 ]);
 
+const languageOptions = computed(() => [
+  { value: 'en-US', label: t('languages.en') },
+  { value: 'zh-CN', label: t('languages.zh') },
+]);
+
 const selectedLocale = computed({
   get: () => locale.value,
   set: (value) => setLocale(value),
@@ -346,22 +350,13 @@ const handleLogout = () => {
 };
 
 const openUpgrade = () => {
-  const targetQuery = { ...(route.query || {}), panel: 'pricing' };
-  if (route.name === 'dashboard') {
-    router.push({ name: 'dashboard', query: targetQuery });
-    isUserMenuOpen.value = false;
-    return;
-  }
-  const target = router.resolve({ name: 'dashboard', query: { panel: 'pricing' } });
-  if (typeof window !== 'undefined') {
-    window.open(target.href, '_blank', 'noopener');
-    return;
-  }
-  router.push({ name: 'dashboard', query: { panel: 'pricing' } });
+  router.push({ name: 'pricing' });
+  isUserMenuOpen.value = false;
 };
 
 const openFeedback = () => {
-  router.push({ name: 'dashboard', query: { panel: 'home', feedback: 'true' } });
+  router.push({ name: 'contact' });
+  isUserMenuOpen.value = false;
 };
 
 const openDashboard = () => {

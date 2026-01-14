@@ -2,16 +2,23 @@
   <div :class="rootClasses">
     <AppHeader v-if="!embedded" mode="marketing" />
     <main :class="mainClasses">
-      <section v-if="showStatusBanner" class="border-b border-slate-200 bg-white/80 backdrop-blur">
-        <div class="mx-auto flex w-full max-w-5xl items-center justify-between gap-4 px-4 py-3 text-sm sm:px-6 lg:px-0">
-          <div class="flex flex-wrap items-center gap-2">
+      <section v-if="showStatusBanner" class="mx-auto w-full max-w-6xl px-4 pt-6 sm:px-6 lg:px-8">
+        <div class="flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-slate-200 bg-white/90 p-4 shadow-md backdrop-blur">
+          <div class="flex flex-wrap items-center gap-2 text-sm text-slate-600">
             <span>
-              You’re on a
-              <button type="button" class="font-semibold text-primary-600" @click="scrollToPlans">Free Plan</button>.
+              {{ t('pricingPage.statusBanner.onPlan') }}
+              <button type="button" class="font-semibold text-primary-600" @click="scrollToPlans">
+                {{ t('pricingPage.statusBanner.planName') }}
+              </button>
             </span>
-            <span class="text-slate-500">You have access to 10,000 words a month.</span>
+            <span class="text-slate-500">{{ t('pricingPage.statusBanner.limit') }}</span>
           </div>
-          <button type="button" class="text-slate-400 transition hover:text-slate-600" @click="showStatusBanner = false" aria-label="关闭提示">
+          <button
+            type="button"
+            class="text-slate-400 transition hover:text-slate-600"
+            @click="showStatusBanner = false"
+            :aria-label="t('pricingPage.statusBanner.close')"
+          >
             ×
           </button>
         </div>
@@ -19,9 +26,9 @@
 
       <section ref="planSection" class="mx-auto w-full max-w-6xl px-4 py-16 sm:px-6 lg:px-8">
         <div class="mx-auto max-w-2xl text-center">
-          <p class="text-xs font-semibold uppercase tracking-[0.3em] text-slate-400">Pricing</p>
-          <h1 class="mt-3 text-3xl font-semibold tracking-tight text-slate-900 sm:text-4xl">灵活定价，匹配你的团队规模</h1>
-          <p class="mt-4 text-base text-slate-600">从个人到企业级合规团队，选择最合适的 RepreGuard 检测方案。</p>
+          <p class="text-xs font-semibold uppercase tracking-[0.3em] text-slate-400">{{ t('pricingPage.hero.badge') }}</p>
+          <h1 class="mt-3 text-3xl font-semibold tracking-tight text-slate-900 sm:text-4xl">{{ t('pricingPage.hero.title') }}</h1>
+          <p class="mt-4 text-base text-slate-600">{{ t('pricingPage.hero.subtitle') }}</p>
         </div>
         <div class="mt-10 flex flex-col items-center gap-4 sm:flex-row sm:justify-center">
           <div class="inline-flex items-center rounded-full bg-slate-100 p-1 text-xs font-semibold text-slate-600 shadow-inner">
@@ -50,9 +57,11 @@
           >
             <div class="flex items-center justify-between">
               <h2 class="text-lg font-semibold text-slate-900">
-                {{ { free: 'Free', premium: 'Pro', professional: 'Enterprise' }[plan.key] || plan.name }}
+                {{ plan.displayName || plan.name }}
               </h2>
-              <span v-if="plan.key === 'premium'" class="rounded-full bg-primary-100 px-3 py-1 text-xs font-semibold text-primary-700">Recommended</span>
+              <span v-if="plan.key === 'premium'" class="rounded-full bg-primary-100 px-3 py-1 text-xs font-semibold text-primary-700">
+                {{ t('pricingPage.badges.bestValue') }}
+              </span>
             </div>
             <p class="mt-2 text-sm text-slate-500">{{ plan.description }}</p>
             <p class="mt-6 text-3xl font-semibold text-slate-900">
@@ -75,7 +84,7 @@
               ]"
               @click="openCheckout(plan)"
             >
-              立即购买 / 升级
+              {{ t('pricingPage.actions.purchase') }}
             </button>
           </article>
         </div>
@@ -85,22 +94,26 @@
         <div class="grid gap-6 rounded-3xl border border-slate-200 bg-white/90 p-8 shadow-sm lg:grid-cols-2">
           <div class="flex flex-col justify-between gap-6 rounded-3xl border border-slate-200 bg-slate-50/70 p-6">
             <div class="flex items-center gap-3">
-              <h3 class="text-lg font-semibold text-slate-900">Teams Plans</h3>
-              <span class="rounded-full bg-primary-100 px-3 py-0.5 text-xs font-semibold text-primary-700">BEST FOR SCHOOLS</span>
+              <h3 class="text-lg font-semibold text-slate-900">{{ t('pricingPage.cards.teams.title') }}</h3>
+              <span class="rounded-full bg-primary-100 px-3 py-0.5 text-xs font-semibold text-primary-700">{{ t('pricingPage.cards.teams.badge') }}</span>
             </div>
-            <p class="text-sm text-slate-600">Purchase multiple plans for your organization.</p>
-            <p class="text-base font-semibold text-slate-900">Starting at $24.99 / user / month</p>
+            <p class="text-sm text-slate-600">{{ t('pricingPage.cards.teams.description') }}</p>
+            <p class="text-base font-semibold text-slate-900">{{ t('pricingPage.cards.teams.price') }}</p>
             <div class="mt-4 flex flex-wrap gap-3">
-              <button type="button" class="inline-flex items-center justify-center rounded-full border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:border-slate-400">Schedule Demo</button>
-              <button type="button" class="inline-flex items-center justify-center rounded-full bg-slate-900 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-slate-700">Team Plans</button>
+              <button type="button" class="inline-flex items-center justify-center rounded-full border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:border-slate-400">
+                {{ t('pricingPage.cards.teams.actions.schedule') }}
+              </button>
+              <button type="button" class="inline-flex items-center justify-center rounded-full bg-slate-900 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-slate-700">
+                {{ t('pricingPage.cards.teams.actions.open') }}
+              </button>
             </div>
             <div class="rounded-2xl border border-primary-100 bg-white/80 p-4">
               <div class="flex items-center justify-between">
                 <div>
-                  <p class="text-xs font-semibold uppercase tracking-[0.2em] text-primary-500">团队协作</p>
-                  <p class="mt-1 text-sm text-slate-600">直接在定价页添加成员并管理席位，快速开通团队版。</p>
+                  <p class="text-xs font-semibold uppercase tracking-[0.2em] text-primary-500">{{ t('pricingPage.teamBlock.title') }}</p>
+                  <p class="mt-1 text-sm text-slate-600">{{ t('pricingPage.teamBlock.subtitle') }}</p>
                 </div>
-                <span class="rounded-full bg-primary-100 px-3 py-1 text-xs font-semibold text-primary-700">TEAM</span>
+                <span class="rounded-full bg-primary-100 px-3 py-1 text-xs font-semibold text-primary-700">{{ t('pricingPage.teamBlock.badge') }}</span>
               </div>
               <div class="mt-3 flex flex-wrap gap-3">
                 <button
@@ -108,28 +121,32 @@
                   class="inline-flex items-center justify-center rounded-full border border-primary-200 px-3 py-1.5 text-xs font-semibold text-primary-700 transition hover:bg-primary-50"
                   @click="copyTeamInviteLink"
                 >
-                  复制邀请链接
+                  {{ t('pricingPage.teamBlock.copy') }}
                 </button>
                 <button
                   type="button"
                   class="inline-flex items-center justify-center rounded-full border border-slate-300 bg-slate-900 px-3 py-1.5 text-xs font-semibold text-white shadow-sm transition hover:bg-slate-800"
                   @click="openSeatManager"
                 >
-                  席位管理入口
+                  {{ t('pricingPage.teamBlock.manage') }}
                 </button>
               </div>
               <p v-if="teamActionStatus" class="mt-2 text-xs text-emerald-600">{{ teamActionStatus }}</p>
-              <p v-else class="mt-2 text-xs text-slate-400">可随时邀请成员或调整席位数量。</p>
+              <p v-else class="mt-2 text-xs text-slate-400">{{ t('pricingPage.teamBlock.hint') }}</p>
             </div>
           </div>
           <div class="flex flex-col justify-between gap-6 rounded-3xl border border-slate-200 bg-slate-50/70 p-6">
             <div class="flex items-center gap-3">
-              <h3 class="text-lg font-semibold text-slate-900">API Plans</h3>
+              <h3 class="text-lg font-semibold text-slate-900">{{ t('pricingPage.cards.api.title') }}</h3>
             </div>
-            <p class="text-sm text-slate-600">View our API plans, which allow you to integrate RepreGuard with your organization’s software.</p>
+            <p class="text-sm text-slate-600">{{ t('pricingPage.cards.api.description') }}</p>
             <div class="mt-4 flex flex-wrap gap-3">
-              <button type="button" class="inline-flex items-center justify-center rounded-full border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:border-slate-400">Schedule Demo</button>
-              <button type="button" class="inline-flex items-center justify-center rounded-full bg-slate-900 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-slate-700">API Plans</button>
+              <button type="button" class="inline-flex items-center justify-center rounded-full border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:border-slate-400">
+                {{ t('pricingPage.cards.api.actions.schedule') }}
+              </button>
+              <button type="button" class="inline-flex items-center justify-center rounded-full bg-slate-900 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-slate-700">
+                {{ t('pricingPage.cards.api.actions.open') }}
+              </button>
             </div>
           </div>
         </div>
@@ -139,15 +156,15 @@
         <div class="rounded-3xl border border-slate-200 bg-white/95 p-8 shadow-sm">
           <div class="flex flex-wrap items-center justify-between gap-4">
             <div>
-              <h2 class="text-2xl font-semibold text-slate-900">Compare Plans</h2>
-              <p class="mt-2 text-sm text-slate-500">See which RepreGuard-powered toolkit fits your workflow.</p>
+              <h2 class="text-2xl font-semibold text-slate-900">{{ t('pricingPage.table.title') }}</h2>
+              <p class="mt-2 text-sm text-slate-500">{{ t('pricingPage.table.subtitle') }}</p>
             </div>
           </div>
           <div class="mt-8 overflow-x-auto">
             <table class="min-w-full divide-y divide-slate-200 text-sm">
               <thead class="bg-slate-50 text-left">
                 <tr>
-                  <th class="px-4 py-3 font-semibold text-slate-600">功能</th>
+                  <th class="px-4 py-3 font-semibold text-slate-600">{{ t('pricingPage.table.feature') }}</th>
                   <th v-for="plan in tablePlans" :key="plan" class="px-4 py-3 text-center font-semibold text-slate-600">{{ plan }}</th>
                 </tr>
               </thead>
@@ -184,23 +201,23 @@
     <transition name="fade">
       <div
         v-if="isCheckoutOpen"
-        class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 px-4 backdrop-blur-sm"
-        @click="closeCheckout"
-      >
+          class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 px-4 backdrop-blur-sm"
+          @click="closeCheckout"
+        >
         <div
           class="w-full max-w-2xl rounded-4xl bg-white p-6 shadow-2xl"
           @click.stop
         >
           <div class="flex items-start justify-between gap-3">
-            <div>
-              <p class="text-xs font-semibold uppercase tracking-[0.3em] text-primary-500">结算</p>
-              <h3 class="mt-1 text-xl font-semibold text-slate-900">{{ selectedPlan?.name }} · 立即购买 / 升级</h3>
-              <p class="text-sm text-slate-500">选择计费周期与支付方式，我们将创建订单并在成功后刷新额度。</p>
+              <div>
+              <p class="text-xs font-semibold uppercase tracking-[0.3em] text-primary-500">{{ t('pricingPage.checkout.badge') }}</p>
+              <h3 class="mt-1 text-xl font-semibold text-slate-900">{{ selectedPlan?.name }} · {{ t('pricingPage.actions.purchase') }}</h3>
+              <p class="text-sm text-slate-500">{{ t('pricingPage.checkout.subtitle') }}</p>
             </div>
             <button
               type="button"
               class="text-slate-400 transition hover:text-slate-600"
-              aria-label="关闭支付弹窗"
+              :aria-label="t('pricingPage.checkout.close')"
               @click="closeCheckout"
             >
               ×
@@ -210,7 +227,7 @@
           <div class="mt-6 grid gap-6 md:grid-cols-2">
             <div class="space-y-4">
               <div>
-                <p class="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">计费周期</p>
+                <p class="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">{{ t('pricingPage.checkout.billing') }}</p>
                 <div class="mt-2 inline-flex items-center rounded-full bg-slate-50 p-1 text-xs font-semibold text-slate-600">
                   <button
                     v-for="option in billingOptions"
@@ -228,7 +245,7 @@
               </div>
 
               <div>
-                <p class="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">支付方式</p>
+                <p class="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">{{ t('pricingPage.checkout.paymentMethod') }}</p>
                 <div class="mt-2 space-y-2">
                   <label v-for="method in paymentMethods" :key="method.value" class="flex items-center gap-2 rounded-2xl border border-slate-200 bg-slate-50/80 px-3 py-2 text-sm text-slate-700 transition hover:border-emerald-200">
                     <input
@@ -249,7 +266,7 @@
             <div class="space-y-4 rounded-3xl border border-slate-200 bg-slate-50/70 p-4">
               <div class="flex items-center justify-between">
                 <div>
-                  <p class="text-xs uppercase tracking-[0.2em] text-slate-500">订单摘要</p>
+                  <p class="text-xs uppercase tracking-[0.2em] text-slate-500">{{ t('pricingPage.checkout.summary') }}</p>
                   <p class="text-lg font-semibold text-slate-900">{{ selectedPlan?.name }}</p>
                   <p class="text-xs text-emerald-600">{{ quotaLabel }}</p>
                 </div>
@@ -267,8 +284,8 @@
               </ul>
 
               <div v-if="selectedPlan?.key === 'professional'" class="rounded-2xl border border-primary-100 bg-white/90 p-3 text-xs text-slate-700">
-                <p class="font-semibold text-primary-700">团队版快速入口</p>
-                <p class="mt-1 text-slate-500">完成支付后即可在团队仪表盘中邀请成员、分配席位，额度同步刷新。</p>
+                <p class="font-semibold text-primary-700">{{ t('pricingPage.checkout.team.title') }}</p>
+                <p class="mt-1 text-slate-500">{{ t('pricingPage.checkout.team.subtitle') }}</p>
               </div>
 
               <button
@@ -277,17 +294,19 @@
                 :disabled="paymentStatus === 'creating' || paymentStatus === 'paying'"
                 @click="handleSubmitPayment"
               >
-                <span v-if="paymentStatus === 'creating'">正在创建订单...</span>
-                <span v-else-if="paymentStatus === 'paying'">等待支付确认...</span>
-                <span v-else>确认支付</span>
+                <span v-if="paymentStatus === 'creating'">{{ t('pricingPage.checkout.status.creating') }}</span>
+                <span v-else-if="paymentStatus === 'paying'">{{ t('pricingPage.checkout.status.paying') }}</span>
+                <span v-else>{{ t('pricingPage.checkout.confirm') }}</span>
               </button>
 
               <div class="text-xs text-slate-500">
-                <p v-if="paymentStatus === 'success'" class="text-emerald-600">支付成功，额度已刷新。</p>
-                <p v-else-if="paymentStatus === 'failed'" class="text-rose-600">支付失败：{{ paymentMessage || '请稍后再试。' }}</p>
-                <p v-else-if="paymentStatus === 'canceled'" class="text-amber-600">已取消支付，可重新提交。</p>
+                <p v-if="paymentStatus === 'success'" class="text-emerald-600">{{ t('pricingPage.checkout.status.success') }}</p>
+                <p v-else-if="paymentStatus === 'failed'" class="text-rose-600">
+                  {{ t('pricingPage.checkout.status.failed', { message: paymentMessage || t('pricingPage.checkout.status.failedFallback') }) }}
+                </p>
+                <p v-else-if="paymentStatus === 'canceled'" class="text-amber-600">{{ t('pricingPage.checkout.status.canceled') }}</p>
                 <p v-else-if="paymentMessage">{{ paymentMessage }}</p>
-                <p class="mt-1 text-slate-400">如需企业采购，请联系我们的团队顾问。</p>
+                <p class="mt-1 text-slate-400">{{ t('pricingPage.checkout.note') }}</p>
               </div>
             </div>
           </div>
@@ -301,6 +320,7 @@
 import { computed, ref } from 'vue';
 import AppHeader from '../sections/AppHeader.vue';
 import AppFooter from '../sections/AppFooter.vue';
+import { useI18n } from '../i18n';
 import { useAuthStore } from '../store/auth';
 import { createOrder, fetchSubscriptionSnapshot, payOrder, planQuotaByKey } from '../utils/billing';
 
@@ -321,6 +341,7 @@ const paymentMethod = ref('alipay');
 const paymentStatus = ref('idle');
 const paymentMessage = ref('');
 const teamActionStatus = ref('');
+const { t } = useI18n();
 
 const rootClasses = computed(() =>
   props.embedded ? 'min-h-full bg-transparent text-slate-800' : 'min-h-screen bg-slate-50 text-slate-800',
@@ -328,84 +349,80 @@ const rootClasses = computed(() =>
 
 const mainClasses = computed(() => (props.embedded ? 'pb-16 pt-4' : 'pb-24'));
 
-const billingOptions = [
-  { value: 'annual', label: 'Annual (Save 45%)', activeClass: 'bg-emerald-500 text-white shadow-sm', inactiveClass: 'text-emerald-600 hover:bg-emerald-50' },
-  { value: 'monthly', label: 'Monthly', activeClass: 'bg-emerald-500 text-white shadow-sm', inactiveClass: 'text-slate-500 hover:bg-slate-100' },
-];
+const billingOptions = computed(() => [
+  {
+    value: 'annual',
+    label: t('pricingPage.billing.annual'),
+    activeClass: 'bg-emerald-500 text-white shadow-sm',
+    inactiveClass: 'text-emerald-600 hover:bg-emerald-50',
+  },
+  {
+    value: 'monthly',
+    label: t('pricingPage.billing.monthly'),
+    activeClass: 'bg-emerald-500 text-white shadow-sm',
+    inactiveClass: 'text-slate-500 hover:bg-slate-100',
+  },
+]);
 
-const paymentMethods = [
-  { value: 'alipay', label: '支付宝', description: '适用于国内企业与个人账户，实时到账。' },
-  { value: 'wechat', label: '微信支付', description: '微信扫码或内置支付，适合移动端快捷支付。' },
-  { value: 'card', label: '信用卡 / PayPal', description: '使用国际信用卡或 PayPal 进行结算。' },
-];
+const paymentMethods = computed(() => [
+  { value: 'alipay', label: t('pricingPage.paymentMethods.alipay.label'), description: t('pricingPage.paymentMethods.alipay.description') },
+  { value: 'wechat', label: t('pricingPage.paymentMethods.wechat.label'), description: t('pricingPage.paymentMethods.wechat.description') },
+  { value: 'card', label: t('pricingPage.paymentMethods.card.label'), description: t('pricingPage.paymentMethods.card.description') },
+]);
 
 const authStore = useAuthStore();
 
-const planDefinitions = [
+const planDefinitions = computed(() => [
   {
     key: 'free',
     planCode: 'personal-free',
-    name: 'FREE',
-    price: { annual: '$0.00', monthly: '$0.00' },
-    period: { annual: 'month', monthly: 'month' },
-    limit: '10,000 words per month',
-    description: 'Essential RepreGuard safeguards for individuals testing AI content.',
-    features: ['Basic AI Scan', '5 Free Advanced Scans'],
+    name: t('pricingPage.plans.free.name'),
+    displayName: t('pricingPage.plans.free.displayName'),
+    price: { annual: t('pricingPage.plans.free.price.annual'), monthly: t('pricingPage.plans.free.price.monthly') },
+    period: { annual: t('pricingPage.periods.month'), monthly: t('pricingPage.periods.month') },
+    limit: t('pricingPage.plans.free.limit'),
+    description: t('pricingPage.plans.free.description'),
+    features: t('pricingPage.plans.free.features'),
   },
   {
     key: 'essential',
     planCode: 'personal-essential',
-    name: 'ESSENTIAL',
-    price: { annual: '$99.96', monthly: '$9.99' },
-    period: { annual: 'year', monthly: 'month' },
-    limit: '150,000 words per month',
-    description: 'Expanded detection muscle with RepreGuard mixed-model comparisons.',
-    features: [
-      'Basic AI Scan',
-      'Up to 150,000 words per month',
-      'Premium AI detection models',
-      'Plagiarism scanning',
-      'Advanced Grammar and Writing feedback',
-    ],
+    name: t('pricingPage.plans.essential.name'),
+    displayName: t('pricingPage.plans.essential.displayName'),
+    price: { annual: t('pricingPage.plans.essential.price.annual'), monthly: t('pricingPage.plans.essential.price.monthly') },
+    period: { annual: t('pricingPage.periods.year'), monthly: t('pricingPage.periods.month') },
+    limit: t('pricingPage.plans.essential.limit'),
+    description: t('pricingPage.plans.essential.description'),
+    features: t('pricingPage.plans.essential.features'),
   },
   {
     key: 'premium',
     planCode: 'personal-premium',
-    name: 'PREMIUM',
-    price: { annual: '$155.88', monthly: '$15.99' },
-    period: { annual: 'year', monthly: 'month' },
-    limit: '300,000 words per month',
-    description: 'Our most popular toolkit powered by RepreGuard deep scan layers.',
-    badge: 'MOST POPULAR',
+    name: t('pricingPage.plans.premium.name'),
+    displayName: t('pricingPage.plans.premium.displayName'),
+    price: { annual: t('pricingPage.plans.premium.price.annual'), monthly: t('pricingPage.plans.premium.price.monthly') },
+    period: { annual: t('pricingPage.periods.year'), monthly: t('pricingPage.periods.month') },
+    limit: t('pricingPage.plans.premium.limit'),
+    description: t('pricingPage.plans.premium.description'),
+    badge: t('pricingPage.badges.bestValue'),
     highlight: true,
-    features: [
-      'Everything in Essential',
-      'Up to 300,000 words per month',
-      'Advanced AI Deep Scan',
-      'Multilingual AI detection',
-      'Download AI reports',
-    ],
+    features: t('pricingPage.plans.premium.features'),
   },
   {
     key: 'professional',
     planCode: 'personal-professional',
-    name: 'PROFESSIONAL',
-    price: { annual: '$299.88', monthly: '$29.99' },
-    period: { annual: 'year', monthly: 'month' },
-    limit: '500,000 words per month',
-    description: 'Scale your compliance team with enterprise-grade workflows.',
-    features: [
-      'All of Premium',
-      'Up to 10 million words overage',
-      'Scan up to 250 files at once',
-      'Page by page scanning',
-      'Enterprise-grade security LMS Integration',
-    ],
+    name: t('pricingPage.plans.professional.name'),
+    displayName: t('pricingPage.plans.professional.displayName'),
+    price: { annual: t('pricingPage.plans.professional.price.annual'), monthly: t('pricingPage.plans.professional.price.monthly') },
+    period: { annual: t('pricingPage.periods.year'), monthly: t('pricingPage.periods.month') },
+    limit: t('pricingPage.plans.professional.limit'),
+    description: t('pricingPage.plans.professional.description'),
+    features: t('pricingPage.plans.professional.features'),
   },
-];
+]);
 
 const displayedPlans = computed(() =>
-  planDefinitions.map((plan) => ({
+  planDefinitions.value.map((plan) => ({
     ...plan,
     price: plan.price[billingCycle.value],
     period: plan.period[billingCycle.value],
@@ -414,43 +431,9 @@ const displayedPlans = computed(() =>
   }))
 );
 
-const tablePlans = ['FREE', 'ESSENTIAL', 'PREMIUM', 'PROFESSIONAL'];
+const tablePlans = computed(() => t('pricingPage.table.plans'));
 
-const comparison = [
-  {
-    name: 'Detection features',
-    rows: [
-      { label: 'Words per month', values: ['10,000', '150,000', '300,000', '500,000'] },
-      { label: 'Character limit per scan', values: ['10,000', '50,000', '50,000', '150,000'] },
-      { label: 'Multi-model AI detection (Gemini, Claude, LLaMA, etc.)', values: [true, true, true, true] },
-      { label: 'Mixed AI and human text detection', values: [true, true, true, true] },
-      { label: 'Sentence-level AI highlighting', values: [true, true, true, true] },
-      { label: 'AI Vocabulary Scan', values: [false, false, true, true] },
-      { label: 'Paraphraser and AI bypasser detection', values: [false, false, true, true] },
-      { label: 'Batch upload file limit', values: ['3', '3', '50', '250'] },
-      { label: 'Advanced AI scan', values: ['5 Free', '5 Free', true, true] },
-      { label: 'Downloadable AI report', values: [false, false, true, true] },
-      { label: 'Plagiarism checker', values: [false, true, true, true] },
-      { label: 'Page by page scanning', values: [false, false, false, true] },
-    ],
-  },
-  {
-    name: 'Writing features',
-    rows: [
-      { label: 'Grammar Check', values: [true, true, true, true] },
-      { label: 'Writing feedback', values: [false, true, true, true] },
-      { label: 'Find Sources and Auto-Generate Citations', values: [false, false, true, true] },
-    ],
-  },
-  {
-    name: 'Collaboration features',
-    rows: [
-      { label: 'Enterprise Grade Security and Privacy', values: [false, true, true, true] },
-      { label: 'Roles, Accounts Provisioning, Shared Billing Across Teams', values: [false, false, false, true] },
-      { label: 'Custom LMS Integration (Canvas, Google Classroom, Moodle)', values: [false, false, false, true] },
-    ],
-  },
-];
+const comparison = computed(() => t('pricingPage.table.sections'));
 
 const scrollToPlans = () => {
   planSection.value?.scrollIntoView({ behavior: 'smooth' });
@@ -471,7 +454,7 @@ const closeCheckout = () => {
 const quotaLabel = computed(() => {
   if (!selectedPlan.value) return '';
   const quota = planQuotaByKey[selectedPlan.value.key];
-  return quota?.label || '按需计费额度';
+  return quota?.label || t('pricingPage.checkout.quotaFallback');
 });
 
 const refreshSubscription = async () => {
@@ -483,7 +466,7 @@ const refreshSubscription = async () => {
 const handleSubmitPayment = async () => {
   if (!selectedPlan.value) return;
   paymentStatus.value = 'creating';
-  paymentMessage.value = '正在创建订单...';
+  paymentMessage.value = t('pricingPage.checkout.status.creating');
   try {
     const order = await createOrder({
       planKey: selectedPlan.value.key,
@@ -492,24 +475,24 @@ const handleSubmitPayment = async () => {
       paymentMethod: paymentMethod.value,
     });
     paymentStatus.value = 'paying';
-    paymentMessage.value = '订单已创建，等待支付结果...';
+    paymentMessage.value = t('pricingPage.checkout.messages.orderCreated');
 
     const paymentResult = await payOrder(order.id || order.orderId, { paymentMethod: paymentMethod.value });
     if (paymentResult.status === 'succeeded') {
       paymentStatus.value = 'success';
-      paymentMessage.value = '支付成功，正在刷新套餐...';
+      paymentMessage.value = t('pricingPage.checkout.messages.refreshing');
       await refreshSubscription();
-      paymentMessage.value = '套餐与额度已更新。';
+      paymentMessage.value = t('pricingPage.checkout.messages.updated');
     } else if (paymentResult.status === 'canceled') {
       paymentStatus.value = 'canceled';
-      paymentMessage.value = paymentResult.message || '支付已取消。';
+      paymentMessage.value = paymentResult.message || t('pricingPage.checkout.messages.canceled');
     } else {
       paymentStatus.value = 'failed';
-      paymentMessage.value = paymentResult.message || '支付失败，请稍后重试。';
+      paymentMessage.value = paymentResult.message || t('pricingPage.checkout.messages.failed');
     }
   } catch (error) {
     paymentStatus.value = 'failed';
-    paymentMessage.value = error?.message || '支付异常，请稍后再试。';
+    paymentMessage.value = error?.message || t('pricingPage.checkout.messages.error');
   }
 };
 
@@ -517,15 +500,15 @@ const copyTeamInviteLink = async () => {
   const link = 'https://veritascribe.dev/invite/team';
   try {
     await navigator.clipboard?.writeText(link);
-    teamActionStatus.value = '邀请链接已复制，可直接发送给团队成员。';
+    teamActionStatus.value = t('pricingPage.teamBlock.toast.copied');
   } catch (error) {
     console.warn('Clipboard unavailable, showing link instead.', error);
-    teamActionStatus.value = `邀请链接：${link}`;
+    teamActionStatus.value = t('pricingPage.teamBlock.toast.link', { link });
   }
 };
 
 const openSeatManager = () => {
-  teamActionStatus.value = '席位管理入口已开启，我们会在后台为团队预留席位。';
+  teamActionStatus.value = t('pricingPage.teamBlock.toast.seat');
   if (!isCheckoutOpen.value) {
     scrollToPlans();
   }

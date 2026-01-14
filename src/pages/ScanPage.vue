@@ -11,7 +11,7 @@
           >
             <span :class="['nav-indicator', isPanelActive('home') ? 'nav-indicator--active' : '']"></span>
             <HomeIcon class="h-5 w-5" />
-            <span class="nav-label">Home</span>
+            <span class="nav-label">{{ t('scan.nav.home') }}</span>
           </button>
           <button
             type="button"
@@ -20,7 +20,7 @@
           >
             <span :class="['nav-indicator', isPanelActive('document') ? 'nav-indicator--active' : '']"></span>
             <DocumentTextIcon class="h-5 w-5" />
-            <span class="nav-label">Document</span>
+            <span class="nav-label">{{ t('scan.nav.document') }}</span>
           </button>
           <button
             type="button"
@@ -29,7 +29,7 @@
           >
             <span :class="['nav-indicator', isPanelActive('history') ? 'nav-indicator--active' : '']"></span>
             <ClockIcon class="h-5 w-5" />
-            <span class="nav-label">History</span>
+            <span class="nav-label">{{ t('scan.nav.history') }}</span>
           </button>
           <div class="relative">
             <button
@@ -40,7 +40,7 @@
             >
               <span class="nav-indicator"></span>
               <PlusIcon class="h-5 w-5" />
-              <span class="nav-label">New</span>
+              <span class="nav-label">{{ t('scan.nav.new') }}</span>
             </button>
             <transition name="fade">
               <div
@@ -48,14 +48,14 @@
                 ref="newMenuRef"
                 class="absolute left-0 top-full z-10 mt-2 w-52 rounded-2xl border border-slate-200 bg-white p-3 shadow-xl"
               >
-                <button type="button" class="menu-item" @click="startNewScan">新建扫描</button>
-                <button type="button" class="menu-item" @click="triggerMultiUpload">批量上传</button>
+                <button type="button" class="menu-item" @click="startNewScan">{{ t('scan.nav.newScan') }}</button>
+                <button type="button" class="menu-item" @click="triggerMultiUpload">{{ t('scan.nav.multiUpload') }}</button>
               </div>
             </transition>
           </div>
         </nav>
         <div class="mt-auto rounded-2xl border border-dashed border-slate-200 bg-slate-50 p-4 text-xs text-slate-500">
-          <p>拖拽 TXT / DOCX / PDF 等文件到编辑区即可自动读取。</p>
+          <p>{{ t('scan.sidebarTip') }}</p>
         </div>
         <div v-if="authStore.isAuthenticated" class="mt-6 space-y-2 border-t border-slate-200 pt-4">
           <button
@@ -65,7 +65,7 @@
           >
             <span :class="['nav-indicator', isPanelActive('profile') ? 'nav-indicator--active' : '']"></span>
             <Cog6ToothIcon class="h-5 w-5" />
-            <span class="nav-label">Settings</span>
+            <span class="nav-label">{{ t('scan.nav.settings') }}</span>
           </button>
           <button
             type="button"
@@ -74,7 +74,7 @@
           >
             <span :class="['nav-indicator', isPanelActive('qa') ? 'nav-indicator--active' : '']"></span>
             <QuestionMarkCircleIcon class="h-5 w-5" />
-            <span class="nav-label">问答</span>
+            <span class="nav-label">{{ t('scan.nav.qa') }}</span>
           </button>
         </div>
       </aside>
@@ -91,7 +91,7 @@
               <div class="space-y-3">
                 <div class="flex flex-wrap items-center gap-3">
                   <h1 class="text-2xl font-semibold tracking-tight text-slate-900">
-                    Welcome, {{ userDisplayName }}
+                    {{ t('scan.welcome.title', { name: userDisplayName }) }}
                   </h1>
                   <span class="inline-flex items-center rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-semibold text-slate-500">
                     {{ userPlanTag }}
@@ -106,9 +106,9 @@
                   @click="showUsageExamples = true"
                 >
                   <SparklesIcon class="h-4 w-4" />
-                  使用示例
+                  {{ t('scan.home.examplesCta') }}
                 </button>
-                <span class="text-xs text-slate-500">查看示例文档与结果快照，加速熟悉流程。</span>
+                <span class="text-xs text-slate-500">{{ t('scan.home.examplesHint') }}</span>
               </div>
               <OnboardingStepsBar
                 v-if="showOnboarding"
@@ -131,12 +131,12 @@
                     </svg>
                   </div>
                   <span class="inline-flex items-center rounded-full bg-emerald-500/10 px-3 py-1 text-xs font-semibold text-emerald-600">
-                    Quick launch
+                    {{ t('scan.quickLaunch.badge') }}
                   </span>
                 </div>
                 <div class="mt-10 space-y-3">
-                  <p class="text-3xl font-semibold tracking-tight text-slate-900">New scan</p>
-                  <p class="max-w-sm text-sm text-slate-500">准备好一段文本或多个文件？点击即可回到文档编辑器开始 RepreGuard 检测。</p>
+                  <p class="text-3xl font-semibold tracking-tight text-slate-900">{{ t('scan.quickLaunch.title') }}</p>
+                  <p class="max-w-sm text-sm text-slate-500">{{ t('scan.quickLaunch.description') }}</p>
                 </div>
                 <span class="absolute -bottom-4 -right-4 flex h-14 w-14 items-center justify-center rounded-full bg-emerald-500 text-2xl font-semibold text-white shadow-xl shadow-emerald-500/40 transition group-hover:scale-110">
                   +
@@ -145,8 +145,8 @@
 
               <div class="flex flex-col gap-6">
                 <div class="flex items-center justify-between">
-                  <h2 class="text-sm font-semibold uppercase tracking-[0.3em] text-slate-500">Feature Capsules</h2>
-                  <p class="text-xs text-slate-400">点击以了解更多功能</p>
+                  <h2 class="text-sm font-semibold uppercase tracking-[0.3em] text-slate-500">{{ t('scan.features.title') }}</h2>
+                  <p class="text-xs text-slate-400">{{ t('scan.features.subtitle') }}</p>
                 </div>
                 <div class="-mx-1 overflow-x-auto pb-2 lg:mx-0 lg:overflow-visible">
                   <div class="flex min-w-full gap-4 px-1 lg:grid lg:min-w-0 lg:grid-cols-2 lg:gap-5 xl:grid-cols-3 2xl:grid-cols-4">
@@ -179,10 +179,10 @@
             <section class="rounded-4xl border border-slate-200 bg-blue-50/90 px-8 py-8 shadow-sm">
               <div class="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
                 <div class="max-w-2xl space-y-2">
-                  <span class="inline-flex items-center rounded-full bg-sky-100 px-3 py-1 text-xs font-semibold text-sky-700">New for Educators</span>
-                  <h3 class="text-2xl font-semibold tracking-tight text-slate-900">New for Educators</h3>
+                  <span class="inline-flex items-center rounded-full bg-sky-100 px-3 py-1 text-xs font-semibold text-sky-700">{{ t('scan.educator.badge') }}</span>
+                  <h3 class="text-2xl font-semibold tracking-tight text-slate-900">{{ t('scan.educator.title') }}</h3>
                   <p class="text-sm leading-relaxed text-slate-600">
-                    我们的 AI 评分助手可帮助教师根据课程快速提供一致反馈，节省时间并保持教学控制。
+                    {{ t('scan.educator.description') }}
                   </p>
                 </div>
                 <div class="flex items-center gap-6">
@@ -190,7 +190,7 @@
                     type="button"
                     class="inline-flex items-center justify-center rounded-full bg-sky-600 px-5 py-2 text-sm font-semibold text-white shadow hover:bg-sky-500"
                   >
-                    Get started
+                    {{ t('scan.educator.cta') }}
                   </button>
                   <div class="flex h-20 w-20 items-center justify-center rounded-3xl bg-white shadow-inner">
                     <svg class="h-10 w-10 text-sky-500" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
@@ -202,7 +202,7 @@
             </section>
 
             <section class="space-y-4">
-              <h3 class="text-sm font-semibold uppercase tracking-[0.3em] text-slate-500">More ways to scan...</h3>
+              <h3 class="text-sm font-semibold uppercase tracking-[0.3em] text-slate-500">{{ t('scan.integrations.title') }}</h3>
               <div class="flex flex-wrap gap-3">
                 <button
                   v-for="integration in integrationButtons"
@@ -237,7 +237,7 @@
                     <p class="text-sm text-slate-500">{{ activeFeatureCard?.modalSubtitle }}</p>
                   </div>
                   <div class="flex h-48 items-center justify-center rounded-3xl border border-dashed border-slate-200 bg-slate-50">
-                    <span class="text-sm font-semibold text-slate-400">演示动画占位</span>
+                    <span class="text-sm font-semibold text-slate-400">{{ t('scan.featureModal.placeholder') }}</span>
                   </div>
                   <button
                     type="button"
@@ -280,12 +280,12 @@
                   class="inline-flex items-center rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-semibold text-slate-600 transition hover:border-primary-200 hover:text-primary-600"
                   @click="resetEditor"
                 >
-                  一键重置
+                  {{ t('scan.editor.reset') }}
                 </button>
               </div>
               <div class="flex flex-wrap items-center gap-3 text-xs text-slate-500">
                 <span>{{ characterUsage }}</span>
-                <span>已选功能：{{ selectedFunctionSummary }}</span>
+                <span>{{ t('scan.editor.selectedFunctions', { value: selectedFunctionSummary }) }}</span>
                 <span v-if="scanStore.lastUploadedFileName" class="inline-flex items-center rounded-full bg-slate-100 px-2 py-1">
                   <ArrowUpTrayIcon class="mr-1 h-3 w-3 text-primary-500" />
                   {{ scanStore.lastUploadedFileName }}
@@ -303,7 +303,7 @@
                     ref="editorRef"
                     class="editor-surface"
                     contenteditable="true"
-                    data-placeholder="拖拽文档或直接粘贴文本，开始智能检测。"
+                    :data-placeholder="t('scan.editor.placeholder')"
                     @input="onEditorInput"
                     @focus="editorMode = 'edit'"
                     @dragenter.prevent="onDragEnter"
@@ -317,7 +317,7 @@
                   >
                     <div v-if="hasResults" v-html="highlightedPreviewHtml"></div>
                     <div v-else class="flex h-full items-center justify-center text-sm text-slate-400">
-                      生成检测结果后可在此查看颜色标注。
+                      {{ t('scan.editor.previewEmpty') }}
                     </div>
                   </div>
                   <div
@@ -325,12 +325,12 @@
                     class="pointer-events-none absolute inset-0 z-10 flex flex-col items-center justify-center rounded-3xl border-2 border-dashed border-primary-400 bg-primary-50/80 text-primary-600"
                   >
                     <ArrowUpTrayIcon class="mb-3 h-10 w-10" />
-                    <p class="text-sm font-semibold">释放鼠标上传文档</p>
-                    <p class="mt-1 text-xs">支持 TXT / DOCX / PDF / Markdown 等格式</p>
+                    <p class="text-sm font-semibold">{{ t('scan.editor.dropTitle') }}</p>
+                    <p class="mt-1 text-xs">{{ t('scan.editor.dropSubtitle') }}</p>
                   </div>
                 </div>
                 <div class="border-t border-slate-200 bg-slate-50 px-6 py-3 text-xs text-slate-500">
-                  <span>自动保存草稿，刷新页面不会丢失内容。</span>
+                  <span>{{ t('scan.editor.autosave') }}</span>
                 </div>
               </div>
               <input
@@ -347,15 +347,15 @@
                 <div class="flex-1 overflow-y-auto px-5 py-6">
                   <div class="flex items-center justify-between">
                     <div>
-                      <h2 class="text-sm font-semibold text-slate-900">Scan Menu</h2>
-                      <p class="text-xs text-slate-500">选择功能并查看对应结果</p>
+                      <h2 class="text-sm font-semibold text-slate-900">{{ t('scan.results.menuTitle') }}</h2>
+                      <p class="text-xs text-slate-500">{{ t('scan.results.menuSubtitle') }}</p>
                     </div>
                   </div>
 
                 <div v-if="!hasResults" class="mt-6 space-y-6">
                   <div class="space-y-4">
                     <div class="space-y-3">
-                      <p class="text-xs font-bold uppercase tracking-tight text-slate-400">Verification</p>
+                      <p class="text-xs font-bold uppercase tracking-tight text-slate-400">{{ t('scan.results.verification') }}</p>
                       <div class="grid grid-cols-2 gap-3">
                         <template v-for="option in functionOptions" :key="option.key">
                           <button
@@ -376,7 +376,7 @@
                       </div>
                     </div>
                     <div class="space-y-3">
-                      <p class="text-xs font-bold uppercase tracking-tight text-slate-400">Enhancement</p>
+                      <p class="text-xs font-bold uppercase tracking-tight text-slate-400">{{ t('scan.results.enhancement') }}</p>
                       <div class="grid grid-cols-2 gap-3">
                         <template v-for="option in functionOptions" :key="option.key">
                           <button
@@ -398,12 +398,12 @@
                     </div>
                   </div>
                   <div class="space-y-2 rounded-2xl bg-slate-50 p-4 text-xs text-slate-500">
-                    <p>已选功能：{{ selectedFunctionSummary }}</p>
+                    <p>{{ t('scan.editor.selectedFunctions', { value: selectedFunctionSummary }) }}</p>
                     <p>{{ characterUsage }}</p>
-                    <p v-if="scanStore.lastUploadedFileName">已导入：{{ scanStore.lastUploadedFileName }}</p>
+                    <p v-if="scanStore.lastUploadedFileName">{{ t('scan.editor.uploaded', { name: scanStore.lastUploadedFileName }) }}</p>
                   </div>
                   <div>
-                    <p class="text-xs font-semibold text-slate-500">试试这些范例</p>
+                    <p class="text-xs font-semibold text-slate-500">{{ t('scan.editor.examples') }}</p>
                     <div class="mt-2 flex flex-wrap gap-2">
                       <button
                         v-for="example in scanStore.examples"
@@ -421,23 +421,23 @@
                       </button>
                     </div>
                   </div>
-                  <p class="text-xs text-slate-400">登录后可保存扫描记录、导出报告与管理团队额度。</p>
+                  <p class="text-xs text-slate-400">{{ t('scan.editor.loginHint') }}</p>
                 </div>
 
                 <div v-else class="mt-6 space-y-6">
                   <div class="summary-card">
-                    <div class="summary-header">
-                      <h3 class="summary-title">Detection Analysis</h3>
-                      <span class="summary-badge">Model V3.0</span>
+                      <div class="summary-header">
+                      <h3 class="summary-title">{{ t('scan.results.summary.title') }}</h3>
+                      <span class="summary-badge">{{ t('scan.results.summary.badge') }}</span>
                     </div>
                     <div class="summary-hero">
                       <span class="summary-hero__value">{{ detectionResults.summary.ai }}%</span>
-                      <span class="summary-hero__label">AI Probability</span>
+                      <span class="summary-hero__label">{{ t('scan.results.summary.label') }}</span>
                     </div>
                     <div class="summary-rows">
                       <div class="summary-row">
                         <div class="summary-row__head">
-                          <span class="summary-row__label">AI Generated</span>
+                          <span class="summary-row__label">{{ t('scan.results.summary.ai') }}</span>
                           <span class="summary-row__value">{{ detectionResults.summary.ai }}%</span>
                         </div>
                         <div class="summary-row__bar">
@@ -446,7 +446,7 @@
                       </div>
                       <div class="summary-row">
                         <div class="summary-row__head">
-                          <span class="summary-row__label">Mixed / Paraphrased</span>
+                          <span class="summary-row__label">{{ t('scan.results.summary.mixed') }}</span>
                           <span class="summary-row__value">{{ detectionResults.summary.mixed }}%</span>
                         </div>
                         <div class="summary-row__bar">
@@ -455,7 +455,7 @@
                       </div>
                       <div class="summary-row">
                         <div class="summary-row__head">
-                          <span class="summary-row__label">Human Written</span>
+                          <span class="summary-row__label">{{ t('scan.results.summary.human') }}</span>
                           <span class="summary-row__value">{{ detectionResults.summary.human }}%</span>
                         </div>
                         <div class="summary-row__bar">
@@ -489,9 +489,9 @@
                       @click="exportReport"
                     >
                       <DocumentArrowDownIcon class="h-4 w-4" />
-                      导出报告
+                      {{ t('scan.results.export') }}
                     </button>
-                    <span>下载 JSON 快照，便于与团队分享或归档。</span>
+                    <span>{{ t('scan.results.exportHint') }}</span>
                   </div>
 
                   <div v-if="activeResultTab === 'scan'" class="space-y-4">
@@ -502,21 +502,23 @@
                     >
                       <div class="flex items-start justify-between gap-3">
                         <p class="flex-1 leading-relaxed" v-html="formatHighlightedSentence(sentence)"></p>
-                        <span class="text-xs font-semibold text-slate-500">概率 {{ Math.round(sentence.probability * 100) }}%</span>
+                        <span class="text-xs font-semibold text-slate-500">
+                          {{ t('scan.results.probability', { value: Math.round(sentence.probability * 100) }) }}
+                        </span>
                       </div>
                       <p class="mt-2 text-xs text-slate-500">{{ sentence.reason }}</p>
                     </div>
                   </div>
 
                   <div v-else-if="activeResultTab === 'translate'" class="space-y-3">
-                    <p class="text-xs font-semibold text-slate-500">自动翻译结果</p>
+                    <p class="text-xs font-semibold text-slate-500">{{ t('scan.results.translation') }}</p>
                     <div class="rounded-2xl bg-slate-50 p-4 text-sm leading-relaxed text-slate-700 whitespace-pre-line">
                       {{ detectionResults.translation }}
                     </div>
                   </div>
 
                   <div v-else-if="activeResultTab === 'polish'" class="space-y-4">
-                    <p class="text-xs font-semibold text-slate-500">润色建议</p>
+                    <p class="text-xs font-semibold text-slate-500">{{ t('scan.results.polish') }}</p>
                     <div
                       v-for="suggestion in detectionResults.polish"
                       :key="suggestion.id"
@@ -529,14 +531,14 @@
                         class="mt-3 inline-flex items-center rounded-full bg-primary-600 px-3 py-1 text-xs font-semibold text-white hover:bg-primary-500"
                         @click="applyPolishSuggestion(suggestion)"
                       >
-                        一键应用
+                        {{ t('scan.results.apply') }}
                       </button>
                     </div>
-                    <p class="text-[11px] text-slate-400">应用后请再次扫描以刷新检测结果。</p>
+                    <p class="text-[11px] text-slate-400">{{ t('scan.results.applyHint') }}</p>
                   </div>
 
                   <div v-else-if="activeResultTab === 'citation'" class="space-y-4">
-                    <p class="text-xs font-semibold text-slate-500">引用核查</p>
+                    <p class="text-xs font-semibold text-slate-500">{{ t('scan.results.citation') }}</p>
                     <div
                       v-for="item in detectionResults.citations"
                       :key="item.id"
@@ -550,7 +552,7 @@
                       </div>
                       <p class="mt-2 text-xs text-slate-500">{{ item.note }}</p>
                     </div>
-                    <p class="text-[11px] text-slate-400">引用核查为占位逻辑，后续可接入真实数据库。</p>
+                    <p class="text-[11px] text-slate-400">{{ t('scan.results.citationHint') }}</p>
                   </div>
                 </div>
               </div>
@@ -560,7 +562,7 @@
                   class="w-full rounded-full bg-primary-600 px-4 py-3 text-sm font-semibold text-white shadow-lg shadow-primary-200/70 transition hover:-translate-y-0.5 hover:bg-primary-500"
                   @click="handleScan"
                 >
-                  开始扫描
+                  {{ t('scan.results.startScan') }}
                 </button>
               </div>
               </div>
@@ -572,27 +574,29 @@
                 <button type="button" class="toolbar-button" @click="applyCommand('bold')">B</button>
                 <button type="button" class="toolbar-button italic" @click="applyCommand('italic')">I</button>
                 <button type="button" class="toolbar-button underline" @click="applyCommand('underline')">U</button>
-                <button type="button" class="toolbar-button" @click="applyCommand('insertUnorderedList')">• 列表</button>
-                <button type="button" class="toolbar-button" @click="applyCommand('insertOrderedList')">1. 列表</button>
-                <button type="button" class="toolbar-button" @click="applyCommand('justifyLeft')">左对齐</button>
-                <button type="button" class="toolbar-button" @click="applyCommand('justifyCenter')">居中</button>
-                <button type="button" class="toolbar-button" @click="applyCommand('justifyRight')">右对齐</button>
+                <button type="button" class="toolbar-button" @click="applyCommand('insertUnorderedList')">{{ t('scan.toolbar.bulleted') }}</button>
+                <button type="button" class="toolbar-button" @click="applyCommand('insertOrderedList')">{{ t('scan.toolbar.numbered') }}</button>
+                <button type="button" class="toolbar-button" @click="applyCommand('justifyLeft')">{{ t('scan.toolbar.alignLeft') }}</button>
+                <button type="button" class="toolbar-button" @click="applyCommand('justifyCenter')">{{ t('scan.toolbar.alignCenter') }}</button>
+                <button type="button" class="toolbar-button" @click="applyCommand('justifyRight')">{{ t('scan.toolbar.alignRight') }}</button>
                 <div class="toolbar-select">
-                  <label class="sr-only" for="font-size">字体大小</label>
-                  <select id="font-size" class="text-xs" @change="onFontSizeChange">
-                    <option value="" selected>字体大小</option>
-                    <option value="small">12px</option>
-                    <option value="base">14px</option>
-                    <option value="lg">16px</option>
-                    <option value="xl">18px</option>
-                    <option value="2xl">24px</option>
-                  </select>
+                  <label class="sr-only" for="font-size">{{ t('scan.toolbar.fontSize') }}</label>
+                  <BaseListbox
+                    button-id="font-size"
+                    v-model="fontSizeSelection"
+                    :options="fontSizeOptions"
+                    :placeholder="t('scan.toolbar.fontSize')"
+                    :aria-label="t('scan.toolbar.fontSize')"
+                    button-class="text-xs"
+                    display-class="text-xs"
+                    @update:model-value="onFontSizeChange"
+                  />
                 </div>
               </div>
               <div class="flex items-center gap-2">
                 <button type="button" class="toolbar-button" @click="triggerUpload">
                   <ArrowUpTrayIcon class="mr-1 h-4 w-4" />
-                  上传文件
+                  {{ t('scan.toolbar.upload') }}
                 </button>
                 <button
                   type="button"
@@ -609,7 +613,7 @@
                     <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                     <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"></path>
                   </svg>
-                  {{ isScanning ? '扫描中...' : '开始扫描' }}
+                  {{ isScanning ? t('scan.toolbar.scanning') : t('scan.toolbar.start') }}
                 </button>
               </div>
             </div>
@@ -620,15 +624,15 @@
           <div class="border-b border-slate-200 bg-white/80 px-4 py-3 backdrop-blur">
             <div class="flex flex-wrap items-center justify-between gap-3">
               <div>
-                <h2 class="text-base font-semibold text-slate-900">历史记录</h2>
-                <p class="text-xs text-slate-500">查看最近的检测、润色与翻译任务</p>
+                <h2 class="text-base font-semibold text-slate-900">{{ t('scan.history.title') }}</h2>
+                <p class="text-xs text-slate-500">{{ t('scan.history.subtitle') }}</p>
               </div>
               <button
                 type="button"
                 class="inline-flex items-center rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-semibold text-slate-600 transition hover:border-primary-200 hover:text-primary-600"
                 @click="setActivePanel('document')"
               >
-                返回编辑
+                {{ t('scan.history.back') }}
               </button>
             </div>
           </div>
@@ -636,8 +640,8 @@
             <section class="w-full border-b border-slate-200 bg-white/70 px-4 py-6 lg:w-80 lg:border-b-0 lg:border-r">
               <div class="space-y-4">
                 <div>
-                  <h3 class="text-sm font-semibold text-slate-900">最近记录</h3>
-                  <p class="mt-1 text-xs text-slate-500">点击左侧记录以查看详细分析</p>
+                  <h3 class="text-sm font-semibold text-slate-900">{{ t('scan.history.recentTitle') }}</h3>
+                  <p class="mt-1 text-xs text-slate-500">{{ t('scan.history.recentSubtitle') }}</p>
                 </div>
                 <div class="space-y-2">
                   <button
@@ -652,7 +656,7 @@
                     ]"
                     @click="selectHistoryRecord(record.id)"
                   >
-                    <p class="font-semibold">{{ record.title || '扫描记录' }}</p>
+                    <p class="font-semibold">{{ record.title || t('scan.history.recordFallback') }}</p>
                     <p class="mt-1 text-xs" :class="record.id === activeHistoryId ? 'text-slate-600' : 'text-slate-400'">
                       {{ formatHistorySummary(record) }}
                     </p>
@@ -668,27 +672,27 @@
                 <header class="flex flex-col gap-3 rounded-3xl border border-slate-200 bg-white/90 p-6 shadow-sm">
                   <div class="flex flex-wrap items-start justify-between gap-3">
                     <div>
-                      <p class="text-xs uppercase tracking-[0.3em] text-primary-500">Saved Result</p>
-                      <h2 class="text-xl font-semibold text-slate-900">{{ activeHistoryRecord.title || '扫描记录' }}</h2>
+                      <p class="text-xs uppercase tracking-[0.3em] text-primary-500">{{ t('scan.history.savedBadge') }}</p>
+                      <h2 class="text-xl font-semibold text-slate-900">{{ activeHistoryRecord.title || t('scan.history.recordFallback') }}</h2>
                       <div class="mt-2 flex flex-wrap gap-3 text-xs text-slate-500">
                         <span>{{ formatHistoryTimestamp(activeHistoryRecord.createdAt) }}</span>
                         <span>{{ historyCharacterUsage }}</span>
-                        <span>功能：{{ historyFunctionSummary }}</span>
+                        <span>{{ t('scan.history.functions', { value: historyFunctionSummary }) }}</span>
                       </div>
                     </div>
                     <span class="inline-flex items-center rounded-full bg-emerald-100 px-3 py-1 text-[11px] font-semibold text-emerald-700">
-                      已保存
+                      {{ t('scan.history.saved') }}
                     </span>
                   </div>
                   <div class="rounded-2xl bg-slate-50 p-4 text-sm text-slate-600">
-                    <p class="font-semibold text-slate-700">原文标色预览</p>
+                    <p class="font-semibold text-slate-700">{{ t('scan.history.previewTitle') }}</p>
                     <div class="mt-3 max-h-72 overflow-y-auto rounded-xl border border-slate-200 bg-white/90 p-4 text-sm leading-relaxed text-slate-700" v-html="historyPreviewHtml"></div>
                   </div>
                 </header>
 
                 <div v-if="activeHistoryRecord.analysis" class="space-y-6">
                   <div class="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
-                    <p class="text-xs uppercase tracking-[0.3em] text-slate-400">AI 检测摘要</p>
+                    <p class="text-xs uppercase tracking-[0.3em] text-slate-400">{{ t('scan.history.summaryTitle') }}</p>
                     <div class="mt-4 flex flex-wrap items-center gap-5">
                       <div
                         class="h-24 w-24 rounded-full p-1"
@@ -698,25 +702,25 @@
                       >
                         <div class="flex h-full w-full items-center justify-center rounded-full bg-white shadow-sm">
                           <div class="text-center">
-                            <p class="text-[11px] font-semibold text-slate-400">AI</p>
+                            <p class="text-[11px] font-semibold text-slate-400">{{ t('scan.results.summary.aiLabel') }}</p>
                             <p class="text-lg font-semibold text-slate-900">{{ activeHistoryRecord.analysis.summary.ai }}%</p>
                           </div>
                         </div>
                       </div>
                       <div class="flex-1 space-y-2">
-                        <p class="text-lg font-semibold text-slate-900">潜在相似句 {{ activeHistoryRecord.analysis.aiLikelyCount }} 句</p>
-                        <p class="text-xs text-slate-500">含 AI 生成或人机混合特征的句子总数</p>
+                        <p class="text-lg font-semibold text-slate-900">{{ t('scan.history.aiLikely', { value: activeHistoryRecord.analysis.aiLikelyCount }) }}</p>
+                        <p class="text-xs text-slate-500">{{ t('scan.history.aiLikelyHint') }}</p>
                         <div class="grid grid-cols-3 gap-2 text-xs">
                           <div class="rounded-xl border border-rose-100 bg-rose-50 p-3">
-                            <p class="text-[10px] uppercase tracking-widest text-rose-500">AI Generated</p>
+                            <p class="text-[10px] uppercase tracking-widest text-rose-500">{{ t('scan.results.summary.ai') }}</p>
                             <p class="mt-2 text-lg font-semibold text-rose-600">{{ activeHistoryRecord.analysis.summary.ai }}%</p>
                           </div>
                           <div class="rounded-xl border border-amber-100 bg-amber-50 p-3">
-                            <p class="text-[10px] uppercase tracking-widest text-amber-500">Mixed</p>
+                            <p class="text-[10px] uppercase tracking-widest text-amber-500">{{ t('scan.results.summary.mixedShort') }}</p>
                             <p class="mt-2 text-lg font-semibold text-amber-600">{{ activeHistoryRecord.analysis.summary.mixed }}%</p>
                           </div>
                           <div class="rounded-xl border border-emerald-100 bg-emerald-50 p-3">
-                            <p class="text-[10px] uppercase tracking-widest text-emerald-500">Human</p>
+                            <p class="text-[10px] uppercase tracking-widest text-emerald-500">{{ t('scan.results.summary.humanShort') }}</p>
                             <p class="mt-2 text-lg font-semibold text-emerald-600">{{ activeHistoryRecord.analysis.summary.human }}%</p>
                           </div>
                         </div>
@@ -749,21 +753,23 @@
                     >
                       <div class="flex items-start justify-between gap-3">
                         <p class="flex-1 leading-relaxed" v-html="formatHighlightedSentence(sentence)"></p>
-                        <span class="text-xs font-semibold text-slate-500">概率 {{ Math.round(sentence.probability * 100) }}%</span>
+                        <span class="text-xs font-semibold text-slate-500">
+                          {{ t('scan.results.probability', { value: Math.round(sentence.probability * 100) }) }}
+                        </span>
                       </div>
                       <p class="mt-2 text-xs text-slate-500">{{ sentence.reason }}</p>
                     </div>
                   </div>
 
                   <div v-else-if="activeHistoryTab === 'translate'" class="space-y-3">
-                    <p class="text-xs font-semibold text-slate-500">自动翻译结果</p>
+                    <p class="text-xs font-semibold text-slate-500">{{ t('scan.results.translation') }}</p>
                     <div class="rounded-2xl bg-slate-50 p-4 text-sm leading-relaxed text-slate-700 whitespace-pre-line">
                       {{ activeHistoryRecord.analysis.translation }}
                     </div>
                   </div>
 
                   <div v-else-if="activeHistoryTab === 'polish'" class="space-y-4">
-                    <p class="text-xs font-semibold text-slate-500">润色建议</p>
+                    <p class="text-xs font-semibold text-slate-500">{{ t('scan.results.polish') }}</p>
                     <div
                       v-for="suggestion in activeHistoryRecord.analysis.polish"
                       :key="suggestion.id"
@@ -776,13 +782,13 @@
                         class="mt-3 inline-flex items-center rounded-full bg-primary-600 px-3 py-1 text-xs font-semibold text-white hover:bg-primary-500"
                         @click="applyPolishSuggestion(suggestion)"
                       >
-                        一键应用
+                        {{ t('scan.results.apply') }}
                       </button>
                     </div>
                   </div>
 
                   <div v-else-if="activeHistoryTab === 'citation'" class="space-y-4">
-                    <p class="text-xs font-semibold text-slate-500">引用核查</p>
+                    <p class="text-xs font-semibold text-slate-500">{{ t('scan.results.citation') }}</p>
                     <div
                       v-for="item in activeHistoryRecord.analysis.citations"
                       :key="item.id"
@@ -796,15 +802,15 @@
                       </div>
                       <p class="mt-2 text-xs text-slate-500">{{ item.note }}</p>
                     </div>
-                    <p class="text-[11px] text-slate-400">引用核查为占位逻辑，后续可接入真实数据库。</p>
+                    <p class="text-[11px] text-slate-400">{{ t('scan.results.citationHint') }}</p>
                   </div>
                 </div>
                 <div v-else class="rounded-3xl border border-dashed border-slate-200 bg-white/70 p-10 text-center text-sm text-slate-500">
-                  暂无可展示的历史结果，请稍后重试。
+                  {{ t('scan.history.emptyRecord') }}
                 </div>
               </div>
               <div v-else class="flex h-full items-center justify-center rounded-3xl border border-dashed border-slate-200 bg-white/60 text-sm text-slate-500">
-                暂无历史记录，完成一次扫描后即可在此回顾。
+                {{ t('scan.history.empty') }}
               </div>
             </section>
           </div>
@@ -828,7 +834,7 @@
 
         <div v-else class="flex-1 px-4 py-6">
           <div class="flex h-full items-center justify-center rounded-3xl border border-dashed border-slate-200 bg-white/60 text-sm text-slate-500">
-            请选择左侧的功能以继续。
+            {{ t('scan.emptyState') }}
           </div>
         </div>
       </main>
@@ -867,11 +873,13 @@ import {
 } from '@heroicons/vue/24/outline';
 import AppHeader from '../sections/AppHeader.vue';
 import LoginPromptModal from '../components/common/LoginPromptModal.vue';
+import BaseListbox from '../components/common/BaseListbox.vue';
 import ProfilePanel from '../components/dashboard/ProfilePanel.vue';
 import QAPanel from '../components/dashboard/QAPanel.vue';
 import OnboardingStepsBar from '../components/dashboard/OnboardingStepsBar.vue';
 import UsageExamplesModal from '../components/common/UsageExamplesModal.vue';
 import PricingPage from './PricingPage.vue';
+import { useI18n } from '../i18n';
 import { useAuthStore } from '../store/auth';
 import { useScanStore } from '../store/scan';
 import { usageExamples as usageExampleItems } from '../utils/usageExamples';
@@ -880,6 +888,7 @@ const authStore = useAuthStore();
 const scanStore = useScanStore();
 const router = useRouter();
 const route = useRoute();
+const { t, locale } = useI18n();
 
 const editorRef = ref(null);
 const fileInput = ref(null);
@@ -891,6 +900,7 @@ const showUsageExamples = ref(false);
 const showOnboarding = ref(false);
 const onboardingSteps = ref([]);
 const onboardingStorageKey = 'ai-detector-onboarding-v1';
+const fontSizeSelection = ref('');
 
 const editorMode = ref('edit');
 const isScanning = ref(false);
@@ -898,7 +908,7 @@ const dragActive = ref(false);
 const detectionResults = ref(null);
 const highlightedPreviewHtml = ref('');
 const showLoginModal = ref(false);
-const loginMessage = ref('登录后即可查看完整检测结果。');
+const loginMessage = ref(t('scan.loginPrompt.default'));
 const activeResultTab = ref('scan');
 const newMenuOpen = ref(false);
 const activePanel = ref('home');
@@ -906,56 +916,65 @@ const activeHistoryId = ref('');
 const activeHistoryTab = ref('scan');
 const headerVariant = computed(() => (activePanel.value === 'document' ? 'scan' : 'standard'));
 
-const editorModes = [
-  { key: 'edit', label: '编辑模式' },
-  { key: 'preview', label: '标色预览' },
-];
+const editorModes = computed(() => [
+  { key: 'edit', label: t('scan.editor.modes.edit') },
+  { key: 'preview', label: t('scan.editor.modes.preview') },
+]);
 
-const functionOptions = [
-  { key: 'scan', label: 'AI 检测', icon: ShieldCheckIcon, activeClass: 'border-transparent bg-slate-900 text-white shadow-sm' },
-  { key: 'polish', label: '润色', icon: PencilSquareIcon, activeClass: 'border-transparent bg-primary-600 text-white shadow-sm' },
-  { key: 'translate', label: '翻译', icon: LanguageIcon, activeClass: 'border-transparent bg-sky-600 text-white shadow-sm' },
+const functionOptions = computed(() => [
+  {
+    key: 'scan',
+    label: t('scan.functions.scan'),
+    icon: ShieldCheckIcon,
+    activeClass: 'border-transparent bg-slate-900 text-white shadow-sm',
+  },
+  {
+    key: 'polish',
+    label: t('scan.functions.polish'),
+    icon: PencilSquareIcon,
+    activeClass: 'border-transparent bg-primary-600 text-white shadow-sm',
+  },
+  {
+    key: 'translate',
+    label: t('scan.functions.translate'),
+    icon: LanguageIcon,
+    activeClass: 'border-transparent bg-sky-600 text-white shadow-sm',
+  },
   {
     key: 'citation',
-    label: '引用核查',
+    label: t('scan.functions.citation'),
     icon: DocumentMagnifyingGlassIcon,
     activeClass: 'border-transparent bg-emerald-600 text-white shadow-sm',
   },
-];
+]);
 
 const panelOptions = ['home', 'document', 'history', 'profile', 'qa', 'pricing'];
 
-const motivationalQuotes = [
-  '“To survive, you must tell stories.” — Umberto Eco.',
-  '“Writing is thinking. To write well is to think clearly.” — David McCullough.',
-  '“The secret of getting ahead is getting started.” — Mark Twain.',
-  '“Clarity precedes mastery.” — Robin Sharma.',
-  '“Precision builds trust in every insight.” — Veritascribe Research.',
-];
+const motivationalQuotes = computed(() => t('scan.quotes'));
 
 const buildOnboardingSteps = () => [
   {
     key: 'upload',
-    label: '上传文档',
-    description: '拖拽或选择文件触发上传与文本提取。',
+    label: t('scan.onboarding.upload.label'),
+    description: t('scan.onboarding.upload.description'),
     status: 'current',
   },
   {
     key: 'scan',
-    label: '开始扫描',
-    description: '选择功能并点击“立即扫描”获得结果。',
+    label: t('scan.onboarding.scan.label'),
+    description: t('scan.onboarding.scan.description'),
     status: 'upcoming',
   },
   {
     key: 'review',
-    label: '查看报告',
-    description: '在标色预览和结果标签中浏览句子级洞察。',
+    label: t('scan.onboarding.review.label'),
+    description: t('scan.onboarding.review.description'),
     status: 'upcoming',
   },
   {
     key: 'export',
-    label: '导出报告',
-    description: '将检测结果导出为 JSON 文件便于分享。',
+    label: t('scan.onboarding.export.label'),
+    description: t('scan.onboarding.export.description'),
     status: 'upcoming',
   },
 ];
@@ -963,29 +982,34 @@ const buildOnboardingSteps = () => [
 const userDisplayName = computed(() => {
   const profile = authStore.user?.profile;
   if (profile?.firstName || profile?.surname) {
-    return `${profile.firstName || ''} ${profile.surname || ''}`.trim() || profile.firstName || profile.surname || '访客';
+    return (
+      `${profile.firstName || ''} ${profile.surname || ''}`.trim() ||
+      profile.firstName ||
+      profile.surname ||
+      t('scan.user.guest')
+    );
   }
   if (authStore.user?.name) return authStore.user.name;
   if (authStore.user?.username) return authStore.user.username;
   if (authStore.user?.email) return authStore.user.email.split('@')[0];
-  return '访客';
+  return t('scan.user.guest');
 });
 
 const userPlanTag = computed(() => {
   const plan = authStore.user?.plan || 'personal-free';
-  if (plan.includes('team')) return 'TEAM';
-  if (plan.includes('edu')) return 'EDU';
-  if (plan.includes('pro')) return 'PRO';
-  return 'FREE';
+  if (plan.includes('team')) return t('scan.planTags.team');
+  if (plan.includes('edu')) return t('scan.planTags.edu');
+  if (plan.includes('pro')) return t('scan.planTags.pro');
+  return t('scan.planTags.free');
 });
 
 const pickRandomQuote = () => {
-  if (!motivationalQuotes.length) {
+  if (!motivationalQuotes.value.length) {
     activeQuote.value = '';
     return;
   }
-  const index = Math.floor(Math.random() * motivationalQuotes.length);
-  activeQuote.value = motivationalQuotes[index];
+  const index = Math.floor(Math.random() * motivationalQuotes.value.length);
+  activeQuote.value = motivationalQuotes.value[index];
 };
 
 const resetOnboardingSteps = () => {
@@ -1030,70 +1054,70 @@ const maybeShowOnboarding = () => {
   resetOnboardingSteps();
 };
 
-const featureCards = [
+const featureCards = computed(() => [
   {
     key: 'advanced',
-    title: 'Advanced scan',
-    subtitle: '多模型重检，捕捉细微 AI 痕迹',
+    title: t('scan.featureCards.advanced.title'),
+    subtitle: t('scan.featureCards.advanced.subtitle'),
     icon: SparklesIcon,
     iconClass: 'bg-gradient-to-br from-amber-100 via-violet-100 to-sky-100 text-amber-600',
-    tooltip: '高级检测',
-    modalTitle: 'Unlock Advanced Scan. Diagnose authorship with depth.',
-    modalSubtitle: 'Layer multi-model comparisons to surface nuance and authorship signals instantly.',
-    buttonLabel: 'Upgrade to try',
+    tooltip: t('scan.featureCards.advanced.tooltip'),
+    modalTitle: t('scan.featureCards.advanced.modalTitle'),
+    modalSubtitle: t('scan.featureCards.advanced.modalSubtitle'),
+    buttonLabel: t('scan.featureCards.advanced.buttonLabel'),
     buttonVariant: 'upgrade',
   },
   {
     key: 'xl',
-    title: 'XL Documents',
-    subtitle: '跨越 50 页的长文档分段检测',
+    title: t('scan.featureCards.xl.title'),
+    subtitle: t('scan.featureCards.xl.subtitle'),
     icon: Squares2X2Icon,
     iconClass: 'bg-slate-900 text-white',
-    tooltip: '长文档支持',
-    modalTitle: 'Scan XL Documents. Go beyond a basic AI checker.',
-    modalSubtitle: 'Scan up to 50 pages, page by page, simultaneously.',
-    buttonLabel: 'Upgrade to try',
+    tooltip: t('scan.featureCards.xl.tooltip'),
+    modalTitle: t('scan.featureCards.xl.modalTitle'),
+    modalSubtitle: t('scan.featureCards.xl.modalSubtitle'),
+    buttonLabel: t('scan.featureCards.xl.buttonLabel'),
     buttonVariant: 'upgrade',
   },
   {
     key: 'vocabulary',
-    title: 'AI Vocabulary',
-    subtitle: '精选词库保障语气一致',
+    title: t('scan.featureCards.vocabulary.title'),
+    subtitle: t('scan.featureCards.vocabulary.subtitle'),
     icon: BookOpenIcon,
     iconClass: 'bg-emerald-100 text-emerald-600',
-    tooltip: '词汇助手',
-    tag: 'ENABLED',
+    tooltip: t('scan.featureCards.vocabulary.tooltip'),
+    tag: t('scan.featureCards.vocabulary.tag'),
     tagClass: 'bg-emerald-100 text-emerald-600',
-    modalTitle: "Grow an AI Vocabulary. Keep tone precise and consistent.",
-    modalSubtitle: 'Activate curated phrases that reinforce your institution’s voice across every document.',
-    buttonLabel: "Try it now — it's free",
+    modalTitle: t('scan.featureCards.vocabulary.modalTitle'),
+    modalSubtitle: t('scan.featureCards.vocabulary.modalSubtitle'),
+    buttonLabel: t('scan.featureCards.vocabulary.buttonLabel'),
     buttonVariant: 'free',
   },
   {
     key: 'citation',
-    title: 'Citation check',
-    subtitle: '引用对照保障来源可信',
+    title: t('scan.featureCards.citation.title'),
+    subtitle: t('scan.featureCards.citation.subtitle'),
     icon: BookmarkSquareIcon,
     iconClass: 'bg-indigo-100 text-indigo-600',
-    tooltip: '引用核查',
-    modalTitle: 'Run Citation Check. Trust every sourced claim.',
-    modalSubtitle: 'Automatically cross-reference statements with academic databases before submission.',
-    buttonLabel: 'Upgrade to try',
+    tooltip: t('scan.featureCards.citation.tooltip'),
+    modalTitle: t('scan.featureCards.citation.modalTitle'),
+    modalSubtitle: t('scan.featureCards.citation.modalSubtitle'),
+    buttonLabel: t('scan.featureCards.citation.buttonLabel'),
     buttonVariant: 'upgrade',
   },
   {
     key: 'plagiarism',
-    title: 'Plagiarism',
-    subtitle: '跨平台查重，守护原创',
+    title: t('scan.featureCards.plagiarism.title'),
+    subtitle: t('scan.featureCards.plagiarism.subtitle'),
     icon: MagnifyingGlassCircleIcon,
     iconClass: 'bg-rose-100 text-rose-600',
-    tooltip: '查重检测',
-    modalTitle: 'Deploy Plagiarism Guard. Compare across millions of sources.',
-    modalSubtitle: 'Scan assignments against research archives and LMS submissions simultaneously.',
-    buttonLabel: 'Upgrade to try',
+    tooltip: t('scan.featureCards.plagiarism.tooltip'),
+    modalTitle: t('scan.featureCards.plagiarism.modalTitle'),
+    modalSubtitle: t('scan.featureCards.plagiarism.modalSubtitle'),
+    buttonLabel: t('scan.featureCards.plagiarism.buttonLabel'),
     buttonVariant: 'upgrade',
   },
-];
+]);
 
 const ChromeGlyph = markRaw(() =>
   h('svg', { viewBox: '0 0 24 24', class: 'h-5 w-5' }, [
@@ -1105,24 +1129,24 @@ const ChromeGlyph = markRaw(() =>
   ]),
 );
 
-const integrationButtons = [
+const integrationButtons = computed(() => [
   {
     key: 'multi-upload',
-    label: 'Multi-file Upload',
+    label: t('scan.integrations.buttons.multiUpload'),
     icon: ArrowUpTrayIcon,
     class: 'bg-slate-900 text-white hover:bg-slate-800',
     action: 'multi-upload',
   },
   {
     key: 'api',
-    label: 'API',
+    label: t('scan.integrations.buttons.api'),
     icon: CommandLineIcon,
     class: 'bg-purple-600 text-white hover:bg-purple-500',
     action: 'contact',
   },
   {
     key: 'chrome',
-    label: 'Chrome',
+    label: t('scan.integrations.buttons.chrome'),
     icon: ChromeGlyph,
     class: 'border border-slate-200 bg-white text-slate-700 hover:border-slate-300',
     action: 'external',
@@ -1130,21 +1154,21 @@ const integrationButtons = [
   },
   {
     key: 'canvas',
-    label: 'Canvas',
+    label: t('scan.integrations.buttons.canvas'),
     icon: PaintBrushIcon,
     class: 'bg-orange-500 text-white hover:bg-orange-400',
     action: 'contact',
   },
   {
     key: 'moodle',
-    label: 'Moodle',
+    label: t('scan.integrations.buttons.moodle'),
     icon: AcademicCapIcon,
     class: 'bg-amber-500 text-white hover:bg-amber-400',
     action: 'contact',
   },
   {
     key: 'zapier',
-    label: 'Zapier',
+    label: t('scan.integrations.buttons.zapier'),
     icon: BoltIcon,
     class: 'bg-orange-400 text-white hover:bg-orange-300',
     action: 'external',
@@ -1152,7 +1176,7 @@ const integrationButtons = [
   },
   {
     key: 'docs',
-    label: 'Google Docs',
+    label: t('scan.integrations.buttons.docs'),
     icon: DocumentTextIcon,
     class: 'bg-blue-500 text-white hover:bg-blue-400',
     action: 'external',
@@ -1160,13 +1184,13 @@ const integrationButtons = [
   },
   {
     key: 'classroom',
-    label: 'Google Classroom',
+    label: t('scan.integrations.buttons.classroom'),
     icon: UserGroupIcon,
     class: 'bg-emerald-500 text-white hover:bg-emerald-400',
     action: 'external',
     href: 'https://classroom.google.com',
   },
-];
+]);
 
 const isFeatureModalOpen = computed(() => Boolean(activeFeatureCard.value));
 
@@ -1178,10 +1202,20 @@ const fontSizeMap = {
   '2xl': '6',
 };
 
-const characterUsage = computed(() => `字数：${scanStore.characterCount}/${scanStore.characterLimit}`);
+const fontSizeOptions = computed(() => [
+  { value: 'small', label: t('scan.toolbar.fontSizes.small') },
+  { value: 'base', label: t('scan.toolbar.fontSizes.base') },
+  { value: 'lg', label: t('scan.toolbar.fontSizes.lg') },
+  { value: 'xl', label: t('scan.toolbar.fontSizes.xl') },
+  { value: '2xl', label: t('scan.toolbar.fontSizes.2xl') },
+]);
+
+const characterUsage = computed(() =>
+  t('scan.editor.wordCount', { current: scanStore.characterCount, limit: scanStore.characterLimit })
+);
 
 const functionLabelMap = computed(() =>
-  functionOptions.reduce((acc, option) => {
+  functionOptions.value.reduce((acc, option) => {
     acc[option.key] = option.label;
     return acc;
   }, {})
@@ -1189,23 +1223,23 @@ const functionLabelMap = computed(() =>
 
 const selectedFunctionSummary = computed(() => {
   if (!scanStore.selectedFunctions.length) {
-    return 'AI 检测';
+    return t('scan.functions.scan');
   }
-  return scanStore.selectedFunctions.map((key) => functionLabelMap.value[key] || key).join('、');
+  return scanStore.selectedFunctions.map((key) => functionLabelMap.value[key] || key).join(t('scan.separator'));
 });
 
 const hasResults = computed(() => Boolean(detectionResults.value));
 
 const availableResultTabs = computed(() => {
-  const tabs = [{ key: 'scan', label: 'AI 检测' }];
+  const tabs = [{ key: 'scan', label: t('scan.functions.scan') }];
   if (scanStore.selectedFunctions.includes('polish')) {
-    tabs.push({ key: 'polish', label: '润色建议' });
+    tabs.push({ key: 'polish', label: t('scan.results.polish') });
   }
   if (scanStore.selectedFunctions.includes('translate')) {
-    tabs.push({ key: 'translate', label: '翻译结果' });
+    tabs.push({ key: 'translate', label: t('scan.results.translation') });
   }
   if (scanStore.selectedFunctions.includes('citation')) {
-    tabs.push({ key: 'citation', label: '引用核查' });
+    tabs.push({ key: 'citation', label: t('scan.results.citation') });
   }
   return tabs;
 });
@@ -1216,14 +1250,14 @@ const activeHistoryRecord = computed(() => historyRecords.value.find((item) => i
 
 const historyFunctionSummary = computed(() => {
   if (!activeHistoryRecord.value) {
-    return 'AI 检测';
+    return t('scan.functions.scan');
   }
   if (!Array.isArray(activeHistoryRecord.value.functions) || !activeHistoryRecord.value.functions.length) {
-    return 'AI 检测';
+    return t('scan.functions.scan');
   }
   return activeHistoryRecord.value.functions
     .map((key) => functionLabelMap.value[key] || key)
-    .join('、');
+    .join(t('scan.separator'));
 });
 
 const availableHistoryTabs = computed(() => {
@@ -1232,15 +1266,15 @@ const availableHistoryTabs = computed(() => {
   if (!record || !analysis) {
     return [];
   }
-  const tabs = [{ key: 'scan', label: 'AI 检测' }];
+  const tabs = [{ key: 'scan', label: t('scan.functions.scan') }];
   if (record.functions.includes('polish') && analysis.polish?.length) {
-    tabs.push({ key: 'polish', label: '润色建议' });
+    tabs.push({ key: 'polish', label: t('scan.results.polish') });
   }
   if (record.functions.includes('translate') && analysis.translation) {
-    tabs.push({ key: 'translate', label: '翻译结果' });
+    tabs.push({ key: 'translate', label: t('scan.results.translation') });
   }
   if (record.functions.includes('citation') && analysis.citations?.length) {
-    tabs.push({ key: 'citation', label: '引用核查' });
+    tabs.push({ key: 'citation', label: t('scan.results.citation') });
   }
   return tabs;
 });
@@ -1263,7 +1297,7 @@ const historyPreviewHtml = computed(() => {
 const historyCharacterUsage = computed(() => {
   const record = activeHistoryRecord.value;
   const length = record?.inputText ? record.inputText.length : 0;
-  return `字数：${length}/${scanStore.characterLimit}`;
+  return t('scan.editor.wordCount', { current: length, limit: scanStore.characterLimit });
 });
 
 const highlightBorderClass = (type) => {
@@ -1272,21 +1306,43 @@ const highlightBorderClass = (type) => {
   return 'border-emerald-200 bg-emerald-50';
 };
 
+const citationStatusLabels = computed(() => ({
+  missing: t('scan.citation.status.missing'),
+  pending: t('scan.citation.status.pending'),
+  found: t('scan.citation.status.found'),
+}));
+
+const citationFallbacks = computed(() => t('scan.citation.fallbacks'));
+
+const normalizeCitationStatus = (status = '') => {
+  if (status === citationStatusLabels.value.missing || citationFallbacks.value.missing?.includes(status)) {
+    return 'missing';
+  }
+  if (status === citationStatusLabels.value.pending || citationFallbacks.value.pending?.includes(status)) {
+    return 'pending';
+  }
+  if (status === citationStatusLabels.value.found || citationFallbacks.value.found?.includes(status)) {
+    return 'found';
+  }
+  return status;
+};
+
 const citationStatusClass = (status) => {
-  if (status === '缺失引用') {
+  const normalized = normalizeCitationStatus(status);
+  if (normalized === 'missing') {
     return 'bg-rose-100 text-rose-600';
   }
-  if (status === '待验证') {
+  if (normalized === 'pending') {
     return 'bg-amber-100 text-amber-600';
   }
   return 'bg-emerald-100 text-emerald-600';
 };
 
-const marketingReasons = {
-  ai: '句式重复且缺少真实细节，呈现出明显的模板化生成痕迹。',
-  mixed: '部分句子自然，但仍夹杂模型常见的衔接词与泛化表达。',
-  human: '语句包含个性化经历与细节，语气自然贴近人类写作。',
-};
+const marketingReasons = computed(() => ({
+  ai: t('scan.simulation.reasons.ai'),
+  mixed: t('scan.simulation.reasons.mixed'),
+  human: t('scan.simulation.reasons.human'),
+}));
 
 const escapeHtml = (value = '') =>
   String(value)
@@ -1375,7 +1431,7 @@ const selectHistoryRecord = (id) => {
 const formatHistoryTimestamp = (value) => {
   if (!value) return '';
   try {
-    return new Intl.DateTimeFormat('zh-CN', {
+    return new Intl.DateTimeFormat(locale.value, {
       dateStyle: 'medium',
       timeStyle: 'short',
     }).format(new Date(value));
@@ -1386,7 +1442,7 @@ const formatHistoryTimestamp = (value) => {
 
 const buildHistoryTitle = () => {
   if (scanStore.lastUploadedFileName) {
-    return `文件 · ${scanStore.lastUploadedFileName}`;
+    return t('scan.history.fileLabel', { name: scanStore.lastUploadedFileName });
   }
   const raw = (scanStore.inputText || '').trim();
   if (!raw) {
@@ -1397,10 +1453,10 @@ const buildHistoryTitle = () => {
 
 const formatHistorySummary = (record) => {
   if (!record?.analysis?.summary) {
-    return 'AI 检测';
+    return t('scan.functions.scan');
   }
   const { ai = 0, mixed = 0, human = 0 } = record.analysis.summary;
-  return `AI ${ai}% · Mixed ${mixed}% · Human ${human}%`;
+  return t('scan.history.summaryLine', { ai, mixed, human });
 };
 
 const classifyOrder = ['ai', 'mixed', 'human'];
@@ -1414,11 +1470,11 @@ const simulateAnalysis = () => {
     return {
       summary: { ai: 0, mixed: 0, human: 100 },
       sentences: [],
-      translation: '尚未检测到可分析的句子，请输入文本后重新扫描。',
+      translation: t('scan.simulation.emptyTranslation'),
       polish: [],
       citations: [],
       aiLikelyCount: 0,
-      highlightedHtml: '<p class="text-sm text-slate-400">暂无内容，请先输入文本。</p>',
+      highlightedHtml: `<p class="text-sm text-slate-400">${t('scan.simulation.emptyContent')}</p>`,
     };
   }
 
@@ -1438,7 +1494,7 @@ const simulateAnalysis = () => {
       raw: token.raw,
       type,
       probability,
-      reason: marketingReasons[type],
+      reason: marketingReasons.value[type],
     };
   });
 
@@ -1454,31 +1510,41 @@ const simulateAnalysis = () => {
   }
 
   const translation = sentenceTokens
-    .map((token, index) => `第 ${index + 1} 句：${token.text} → ${token.text.replace(/。?$/, '。')}【示例译文】`)
+    .map((token, index) =>
+      t('scan.simulation.translationLine', {
+        index: index + 1,
+        text: token.text,
+        translated: token.text.replace(/。?$/, '。'),
+      })
+    )
     .join('\n');
 
   const polish = sentences.slice(0, Math.min(4, sentences.length)).map((item, index) => ({
     id: `polish-${index}`,
     original: item.text,
-    suggestion: `${item.text.replace(/。?$/, '')}，加入更具体的事实与数据以增强可信度。`,
+    suggestion: t('scan.simulation.polishSuggestion', { text: item.text.replace(/。?$/, '') }),
     reason:
       item.type === 'human'
-        ? '优化语气以保持整体风格一致。'
-        : '改写句式并补充细节，以降低模型生成痕迹。',
+        ? t('scan.simulation.polishReasonHuman')
+        : t('scan.simulation.polishReasonAi'),
   }));
 
   const citations = sentenceTokens.slice(0, Math.min(3, sentenceTokens.length)).map((token, index) => {
-    const statusCycle = ['待验证', '缺失引用', '已找到线索'];
+    const statusCycle = [
+      citationStatusLabels.value.pending,
+      citationStatusLabels.value.missing,
+      citationStatusLabels.value.found,
+    ];
     return {
       id: `citation-${index}`,
       excerpt: token.text,
       status: statusCycle[index % statusCycle.length],
       note:
-        statusCycle[index % statusCycle.length] === '缺失引用'
-          ? '未检测到权威来源，请补充引用。'
-          : statusCycle[index % statusCycle.length] === '待验证'
-          ? '建议补充出处或核查现有来源准确性。'
-          : '已匹配到可能的来源，请确认引用格式。',
+        statusCycle[index % statusCycle.length] === citationStatusLabels.value.missing
+          ? t('scan.simulation.citationNoteMissing')
+          : statusCycle[index % statusCycle.length] === citationStatusLabels.value.pending
+          ? t('scan.simulation.citationNotePending')
+          : t('scan.simulation.citationNoteFound'),
     };
   });
 
@@ -1643,7 +1709,7 @@ const handleFeatureModalAction = (card) => {
   if (!card) return;
   if (card.buttonVariant === 'upgrade') {
     closeFeatureModal();
-    setActivePanel('pricing');
+    router.push({ name: 'pricing' });
     return;
   }
   if (card.buttonVariant === 'free') {
@@ -1716,12 +1782,12 @@ const applyCommand = (command) => {
 };
 
 const onFontSizeChange = (event) => {
-  const value = event.target.value;
+  const value = event?.target?.value ?? event;
   if (!value) return;
   if (!editorRef.value) return;
   editorRef.value.focus();
   document.execCommand('fontSize', false, fontSizeMap[value]);
-  event.target.value = '';
+  fontSizeSelection.value = '';
   scanStore.setEditorHtml(editorRef.value.innerHTML);
   scanStore.commitDraftToStorage();
 };
@@ -1732,13 +1798,13 @@ const handleScan = async () => {
   }
 
   if (!authStore.isAuthenticated) {
-    loginMessage.value = '请登录后开始扫描并查看检测结果。';
+    loginMessage.value = t('scan.loginPrompt.loginFirst');
     showLoginModal.value = true;
     return;
   }
 
   if (!scanStore.inputText.trim()) {
-    loginMessage.value = '请先输入文本或上传文件，再开始扫描。';
+    loginMessage.value = t('scan.loginPrompt.inputFirst');
     showLoginModal.value = true;
     return;
   }
@@ -1770,7 +1836,7 @@ const exportReport = () => {
   const url = URL.createObjectURL(blob);
   const link = document.createElement('a');
   link.href = url;
-  link.download = 'ai-detection-report.json';
+  link.download = t('scan.export.filename');
   link.click();
   URL.revokeObjectURL(url);
   markOnboardingStep('export');
@@ -2021,7 +2087,7 @@ const onGlobalClick = (event) => {
 }
 
 .summary-tabs {
-  @apply inline-flex flex-wrap items-center gap-2 rounded-full bg-slate-100 p-2 text-xs font-semibold text-slate-600 shadow-inner;
+  @apply inline-flex flex-wrap items-center gap-2 rounded-full bg-slate-100 p-1.5 pl-3 text-xs font-semibold text-slate-600 shadow-inner;
 }
 
 .summary-tab {

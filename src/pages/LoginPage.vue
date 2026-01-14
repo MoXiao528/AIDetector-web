@@ -11,14 +11,14 @@
           <div class="flex flex-col justify-between gap-6">
             <div>
               <div class="flex h-12 w-12 items-center justify-center rounded-2xl bg-primary-600 text-xl font-semibold text-white">
-                V
+                {{ t('common.brandInitial') }}
               </div>
               <h1 class="mt-6 text-3xl font-semibold">{{ t('auth.login.title') }}</h1>
               <p class="mt-2 text-sm text-slate-500">{{ t('auth.login.subtitle') }}</p>
             </div>
             <div class="rounded-2xl border border-slate-200 bg-slate-50 p-5 text-xs text-slate-500">
-              <p class="font-semibold text-slate-700">安全提醒</p>
-              <p class="mt-2">请确保账号信息保密，登录后可同步你的扫描历史与团队额度。</p>
+              <p class="font-semibold text-slate-700">{{ t('auth.login.notice.title') }}</p>
+              <p class="mt-2">{{ t('auth.login.notice.body') }}</p>
             </div>
           </div>
           <div>

@@ -1,5 +1,5 @@
 <template>
-  <div class="min-h-screen bg-slate-100">
+  <div class="min-h-screen bg-slate-50">
     <AppHeader mode="dashboard" />
     <main class="mx-auto max-w-5xl px-4 py-10">
       <QAPanel />

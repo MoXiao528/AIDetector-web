@@ -12,14 +12,14 @@
           <div class="relative">
             <div class="inline-flex items-center space-x-2 rounded-full border border-slate-200 bg-white/80 px-4 py-2 text-xs font-semibold text-slate-600 shadow-sm">
               <span class="flex h-2 w-2 rounded-full bg-emerald-500"></span>
-              <span>🏆 #1 AI Detector · 新版 V2.0 已上线</span>
+              <span>{{ t('hero.badge') }}</span>
             </div>
             <h1 class="mt-6 text-5xl font-bold leading-tight tracking-tight text-slate-900 sm:text-6xl">
-              快速识别并处理
-              <span class="bg-gradient-to-r from-primary-500 via-primary-400 to-sky-400 bg-clip-text text-transparent">AI 生成文本</span>
+              {{ t('hero.titlePrefix') }}
+              <span class="bg-gradient-to-r from-primary-500 via-primary-400 to-sky-400 bg-clip-text text-transparent">{{ t('hero.titleHighlight') }}</span>
             </h1>
             <p class="mt-6 text-lg text-slate-600">
-              Veritascribe 将检测、润色、翻译与引用核查融合到同一工作台中。粘贴或上传文本，即刻获得 RepreGuard 级别的风险分析和改写建议。
+              {{ t('hero.subtitle') }}
             </p>
             <div class="mt-8 flex flex-wrap items-center gap-4">
               <button
@@ -27,74 +27,56 @@
                 class="inline-flex items-center justify-center rounded-full bg-primary-600 px-6 py-3 text-sm font-semibold text-white shadow-sm shadow-primary-200/60 transition hover:-translate-y-0.5 hover:bg-primary-500"
                 @click="goToScan('scan')"
               >
-                体验识别工作台
+                {{ t('hero.primaryCta') }}
               </button>
               <button
                 type="button"
                 class="inline-flex items-center justify-center rounded-full border border-slate-200 bg-white px-6 py-3 text-sm font-semibold text-slate-700 shadow-sm transition hover:-translate-y-0.5 hover:border-primary-200 hover:text-primary-700"
                 @click="goToScan('polish')"
               >
-                查看润色工作流 →
+                {{ t('hero.secondaryCta') }}
               </button>
             </div>
             <div class="mt-6 flex flex-wrap items-center gap-3 text-sm text-slate-500">
               <div class="flex -space-x-3">
-                <div class="flex h-10 w-10 items-center justify-center rounded-full bg-primary-500 text-xs font-semibold text-white ring-2 ring-white">阿</div>
-                <div class="flex h-10 w-10 items-center justify-center rounded-full bg-emerald-500 text-xs font-semibold text-white ring-2 ring-white">林</div>
-                <div class="flex h-10 w-10 items-center justify-center rounded-full bg-sky-500 text-xs font-semibold text-white ring-2 ring-white">M</div>
+                <div class="flex h-10 w-10 items-center justify-center rounded-full bg-primary-500 text-xs font-semibold text-white ring-2 ring-white">{{ t('hero.avatars.first') }}</div>
+                <div class="flex h-10 w-10 items-center justify-center rounded-full bg-emerald-500 text-xs font-semibold text-white ring-2 ring-white">{{ t('hero.avatars.second') }}</div>
+                <div class="flex h-10 w-10 items-center justify-center rounded-full bg-sky-500 text-xs font-semibold text-white ring-2 ring-white">{{ t('hero.avatars.third') }}</div>
                 <div class="flex h-10 w-10 items-center justify-center rounded-full bg-slate-900 text-xs font-semibold text-white ring-2 ring-white">+</div>
               </div>
-              <span>已被 2,000+ 创作者信赖</span>
+              <span>{{ t('hero.trust') }}</span>
             </div>
             <ul class="mt-8 grid gap-3 text-sm text-slate-600 sm:grid-cols-2">
-              <li class="flex items-center space-x-2">
+              <li v-for="item in highlightItems" :key="item" class="flex items-center space-x-2">
                 <svg class="h-4 w-4 text-emerald-500" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
                 </svg>
-                <span>段落级 AI 概率热力图</span>
-              </li>
-              <li class="flex items-center space-x-2">
-                <svg class="h-4 w-4 text-emerald-500" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
-                </svg>
-                <span>自动保留段落结构与引用</span>
-              </li>
-              <li class="flex items-center space-x-2">
-                <svg class="h-4 w-4 text-emerald-500" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
-                </svg>
-                <span>支持 TXT / DOC / PDF 等常见格式</span>
-              </li>
-              <li class="flex items-center space-x-2">
-                <svg class="h-4 w-4 text-emerald-500" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
-                </svg>
-                <span>润色与翻译共享同一份上下文</span>
+                <span>{{ item }}</span>
               </li>
             </ul>
           </div>
         </div>
         <div class="relative rounded-3xl border border-slate-200 bg-white/95 p-6 shadow-2xl shadow-primary-500/20 backdrop-blur">
           <div class="absolute -top-10 right-8 hidden rounded-full bg-white/90 px-4 py-2 text-xs font-semibold text-slate-500 shadow-md sm:flex">
-            实时扫描预览
+            {{ t('hero.previewBadge') }}
           </div>
           <div class="space-y-6">
             <div>
               <label class="flex items-center justify-between text-sm font-semibold text-slate-700">
-                <span>粘贴或输入文本</span>
+                <span>{{ t('hero.form.label') }}</span>
                 <button
                   type="button"
                   class="inline-flex items-center rounded-full border border-slate-200 px-3 py-1 text-xs font-semibold text-slate-500 transition hover:border-primary-200 hover:text-primary-600"
                   @click="resetInput"
                 >
-                  一键重置
+                  {{ t('hero.form.reset') }}
                 </button>
               </label>
               <textarea
                 v-model="textModel"
                 rows="10"
                 class="mt-3 w-full rounded-2xl border border-slate-200 bg-slate-50/80 p-4 text-sm text-slate-700 shadow-inner focus:border-primary-400 focus:outline-none focus:ring-2 focus:ring-primary-100"
-                placeholder="粘贴文本或点击下方范例，立即体验 RepreGuard 式的 AI 检测界面。"
+                :placeholder="t('hero.form.placeholder')"
               ></textarea>
             </div>
             <div class="flex flex-wrap items-center justify-between gap-3">
@@ -118,7 +100,7 @@
             </div>
             <div class="space-y-3 text-xs text-slate-500">
               <div class="flex flex-wrap items-center gap-2">
-                <span>试试这些范例：</span>
+                <span>{{ t('hero.examples.title') }}</span>
                 <button
                   v-for="example in scanStore.examples"
                   :key="example.key"
@@ -135,8 +117,8 @@
                 </button>
               </div>
               <div class="flex flex-wrap items-center gap-3">
-                <span>字数：{{ scanStore.characterCount }}/{{ scanStore.characterLimit }}</span>
-                <span>已选功能：{{ selectedFunctionSummary }}</span>
+                <span>{{ t('hero.examples.wordCount', { current: scanStore.characterCount, limit: scanStore.characterLimit }) }}</span>
+                <span>{{ t('hero.examples.selectedFunctions', { value: selectedFunctionSummary }) }}</span>
               </div>
               <div v-if="scanStore.uploadError" class="flex items-center space-x-2 rounded-2xl bg-rose-50 px-3 py-2 text-rose-600">
                 <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
@@ -148,7 +130,7 @@
                 <svg class="h-4 w-4 text-primary-500" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" d="M4 16.75V5a2 2 0 012-2h6.586a2 2 0 011.414.586l5.414 5.414a2 2 0 01.586 1.414V19a2 2 0 01-2 2H6a2 2 0 01-2-2" />
                 </svg>
-                <span>已导入：{{ scanStore.lastUploadedFileName }}</span>
+                <span>{{ t('hero.examples.uploaded', { name: scanStore.lastUploadedFileName }) }}</span>
               </div>
             </div>
             <div class="flex flex-wrap items-center justify-between gap-3">
@@ -166,7 +148,7 @@
                   @click="triggerUpload"
                 >
                   <ArrowUpTrayIcon class="mr-2 h-4 w-4" />
-                  {{ scanStore.isUploading ? '正在读取...' : '上传文件' }}
+                  {{ scanStore.isUploading ? t('hero.uploading') : t('hero.upload') }}
                 </button>
               </div>
               <button
@@ -174,7 +156,7 @@
                 class="inline-flex items-center rounded-full bg-slate-900 px-6 py-2 font-semibold text-white shadow-sm transition hover:bg-slate-800"
                 @click="handleScan"
               >
-                扫描
+                {{ t('hero.scan') }}
               </button>
             </div>
           </div>
@@ -187,6 +169,7 @@
 <script setup>
 import { computed, onMounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
+import { useI18n } from '../i18n';
 import {
   ArrowUpTrayIcon,
   DocumentMagnifyingGlassIcon,
@@ -199,13 +182,16 @@ import { useScanStore } from '../store/scan';
 const router = useRouter();
 const scanStore = useScanStore();
 const fileInput = ref(null);
+const { t } = useI18n();
 
-const functionOptions = [
-  { key: 'scan', label: 'AI 检测', icon: ShieldCheckIcon },
-  { key: 'polish', label: '润色', icon: PencilSquareIcon },
-  { key: 'translate', label: '翻译', icon: LanguageIcon },
-  { key: 'citation', label: '引用核查', icon: DocumentMagnifyingGlassIcon },
-];
+const functionOptions = computed(() => [
+  { key: 'scan', label: t('hero.functions.scan'), icon: ShieldCheckIcon },
+  { key: 'polish', label: t('hero.functions.polish'), icon: PencilSquareIcon },
+  { key: 'translate', label: t('hero.functions.translate'), icon: LanguageIcon },
+  { key: 'citation', label: t('hero.functions.citation'), icon: DocumentMagnifyingGlassIcon },
+]);
+
+const highlightItems = computed(() => t('hero.highlights'));
 
 const textModel = computed({
   get: () => scanStore.inputText,
@@ -214,10 +200,10 @@ const textModel = computed({
 
 const selectedFunctionSummary = computed(() => {
   if (!scanStore.selectedFunctions.length) {
-    return 'AI 检测';
+    return t('hero.functions.scan');
   }
 
-  const labelMap = functionOptions.reduce((acc, option) => {
+  const labelMap = functionOptions.value.reduce((acc, option) => {
     acc[option.key] = option.label;
     return acc;
   }, {});

@@ -3,12 +3,12 @@
     <div class="absolute inset-x-0 -top-20 -z-10 h-40 bg-gradient-to-b from-primary-100/60 to-transparent"></div>
     <div class="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
       <div class="max-w-3xl">
-        <span class="inline-flex items-center rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-semibold uppercase tracking-wider text-primary-600">全栈能力矩阵</span>
+        <span class="inline-flex items-center rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-semibold uppercase tracking-wider text-primary-600">{{ t('capabilitiesSection.badge') }}</span>
         <h2 class="section-title mt-6">
-          检测、润色、翻译，一站式智能写作中枢
+          {{ t('capabilitiesSection.title') }}
         </h2>
         <p class="section-subtitle">
-          结合语义模型、文体评估与跨语言对齐，Veritascribe 为不同角色提供从文本创作到审阅的完整工具链，帮助团队快速迭代高可信内容。
+          {{ t('capabilitiesSection.subtitle') }}
         </p>
       </div>
       <div class="mt-16 grid gap-6 lg:grid-cols-3">
@@ -42,7 +42,7 @@
             href="#trial"
             class="mt-8 inline-flex items-center text-sm font-semibold text-primary-600 transition hover:text-primary-500"
           >
-            了解工作流程
+            {{ t('capabilitiesSection.cta') }}
             <svg class="ml-1 h-4 w-4" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" />
             </svg>
@@ -54,29 +54,33 @@
 </template>
 
 <script setup>
+import { computed } from 'vue';
 import { AcademicCapIcon, ShieldCheckIcon, SparklesIcon } from '@heroicons/vue/24/outline';
+import { useI18n } from '../i18n';
 
-const capabilities = [
+const { t } = useI18n();
+
+const capabilities = computed(() => [
   {
-    title: '深度 AI 文本检测',
-    description: '基于 RepreGuard 模型比对算法，快速识别段落级别的 AI 痕迹并生成解释说明。',
-    tag: 'Detection',
+    title: t('capabilitiesSection.cards.deepDetection.title'),
+    description: t('capabilitiesSection.cards.deepDetection.description'),
+    tag: t('capabilitiesSection.cards.deepDetection.tag'),
     icon: ShieldCheckIcon,
-    points: ['词法、句法、语义三层证据链', 'AI 概率热力图与逐句报告', '上传 PDF、DOCX、Markdown 多格式']
+    points: t('capabilitiesSection.cards.deepDetection.points'),
   },
   {
-    title: '智能文本润色',
-    description: '结合上下文语境与风格库，给出精准润色建议，让文本更自然可信。',
-    tag: 'Polish',
+    title: t('capabilitiesSection.cards.polish.title'),
+    description: t('capabilitiesSection.cards.polish.description'),
+    tag: t('capabilitiesSection.cards.polish.tag'),
     icon: SparklesIcon,
-    points: ['三档润色强度随时切换', '保留专业术语与引用格式', '一键生成人工风格替换稿']
+    points: t('capabilitiesSection.cards.polish.points'),
   },
   {
-    title: '跨语言协同翻译',
-    description: '支持 20+ 种语言互译，自动标注 AI 可疑片段并建议人工改写。',
-    tag: 'Translate',
+    title: t('capabilitiesSection.cards.translate.title'),
+    description: t('capabilitiesSection.cards.translate.description'),
+    tag: t('capabilitiesSection.cards.translate.tag'),
     icon: AcademicCapIcon,
-    points: ['术语库同步与词汇记忆', '双语对照稿即时导出', '团队共享翻译记忆库']
-  }
-];
+    points: t('capabilitiesSection.cards.translate.points'),
+  },
+]);
 </script>
