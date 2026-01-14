@@ -1,5 +1,6 @@
 import { defineStore } from 'pinia';
 import { computed, ref, watch } from 'vue';
+import { globalT } from '../i18n';
 import { readTextFromFile } from '../utils/fileReaders';
 
 const examples = [
@@ -319,7 +320,7 @@ export const useScanStore = defineStore('scan', () => {
       lastUploadedFileName.value =
         fileList.length === 1 ? fileList[0].name : `${fileList[0].name} 等 ${fileList.length} 个文件`;
     } catch (error) {
-      uploadError.value = error.message || '文件解析失败，请稍后重试。';
+      uploadError.value = error.message || globalT('errors.fileParseError');
       throw error;
     } finally {
       isUploading.value = false;

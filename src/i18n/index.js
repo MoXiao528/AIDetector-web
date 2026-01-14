@@ -14,31 +14,33 @@ const getNestedValue = (obj, path) => {
   return path.split('.').reduce((acc, key) => (acc && acc[key] !== undefined ? acc[key] : undefined), obj);
 };
 
+const initialLocale = (() => {
+  if (typeof window === 'undefined') return 'zh-CN';
+  return localStorage.getItem(STORAGE_KEY) || 'zh-CN';
+})();
+
+const state = reactive({
+  locale: initialLocale,
+});
+
+export const globalT = (key, values = {}) => {
+  const target = messages[state.locale] || messages['zh-CN'];
+  const fallback = messages['en-US'];
+  const raw = getNestedValue(target, key) ?? getNestedValue(fallback, key) ?? key;
+  if (typeof raw !== 'string') return raw;
+  return raw.replace(/\{([^}]+)\}/g, (_, match) => values[match] ?? `{${match}}`);
+};
+
+const setLocale = (nextLocale) => {
+  if (!messages[nextLocale]) return;
+  state.locale = nextLocale;
+  if (typeof window !== 'undefined') {
+    localStorage.setItem(STORAGE_KEY, nextLocale);
+  }
+};
+
 export const createI18n = () => {
-  const initialLocale = (() => {
-    if (typeof window === 'undefined') return 'zh-CN';
-    return localStorage.getItem(STORAGE_KEY) || 'zh-CN';
-  })();
-
-  const state = reactive({
-    locale: initialLocale,
-  });
-
-  const t = (key, values = {}) => {
-    const target = messages[state.locale] || messages['zh-CN'];
-    const fallback = messages['en-US'];
-    const raw = getNestedValue(target, key) ?? getNestedValue(fallback, key) ?? key;
-    if (typeof raw !== 'string') return raw;
-    return raw.replace(/\{([^}]+)\}/g, (_, match) => values[match] ?? `{${match}}`);
-  };
-
-  const setLocale = (nextLocale) => {
-    if (!messages[nextLocale]) return;
-    state.locale = nextLocale;
-    if (typeof window !== 'undefined') {
-      localStorage.setItem(STORAGE_KEY, nextLocale);
-    }
-  };
+  const t = (key, values = {}) => globalT(key, values);
 
   return {
     install(app) {
