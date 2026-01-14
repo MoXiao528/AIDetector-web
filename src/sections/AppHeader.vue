@@ -41,7 +41,7 @@
             v-model="selectedLocale"
             :options="languageOptions"
             :aria-label="t('common.language')"
-            button-class="min-w-[140px] rounded-full text-xs"
+            button-class="min-w-[160px] whitespace-nowrap rounded-full text-xs"
           />
           <div v-if="isMarketing || isAuth" class="flex items-center justify-end">
             <button

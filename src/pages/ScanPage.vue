@@ -2087,7 +2087,7 @@ const onGlobalClick = (event) => {
 }
 
 .summary-tabs {
-  @apply inline-flex flex-wrap items-center gap-2 rounded-full bg-slate-100 p-2 text-xs font-semibold text-slate-600 shadow-inner;
+  @apply inline-flex flex-wrap items-center gap-2 rounded-full bg-slate-100 p-1.5 pl-3 text-xs font-semibold text-slate-600 shadow-inner;
 }
 
 .summary-tab {
