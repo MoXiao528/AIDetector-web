@@ -1568,7 +1568,9 @@ const syncEditorFromStore = () => {
 };
 
 onMounted(() => {
-  syncEditorFromStore();
+  if (editorRef.value && scanStore.editorHtml) {
+    editorRef.value.innerHTML = scanStore.editorHtml;
+  }
   const initialPanel = parsePanel(route.query.panel);
   activePanel.value = initialPanel;
   if (initialPanel === 'home') {
