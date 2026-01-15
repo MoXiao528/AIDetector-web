@@ -78,7 +78,11 @@ export const useAuthStore = defineStore('auth', () => {
   };
 
   const register = async ({ name, email, password }) => {
-    await registerRequest({ name, email, password });
+    const payload = { email, password };
+    if (name?.trim()) {
+      payload.name = name.trim();
+    }
+    await registerRequest(payload);
     let loginResponse;
     try {
       loginResponse = await loginRequest({ identifier: email, password });

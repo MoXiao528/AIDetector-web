@@ -29,10 +29,10 @@
                   id="name"
                   v-model="form.name"
                   type="text"
-                  required
                   :placeholder="t('auth.register.placeholderName')"
                   class="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-700 placeholder:text-slate-400 focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500"
                 />
+                <p class="text-xs text-slate-500">姓名可选；若不填写，将默认与邮箱一致。</p>
               </div>
               <div class="space-y-1">
                 <label for="email" class="block text-sm font-medium text-slate-700">{{ t('auth.register.email') }}</label>
@@ -107,18 +107,28 @@ const form = reactive({
 
 const error = ref('');
 
+const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
 const handleSubmit = async () => {
   error.value = '';
-  if (!form.name || !form.email || !form.password || !form.confirm) {
+  if (!form.email || !form.password || !form.confirm) {
     error.value = t('auth.register.errors.missing');
     return;
   }
+  if (!emailPattern.test(form.email)) {
+    error.value = '请输入有效的邮箱。';
+    return;
+  }
   if (form.password !== form.confirm) {
-    error.value = t('auth.register.errors.failed');
+    error.value = '两次密码不一致';
     return;
   }
   try {
-    await authStore.register({ name: form.name, email: form.email, password: form.password });
+    const payload = { email: form.email, password: form.password };
+    if (form.name?.trim()) {
+      payload.name = form.name.trim();
+    }
+    await authStore.register(payload);
     router.push('/scan');
   } catch (err) {
     const message = err?.message || t('auth.register.errors.failed');
