@@ -322,7 +322,7 @@ import AppHeader from '../sections/AppHeader.vue';
 import AppFooter from '../sections/AppFooter.vue';
 import { useI18n } from '../i18n';
 import { useAuthStore } from '../store/auth';
-import { createOrder, fetchSubscriptionSnapshot, payOrder, planQuotaByKey } from '../utils/billing';
+import { createOrder, fetchSubscriptionSnapshot, payOrder, planQuotaByKey } from '../api/modules/billing';
 
 const props = defineProps({
   embedded: {
