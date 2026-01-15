@@ -344,8 +344,9 @@ const toggleUserMenu = () => {
   isUserMenuOpen.value = !isUserMenuOpen.value;
 };
 
-const handleLogout = () => {
-  authStore.logout();
+const handleLogout = async () => {
+  await authStore.logout();
+  router.push({ name: 'login' });
   isUserMenuOpen.value = false;
 };
 

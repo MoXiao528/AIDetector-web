@@ -102,14 +102,13 @@ export const useAuthStore = defineStore('auth', () => {
   };
 
   const logout = async () => {
+    persistToken('');
+    user.value = null;
+    creditSnapshot.value = { total: 0, remaining: 0 };
     try {
       await logoutRequest();
     } catch (error) {
       console.warn('Failed to logout from server.', error);
-    } finally {
-      persistToken('');
-      user.value = null;
-      creditSnapshot.value = { total: 0, remaining: 0 };
     }
   };
 

@@ -95,7 +95,14 @@ const handleSubmit = async () => {
       typeof route.query.redirect === 'string' && route.query.redirect ? route.query.redirect : '/dashboard';
     router.push(redirectTo);
   } catch (err) {
-    error.value = err?.message || t('auth.login.errors.failed');
+    const code = err?.details?.code || err?.code || err?.details?.errorCode;
+    if (code === 'AUTH_USER_NOT_FOUND') {
+      error.value = '用户不存在，请检查用户名或邮箱';
+    } else if (code === 'AUTH_INVALID_PASSWORD') {
+      error.value = '密码错误，请重新输入';
+    } else {
+      error.value = err?.message || '登录失败，请稍后再试';
+    }
   }
 };
 </script>
