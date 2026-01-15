@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia';
 import { computed, ref } from 'vue';
-import { fetchMe, login as loginRequest, logout as logoutRequest, register as registerRequest } from '../api/modules/auth';
+import router from '../router';
+import { fetchMe, login as loginRequest, register as registerRequest } from '../api/modules/auth';
 
 const TOKEN_STORAGE_KEY = 'auth_token';
 
@@ -105,11 +106,7 @@ export const useAuthStore = defineStore('auth', () => {
     persistToken('');
     user.value = null;
     creditSnapshot.value = { total: 0, remaining: 0 };
-    try {
-      await logoutRequest();
-    } catch (error) {
-      console.warn('Failed to logout from server.', error);
-    }
+    router.replace({ name: 'login' });
   };
 
   const updateProfile = (payload) => {
