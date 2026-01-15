@@ -107,7 +107,7 @@ const form = reactive({
 
 const error = ref('');
 
-const handleSubmit = () => {
+const handleSubmit = async () => {
   error.value = '';
   if (!form.name || !form.email || !form.password || !form.confirm) {
     error.value = t('auth.register.errors.missing');
@@ -118,7 +118,7 @@ const handleSubmit = () => {
     return;
   }
   try {
-    authStore.register({ name: form.name, email: form.email, password: form.password });
+    await authStore.register({ name: form.name, email: form.email, password: form.password });
     router.push('/dashboard');
   } catch (err) {
     error.value = err?.message || t('auth.register.errors.failed');

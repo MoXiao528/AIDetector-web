@@ -83,14 +83,14 @@ const form = reactive({
 
 const error = ref('');
 
-const handleSubmit = () => {
+const handleSubmit = async () => {
   error.value = '';
   if (!form.identifier || !form.password) {
     error.value = t('auth.login.errors.missing');
     return;
   }
   try {
-    authStore.login({ identifier: form.identifier, password: form.password });
+    await authStore.login({ identifier: form.identifier, password: form.password });
     const redirectTo =
       typeof route.query.redirect === 'string' && route.query.redirect ? route.query.redirect : '/dashboard';
     router.push(redirectTo);
