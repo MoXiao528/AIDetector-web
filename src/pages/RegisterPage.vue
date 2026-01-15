@@ -119,9 +119,13 @@ const handleSubmit = async () => {
   }
   try {
     await authStore.register({ name: form.name, email: form.email, password: form.password });
-    router.push('/dashboard');
+    router.push('/scan');
   } catch (err) {
-    error.value = err?.message || t('auth.register.errors.failed');
+    const message = err?.message || t('auth.register.errors.failed');
+    error.value = message;
+    if (err?.code === 'LOGIN_FAILED') {
+      router.push('/login');
+    }
   }
 };
 </script>

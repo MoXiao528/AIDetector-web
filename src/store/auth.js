@@ -6,6 +6,7 @@ const TOKEN_STORAGE_KEY = 'auth_token';
 
 export const useAuthStore = defineStore('auth', () => {
   const user = ref(null);
+  const token = ref('');
   const creditSnapshot = ref({ total: 0, remaining: 0 });
 
   const isAuthenticated = computed(() => Boolean(user.value));
@@ -15,13 +16,14 @@ export const useAuthStore = defineStore('auth', () => {
     return window.localStorage.getItem(TOKEN_STORAGE_KEY) || '';
   };
 
-  const persistToken = (token) => {
+  const persistToken = (nextToken) => {
     if (typeof window === 'undefined') return;
-    if (token) {
-      window.localStorage.setItem(TOKEN_STORAGE_KEY, token);
+    if (nextToken) {
+      window.localStorage.setItem(TOKEN_STORAGE_KEY, nextToken);
     } else {
       window.localStorage.removeItem(TOKEN_STORAGE_KEY);
     }
+    token.value = nextToken || '';
   };
 
   const setCredits = ({ total, remaining } = {}) => {
@@ -45,12 +47,14 @@ export const useAuthStore = defineStore('auth', () => {
   };
 
   const restoreSession = async () => {
-    const token = getStoredToken();
-    if (!token) {
+    const storedToken = getStoredToken();
+    if (!storedToken) {
       user.value = null;
+      token.value = '';
       return false;
     }
     try {
+      token.value = storedToken;
       const snapshot = await fetchMe();
       applyMeSnapshot(snapshot);
       return Boolean(user.value);
@@ -63,9 +67,9 @@ export const useAuthStore = defineStore('auth', () => {
 
   const login = async ({ identifier, password }) => {
     const response = await loginRequest({ identifier, password });
-    const token = response?.token || response?.accessToken || response?.data?.token;
-    if (token) {
-      persistToken(token);
+    const resolvedToken = response?.accessToken || response?.access_token || response?.token || response?.data?.token;
+    if (resolvedToken) {
+      persistToken(resolvedToken);
     }
     const snapshot = await fetchMe();
     applyMeSnapshot(snapshot);
@@ -73,14 +77,28 @@ export const useAuthStore = defineStore('auth', () => {
   };
 
   const register = async ({ name, email, password }) => {
-    const response = await registerRequest({ name, email, password });
-    const token = response?.token || response?.accessToken || response?.data?.token;
-    if (token) {
-      persistToken(token);
+    await registerRequest({ name, email, password });
+    let loginResponse;
+    try {
+      loginResponse = await loginRequest({ identifier: email, password });
+    } catch (error) {
+      const err = new Error('注册成功但登录失败，请重新登录。');
+      err.code = 'LOGIN_FAILED';
+      throw err;
     }
-    const snapshot = await fetchMe();
-    applyMeSnapshot(snapshot);
-    return snapshot;
+    const resolvedToken = loginResponse?.accessToken || loginResponse?.access_token || loginResponse?.token || loginResponse?.data?.token;
+    if (resolvedToken) {
+      persistToken(resolvedToken);
+    }
+    try {
+      const snapshot = await fetchMe();
+      applyMeSnapshot(snapshot);
+      return snapshot;
+    } catch (error) {
+      const err = new Error('登录成功但用户信息加载失败，可重试。');
+      err.code = 'ME_FAILED';
+      throw err;
+    }
   };
 
   const logout = async () => {
@@ -136,6 +154,7 @@ export const useAuthStore = defineStore('auth', () => {
 
   return {
     user,
+    token,
     isAuthenticated,
     creditUsage,
     setCredits,
