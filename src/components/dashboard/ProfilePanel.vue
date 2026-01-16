@@ -15,6 +15,9 @@
         <h1 class="text-2xl font-semibold text-slate-900">{{ t('profilePanel.title') }}</h1>
         <p class="mt-2 text-sm text-slate-500">{{ t('profilePanel.subtitle') }}</p>
       </section>
+      <div class="rounded-2xl bg-blue-50 px-4 py-3 text-sm text-blue-700">
+        {{ t('profilePanel.tips.identity') }}
+      </div>
       <form class="space-y-6 rounded-3xl border border-slate-200 bg-white p-8 shadow-lg shadow-slate-200/60" @submit.prevent="handleSubmit">
         <div class="grid gap-6 md:grid-cols-2">
           <div class="space-y-2">
@@ -33,6 +36,16 @@
               v-model="profileForm.surname"
               type="text"
               class="w-full rounded-2xl border border-slate-200 px-4 py-2 text-sm text-slate-700 shadow-sm focus:border-primary-300 focus:outline-none focus:ring-2 focus:ring-primary-200"
+            />
+          </div>
+          <div class="space-y-2">
+            <label class="text-sm font-semibold text-slate-700" for="account-name">{{ t('profilePanel.fields.accountName') }}</label>
+            <input
+              id="account-name"
+              :value="accountName"
+              type="text"
+              disabled
+              class="w-full cursor-not-allowed rounded-2xl border border-slate-200 bg-slate-50 px-4 py-2 text-sm text-slate-500"
             />
           </div>
           <div class="space-y-2">
@@ -146,6 +159,7 @@ const successMessage = ref('');
 const errorMessage = ref('');
 const isSaving = ref(false);
 
+const accountName = computed(() => authStore.user?.name || '');
 const email = computed(() => authStore.user?.email || '');
 
 const syncForm = () => {
@@ -173,7 +187,7 @@ const handleSubmit = async () => {
   errorMessage.value = '';
   isSaving.value = true;
   try {
-    authStore.updateProfile({
+    await authStore.updateProfile({
       firstName: profileForm.firstName,
       surname: profileForm.surname,
       organization: profileForm.organization,
