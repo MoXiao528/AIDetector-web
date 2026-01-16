@@ -1370,6 +1370,10 @@ const syncEditorFromStore = () => {
 };
 
 onMounted(() => {
+  console.log('ScanPage Mounted. Store text:', scanStore.inputText);
+  if (scanStore.inputText && scanStore.inputText.trim() !== '') {
+    localText.value = scanStore.inputText;
+  }
   if (scanStore.inputText && !scanStore.editorHtml) {
     scanStore.setText(scanStore.inputText);
   }

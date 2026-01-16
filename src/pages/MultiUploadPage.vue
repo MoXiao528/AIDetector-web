@@ -51,35 +51,49 @@
       </section>
       <section class="flex justify-center">
         <div class="w-full max-w-2xl rounded-3xl border border-slate-200 bg-white/90 px-5 py-4 shadow-sm">
-          <p class="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">功能选择</p>
-          <div class="mt-3 grid gap-3 sm:grid-cols-2">
-            <button
-              v-for="option in functionOptions"
-              :key="option.key"
-              type="button"
-              :disabled="option.disabled"
-              :class="[
-                'flex items-center justify-between rounded-2xl border px-4 py-3 text-sm font-semibold transition',
-                option.disabled
-                  ? 'cursor-not-allowed border-transparent bg-slate-900 text-white'
-                  : selectedFunctions.includes(option.key)
-                  ? option.activeClass
-                  : 'border-slate-200 bg-white text-slate-600 hover:border-primary-200 hover:text-primary-600',
-              ]"
-              @click="toggleFunction(option.key)"
-            >
-              <span>{{ option.label }}</span>
-              <span
-                :class="[
-                  'rounded-full border px-2 py-0.5 text-[11px] font-semibold',
-                  selectedFunctions.includes(option.key)
-                    ? 'border-transparent bg-white text-slate-900'
-                    : 'border-slate-200 text-slate-400',
-                ]"
-              >
-                {{ selectedFunctions.includes(option.key) ? 'ON' : 'OFF' }}
-              </span>
-            </button>
+          <div class="space-y-4">
+            <div class="space-y-3">
+              <p class="text-xs font-bold uppercase tracking-tight text-slate-400">{{ t('scan.results.verification') }}</p>
+              <div class="grid grid-cols-2 gap-3">
+                <template v-for="option in functionOptions" :key="option.key">
+                  <button
+                    v-if="['scan', 'citation'].includes(option.key)"
+                    type="button"
+                    :class="[
+                      'flex flex-col items-center justify-center gap-2 rounded-xl border px-3 py-3 text-xs font-semibold transition-all duration-200',
+                      selectedFunctions.includes(option.key)
+                        ? 'bg-primary-50 border-primary-500 text-primary-700 ring-1 ring-primary-500'
+                        : 'bg-white border-slate-200 text-slate-600 hover:border-primary-300 hover:bg-slate-50',
+                    ]"
+                    @click="toggleFunction(option.key)"
+                  >
+                    <component :is="option.icon" class="h-5 w-5" />
+                    <span class="text-center">{{ option.label }}</span>
+                  </button>
+                </template>
+              </div>
+            </div>
+            <div class="space-y-3">
+              <p class="text-xs font-bold uppercase tracking-tight text-slate-400">{{ t('scan.results.enhancement') }}</p>
+              <div class="grid grid-cols-2 gap-3">
+                <template v-for="option in functionOptions" :key="option.key">
+                  <button
+                    v-if="['polish', 'translate'].includes(option.key)"
+                    type="button"
+                    :class="[
+                      'flex flex-col items-center justify-center gap-2 rounded-xl border px-3 py-3 text-xs font-semibold transition-all duration-200',
+                      selectedFunctions.includes(option.key)
+                        ? 'bg-primary-50 border-primary-500 text-primary-700 ring-1 ring-primary-500'
+                        : 'bg-white border-slate-200 text-slate-600 hover:border-primary-300 hover:bg-slate-50',
+                    ]"
+                    @click="toggleFunction(option.key)"
+                  >
+                    <component :is="option.icon" class="h-5 w-5" />
+                    <span class="text-center">{{ option.label }}</span>
+                  </button>
+                </template>
+              </div>
+            </div>
           </div>
         </div>
       </section>
@@ -197,6 +211,12 @@
 import { computed, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { useI18n } from '../i18n';
+import {
+  DocumentMagnifyingGlassIcon,
+  LanguageIcon,
+  PencilSquareIcon,
+  ShieldCheckIcon,
+} from '@heroicons/vue/24/outline';
 import AppHeader from '../sections/AppHeader.vue';
 import { parseFiles } from '../api/modules/scan';
 import { useScanStore } from '../store/scan';
@@ -213,27 +233,10 @@ const scanModes = computed(() => [
 ]);
 
 const functionOptions = computed(() => [
-  {
-    key: 'scan',
-    label: 'AI Content Detection',
-    disabled: true,
-    activeClass: 'border-transparent bg-slate-900 text-white',
-  },
-  {
-    key: 'polish',
-    label: 'Smart Polishing',
-    activeClass: 'border-transparent bg-primary-600 text-white',
-  },
-  {
-    key: 'citation',
-    label: 'Citation Generator',
-    activeClass: 'border-transparent bg-emerald-600 text-white',
-  },
-  {
-    key: 'translate',
-    label: 'Language Translation',
-    activeClass: 'border-transparent bg-sky-600 text-white',
-  },
+  { key: 'scan', label: t('scan.functions.scan'), icon: ShieldCheckIcon },
+  { key: 'polish', label: t('scan.functions.polish'), icon: PencilSquareIcon },
+  { key: 'translate', label: t('scan.functions.translate'), icon: LanguageIcon },
+  { key: 'citation', label: t('scan.functions.citation'), icon: DocumentMagnifyingGlassIcon },
 ]);
 
 const flowSteps = computed(() => [
@@ -355,7 +358,7 @@ const handleUpload = async () => {
       .filter((content) => content && String(content).trim())
       .join('\n\n');
     scanStore.setInputText(mergedText);
-    router.push({ name: 'dashboard', query: { panel: 'document' } });
+    router.push({ name: 'Scan' });
   } catch (error) {
     scanStore.uploadError = scanStore.uploadError || t('multiUpload.errors.parse');
   } finally {

@@ -67,7 +67,8 @@ const localInput = ref('');
 const { t } = useI18n();
 
 const handleScan = () => {
+  if (!localInput.value) return;
   scanStore.setInputText(localInput.value);
-  router.push({ name: 'dashboard', query: { panel: 'document' } });
+  router.push({ name: 'Scan' });
 };
 </script>
