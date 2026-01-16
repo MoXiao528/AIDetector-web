@@ -72,7 +72,7 @@ const extractTextFromHtml = (html = '') => {
 
 const tokenizeText = (text = '') => {
   const normalized = String(text).replace(/\r\n/g, '\n');
-  const regex = /([^\n。！？!?]+[。！？!?]?|\n)/g;
+  const regex = /([^\n。.!?;！？]+[。.!?;！？]?|\n)/g;
   const tokens = [];
   let match;
   while ((match = regex.exec(normalized)) !== null) {
