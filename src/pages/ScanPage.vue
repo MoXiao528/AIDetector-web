@@ -881,7 +881,7 @@ const showOnboarding = ref(false);
 const onboardingSteps = ref([]);
 const onboardingStorageKey = 'ai-detector-onboarding-v1';
 const fontSizeSelection = ref('');
-const localText = ref('');
+const localText = ref(scanStore.inputText || '');
 
 const editorMode = ref('edit');
 const isScanning = ref(false);

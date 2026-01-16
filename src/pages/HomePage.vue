@@ -2,7 +2,7 @@
   <div class="min-h-screen bg-slate-50">
     <AppHeader mode="marketing" />
     <main>
-      <HeroSection />
+      <HeroSection v-model="localInput" @scan="handleScan" />
       <TrustIndicators />
       <CapabilitiesSection />
       <WorkflowSection />
@@ -44,6 +44,7 @@
 
 <script setup>
 import { ref } from 'vue';
+import { useRouter } from 'vue-router';
 import { useI18n } from '../i18n';
 import AppHeader from '../sections/AppHeader.vue';
 import HeroSection from '../sections/HeroSection.vue';
@@ -57,7 +58,16 @@ import CallToAction from '../sections/CallToAction.vue';
 import AppFooter from '../sections/AppFooter.vue';
 import UsageExamplesModal from '../components/common/UsageExamplesModal.vue';
 import { usageExamples as usageExampleItems } from '../utils/usageExamples';
+import { useScanStore } from '../store/scan';
 
+const router = useRouter();
+const scanStore = useScanStore();
 const showUsageExamples = ref(false);
+const localInput = ref('');
 const { t } = useI18n();
+
+const handleScan = () => {
+  scanStore.setInputText(localInput.value);
+  router.push({ name: 'dashboard', query: { panel: 'document' } });
+};
 </script>

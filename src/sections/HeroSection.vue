@@ -195,6 +195,15 @@ import {
 import { useScanStore } from '../store/scan';
 import { parseFiles } from '../api/modules/scan';
 
+const props = defineProps({
+  modelValue: {
+    type: String,
+    default: '',
+  },
+});
+
+const emit = defineEmits(['update:modelValue', 'scan']);
+
 const router = useRouter();
 const scanStore = useScanStore();
 const fileInput = ref(null);
@@ -212,7 +221,10 @@ const functionOptions = computed(() => [
 
 const highlightItems = computed(() => t('hero.highlights'));
 
-const heroText = ref('');
+const heroText = computed({
+  get: () => props.modelValue,
+  set: (value) => emit('update:modelValue', value),
+});
 
 const selectedFunctionSummary = computed(() => {
   if (!scanStore.selectedFunctions.length) {
@@ -229,9 +241,6 @@ const selectedFunctionSummary = computed(() => {
 
 onMounted(() => {
   scanStore.resetError();
-  if (scanStore.inputText) {
-    heroText.value = scanStore.inputText;
-  }
 });
 
 const showWarning = (message) => {
@@ -344,8 +353,7 @@ const openDashboard = () => {
 };
 
 const handleScan = () => {
-  scanStore.setInputText(heroText.value);
-  openDashboard();
+  emit('scan');
 };
 
 const goToScan = (focus) => {

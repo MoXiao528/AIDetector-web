@@ -53,21 +53,33 @@
         <div class="w-full max-w-2xl rounded-3xl border border-slate-200 bg-white/90 px-5 py-4 shadow-sm">
           <p class="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">功能选择</p>
           <div class="mt-3 grid gap-3 sm:grid-cols-2">
-            <label
+            <button
               v-for="option in functionOptions"
               :key="option.key"
-              class="flex items-center gap-3 rounded-2xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-600"
+              type="button"
+              :disabled="option.disabled"
+              :class="[
+                'flex items-center justify-between rounded-2xl border px-4 py-3 text-sm font-semibold transition',
+                option.disabled
+                  ? 'cursor-not-allowed border-transparent bg-slate-900 text-white'
+                  : selectedFunctions.includes(option.key)
+                  ? option.activeClass
+                  : 'border-slate-200 bg-white text-slate-600 hover:border-primary-200 hover:text-primary-600',
+              ]"
+              @click="toggleFunction(option.key)"
             >
-              <input
-                type="checkbox"
-                class="h-4 w-4 rounded border-slate-300 text-primary-600 focus:ring-primary-200"
-                :value="option.key"
-                :checked="selectedFunctions.includes(option.key)"
-                :disabled="option.disabled"
-                @change="toggleFunction(option.key)"
-              />
               <span>{{ option.label }}</span>
-            </label>
+              <span
+                :class="[
+                  'rounded-full border px-2 py-0.5 text-[11px] font-semibold',
+                  selectedFunctions.includes(option.key)
+                    ? 'border-transparent bg-white text-slate-900'
+                    : 'border-slate-200 text-slate-400',
+                ]"
+              >
+                {{ selectedFunctions.includes(option.key) ? 'ON' : 'OFF' }}
+              </span>
+            </button>
           </div>
         </div>
       </section>
@@ -90,7 +102,7 @@
             {{ t('multiUpload.uploader.titlePrefix') }}
             <button type="button" class="text-primary-600 hover:underline" @click="openFilePicker">{{ t('multiUpload.uploader.cta') }}</button>
           </p>
-          <p class="mt-2 text-sm text-slate-400">支持格式：PDF, DOCX, TXT</p>
+          <p class="mt-2 text-sm text-slate-400">{{ t('multiUpload.supportedFormats') }}</p>
           <input
             ref="fileInput"
             type="file"
@@ -201,10 +213,27 @@ const scanModes = computed(() => [
 ]);
 
 const functionOptions = computed(() => [
-  { key: 'scan', label: 'AI Content Detection', disabled: true },
-  { key: 'polish', label: 'Smart Polishing' },
-  { key: 'citation', label: 'Citation Generator' },
-  { key: 'translate', label: 'Language Translation' },
+  {
+    key: 'scan',
+    label: 'AI Content Detection',
+    disabled: true,
+    activeClass: 'border-transparent bg-slate-900 text-white',
+  },
+  {
+    key: 'polish',
+    label: 'Smart Polishing',
+    activeClass: 'border-transparent bg-primary-600 text-white',
+  },
+  {
+    key: 'citation',
+    label: 'Citation Generator',
+    activeClass: 'border-transparent bg-emerald-600 text-white',
+  },
+  {
+    key: 'translate',
+    label: 'Language Translation',
+    activeClass: 'border-transparent bg-sky-600 text-white',
+  },
 ]);
 
 const flowSteps = computed(() => [
