@@ -194,9 +194,11 @@ import {
 } from '@heroicons/vue/24/outline';
 import AppHeader from '../sections/AppHeader.vue';
 import { parseFiles } from '../api/modules/scan';
+import { useAuthStore } from '../store/auth';
 import { useScanStore } from '../store/scan';
 
 const router = useRouter();
+const authStore = useAuthStore();
 const scanStore = useScanStore();
 const BATCH_LIMIT = 3;
 const { t } = useI18n();
@@ -296,6 +298,10 @@ const handleUpload = async () => {
   warningMessage.value = '';
   if (!selectedFunctions.value.length) {
     showWarning('请至少选择一项功能');
+    return;
+  }
+  if (!authStore.isAuthenticated) {
+    showWarning(t('scan.loginPrompt.loginFirst'));
     return;
   }
   try {

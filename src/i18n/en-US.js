@@ -138,7 +138,7 @@ export default {
     uploader: {
       titlePrefix: 'Drag and drop or',
       cta: 'Choose files',
-      formats: 'Supported formats: pdf, txt, doc, docx',
+      formats: 'Supported formats: pdf, txt, docx',
       ready: 'Ready',
     },
     supportedFormats: 'Supported formats: PDF, DOCX, TXT',
@@ -314,7 +314,7 @@ export default {
     highlights: [
       'Paragraph-level AI probability heatmaps',
       'Preserves paragraph structure and citations',
-      'Supports TXT / DOC / PDF formats',
+      'Supports TXT / DOCX / PDF formats',
       'Polish and translation share the same context',
     ],
     previewBadge: 'Live scan preview',
