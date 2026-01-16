@@ -130,14 +130,6 @@
           >
             开始解析
           </button>
-          <button
-            v-if="isParseComplete"
-            type="button"
-            class="mt-3 inline-flex items-center justify-center rounded-full border border-primary-500 px-6 py-2 text-sm font-semibold text-primary-600 transition hover:bg-primary-50"
-            @click="goToScan"
-          >
-            {{ t('scan.start') }}
-          </button>
         </div>
       </section>
 
@@ -228,7 +220,6 @@ const flowSteps = computed(() => [
 const fileInput = ref(null);
 const dragActive = ref(false);
 const isUploading = ref(false);
-const isParseComplete = ref(false);
 const fileList = ref([]);
 const selectedFunctions = ref([...scanStore.selectedFunctions]);
 const warningMessage = ref('');
@@ -266,7 +257,6 @@ const formatFileSize = (size) => {
 
 const removeFile = (target) => {
   fileList.value = fileList.value.filter((file) => !(file.name === target.name && file.size === target.size));
-  isParseComplete.value = false;
 };
 
 const toggleFunction = (key) => {
@@ -284,7 +274,6 @@ const handleFiles = (files) => {
   if (!list.length) return;
   scanStore.resetError();
   warningMessage.value = '';
-  isParseComplete.value = false;
   const nextList = [...fileList.value];
   const rejected = list.filter((file) => isDocFile(file.name));
   if (rejected.length) {
@@ -307,7 +296,6 @@ const handleUpload = async () => {
   if (!fileList.value.length) return;
   scanStore.resetError();
   warningMessage.value = '';
-  isParseComplete.value = false;
   if (!selectedFunctions.value.length) {
     showWarning('请至少选择一项功能');
     return;
@@ -329,13 +317,13 @@ const handleUpload = async () => {
       scanStore.setInputText(mergedText);
       scanStore.setFunctions(selectedFunctions.value);
       scanStore.resetResult();
-      isParseComplete.value = true;
       if (errors.length) {
         const failureDetails = errors
           .map((item) => `${item.fileName || '文件'} 解析失败: ${item.error}`)
           .join('；');
         showWarning(failureDetails);
       }
+      router.push({ name: 'dashboard', query: { panel: 'document' } });
     } else {
       scanStore.uploadError = '文件解析失败，请重试';
     }
@@ -372,10 +360,6 @@ const onDrop = async (event) => {
 
 const upgradeForMore = () => {
   router.push({ name: 'pricing' });
-};
-
-const goToScan = () => {
-  router.push({ name: 'dashboard', query: { panel: 'document' } });
 };
 
 const requestMoreLanguages = () => {
