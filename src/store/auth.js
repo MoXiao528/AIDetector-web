@@ -94,7 +94,7 @@ export const useAuthStore = defineStore('auth', () => {
     if (credits && typeof credits === 'object') {
       setCredits(credits);
     } else if (Number.isFinite(parsedCredits)) {
-      setCredits({ remaining: parsedCredits });
+      setCredits({ total: parsedCredits, remaining: parsedCredits });
     }
   };
 
@@ -181,10 +181,12 @@ export const useAuthStore = defineStore('auth', () => {
       };
     }
     const safeTotal = Number(creditSnapshot.value.total) || 0;
+    const nextTotal = safeTotal > 0 ? safeTotal : parsedCredits;
     creditSnapshot.value = {
       ...creditSnapshot.value,
+      total: nextTotal,
       remaining: parsedCredits,
-      used: Math.max(0, safeTotal - parsedCredits),
+      used: Math.max(0, nextTotal - parsedCredits),
     };
     persistUser(user.value);
   };
