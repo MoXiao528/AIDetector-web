@@ -1369,6 +1369,9 @@ const syncEditorFromStore = () => {
 };
 
 onMounted(() => {
+  if (scanStore.inputText && !scanStore.editorHtml) {
+    scanStore.setText(scanStore.inputText);
+  }
   if (editorRef.value && scanStore.editorHtml) {
     editorRef.value.innerHTML = scanStore.editorHtml;
   }

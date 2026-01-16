@@ -68,7 +68,7 @@
             {{ t('multiUpload.uploader.titlePrefix') }}
             <button type="button" class="text-primary-600 hover:underline" @click="openFilePicker">{{ t('multiUpload.uploader.cta') }}</button>
           </p>
-          <p class="mt-2 text-sm text-slate-400">{{ t('multiUpload.uploader.formats') }}</p>
+          <p class="mt-2 text-sm text-slate-400">支持格式：PDF, DOCX, TXT</p>
           <input
             ref="fileInput"
             type="file"
@@ -80,12 +80,33 @@
           <p v-if="uploadError" class="mt-3 text-sm font-semibold text-red-600">{{ uploadError }}</p>
           <p v-if="warningMessage" class="mt-2 text-sm font-semibold text-amber-600">{{ warningMessage }}</p>
           <p v-if="isUploading" class="mt-3 text-sm font-semibold text-primary-600">文件解析中，请稍候...</p>
-          <ul v-if="uploadedFiles.length" class="mt-8 w-full max-w-md space-y-2 text-sm text-slate-600">
-            <li v-for="file in uploadedFiles" :key="file" class="flex items-center justify-between rounded-2xl border border-slate-200 bg-white px-4 py-2">
-              <span class="truncate">{{ file }}</span>
-              <span class="text-xs text-slate-400">{{ t('multiUpload.uploader.ready') }}</span>
+          <ul v-if="fileList.length" class="mt-8 w-full max-w-md space-y-2 text-sm text-slate-600">
+            <li
+              v-for="file in fileList"
+              :key="`${file.name}-${file.size}`"
+              class="flex items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-white px-4 py-2"
+            >
+              <div class="min-w-0">
+                <p class="truncate font-semibold text-slate-700">{{ file.name }}</p>
+                <p class="text-xs text-slate-400">{{ formatFileSize(file.size) }}</p>
+              </div>
+              <button
+                type="button"
+                class="rounded-full border border-slate-200 px-2 py-1 text-xs font-semibold text-slate-500 transition hover:border-rose-200 hover:text-rose-500"
+                @click="removeFile(file)"
+              >
+                ×
+              </button>
             </li>
           </ul>
+          <button
+            v-if="fileList.length"
+            type="button"
+            class="mt-6 inline-flex items-center justify-center rounded-full bg-primary-600 px-6 py-2 text-sm font-semibold text-white shadow hover:bg-primary-500"
+            @click="handleUpload"
+          >
+            开始解析
+          </button>
         </div>
       </section>
 
@@ -168,7 +189,7 @@ const selectedMode = ref('basic');
 const fileInput = ref(null);
 const dragActive = ref(false);
 const isUploading = ref(false);
-const uploadedFiles = ref([]);
+const fileList = ref([]);
 const warningMessage = ref('');
 let warningTimer;
 const uploadError = computed(() => scanStore.uploadError);
@@ -192,24 +213,59 @@ const showWarning = (message) => {
   }, 4000);
 };
 
-const handleFiles = async (files) => {
+const isDocFile = (fileName = '') => fileName.toLowerCase().endsWith('.doc');
+
+const formatFileSize = (size) => {
+  if (!size && size !== 0) return '';
+  const units = ['B', 'KB', 'MB', 'GB'];
+  let value = size;
+  let unitIndex = 0;
+  while (value >= 1024 && unitIndex < units.length - 1) {
+    value /= 1024;
+    unitIndex += 1;
+  }
+  return `${value.toFixed(value >= 10 ? 0 : 1)} ${units[unitIndex]}`;
+};
+
+const removeFile = (target) => {
+  fileList.value = fileList.value.filter((file) => !(file.name === target.name && file.size === target.size));
+};
+
+const handleFiles = (files) => {
   const list = Array.from(files || []).filter(Boolean);
   if (!list.length) return;
   scanStore.resetError();
   warningMessage.value = '';
-  if (list.length > BATCH_LIMIT) {
+  const nextList = [...fileList.value];
+  const rejected = list.filter((file) => isDocFile(file.name));
+  if (rejected.length) {
+    showWarning('不支持 .doc 格式，请转换为 .docx');
+  }
+  const accepted = list.filter((file) => !isDocFile(file.name));
+  accepted.forEach((file) => {
+    if (!nextList.find((item) => item.name === file.name && item.size === file.size)) {
+      nextList.push(file);
+    }
+  });
+  if (nextList.length > BATCH_LIMIT) {
     scanStore.uploadError = t('multiUpload.errors.limit', { limit: BATCH_LIMIT });
     return;
   }
+  fileList.value = nextList;
+};
+
+const handleUpload = async () => {
+  if (!fileList.value.length) return;
+  scanStore.resetError();
+  warningMessage.value = '';
   try {
     const formData = new FormData();
-    list.forEach((file) => formData.append('files', file));
+    fileList.value.forEach((file) => formData.append('files', file));
     isUploading.value = true;
     const response = await parseFiles(formData);
     const results = Array.isArray(response?.results) ? response.results : [];
     const successes = results.filter((item) => item?.content && !item?.error);
     const failures = results.filter((item) => item?.error);
-    uploadedFiles.value = list.map((file) => file.name);
     if (!successes.length) {
       scanStore.uploadError = t('multiUpload.errors.parse');
       return;
@@ -235,7 +291,7 @@ const handleFiles = async (files) => {
 
 const onFileChange = async (event) => {
   const { files } = event.target;
-  await handleFiles(files);
+  handleFiles(files);
   event.target.value = '';
 };
 
@@ -254,7 +310,7 @@ const onDragLeave = () => {
 const onDrop = async (event) => {
   dragActive.value = false;
   const files = event.dataTransfer?.files;
-  await handleFiles(files);
+  handleFiles(files);
 };
 
 const upgradeForMore = () => {
