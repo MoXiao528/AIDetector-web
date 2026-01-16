@@ -72,9 +72,9 @@
       </button>
     </div>
     <div class="flex items-center gap-4">
-      <div class="hidden min-w-[200px] flex-1 md:block">
+      <div v-if="authStore.isAuthenticated" class="hidden min-w-[220px] flex-1 md:block">
         <div class="flex items-center justify-between text-[11px] font-semibold text-slate-400">
-          <span>{{ t('profileArea.credits', { value: compactRemaining }) }}</span>
+          <span>{{ t('profileArea.creditsBalance', { value: compactCredits }) }}</span>
           <span>{{ t('profileArea.remainingOf', { value: compactTotal }) }}</span>
         </div>
         <div class="mt-1.5 h-2 w-full overflow-hidden rounded-full bg-slate-200">
@@ -89,6 +89,7 @@
 <script setup>
 import { computed } from 'vue';
 import { useI18n } from '../../i18n';
+import { useAuthStore } from '../../store/auth';
 
 const props = defineProps({
   variant: {
@@ -108,8 +109,10 @@ const props = defineProps({
 defineEmits(['upgrade', 'feedback']);
 
 const { t, locale } = useI18n();
+const authStore = useAuthStore();
 const numberFormatter = computed(() => new Intl.NumberFormat(locale.value));
 const compactFormatter = computed(() => new Intl.NumberFormat(locale.value, { notation: 'compact', maximumFractionDigits: 1 }));
+const creditsDisplay = computed(() => authStore.credits || 0);
 
 const boundedTotal = computed(() => (Number.isFinite(props.creditsTotal) && props.creditsTotal > 0 ? props.creditsTotal : 0));
 const boundedRemaining = computed(() => {
@@ -127,6 +130,7 @@ const strokeOffset = computed(() => circumference * ((100 - percentRemaining.val
 
 const formattedRemaining = computed(() => numberFormatter.value.format(Math.round(boundedRemaining.value)));
 const formattedTotal = computed(() => numberFormatter.value.format(Math.round(boundedTotal.value)));
+const compactCredits = computed(() => compactFormatter.value.format(Math.round(creditsDisplay.value)));
 const compactRemaining = computed(() => compactFormatter.value.format(Math.round(boundedRemaining.value)));
 const compactTotal = computed(() => compactFormatter.value.format(Math.round(boundedTotal.value)));
 </script>

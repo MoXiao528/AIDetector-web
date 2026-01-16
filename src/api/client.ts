@@ -1,6 +1,4 @@
 const DEFAULT_TIMEOUT = 15000;
-const TOKEN_STORAGE_KEYS = ['auth_token', 'access_token', 'token'];
-
 export type ApiErrorCode =
   | 'UNAUTHORIZED'
   | 'FORBIDDEN'
@@ -34,10 +32,18 @@ const getBaseUrl = () => {
   return String(base).replace(/\/$/, '');
 };
 
-const resolveAuthToken = () => {
-  if (typeof window === 'undefined') return '';
-  return TOKEN_STORAGE_KEYS.map((key) => window.localStorage.getItem(key)).find((token) => token) || '';
+const resolveAuthStore = async () => {
+  if (typeof window === 'undefined') return null;
+  try {
+    const { useAuthStore } = await import('../store/auth');
+    return useAuthStore();
+  } catch (error) {
+    console.warn('Failed to resolve auth store', error);
+    return null;
+  }
 };
+
+const resolveAuthToken = (authStore: { authToken?: string } | null) => authStore?.authToken || '';
 
 const buildUrl = (path: string) => {
   if (/^https?:\/\//i.test(path)) return path;
@@ -71,10 +77,15 @@ const buildErrorMessage = (status: number, payload: any) => {
   return '请求失败，请稍后重试。';
 };
 
-const buildHeaders = (headers: HeadersInit | undefined, body: unknown, auth: boolean) => {
+const buildHeaders = (
+  headers: HeadersInit | undefined,
+  body: unknown,
+  auth: boolean,
+  authStore: { authToken?: string } | null
+) => {
   const finalHeaders = new Headers(headers || {});
   if (auth) {
-    const token = resolveAuthToken();
+    const token = resolveAuthToken(authStore);
     if (token) {
       finalHeaders.set('Authorization', `Bearer ${token}`);
     }
@@ -97,7 +108,8 @@ const normalizeBody = (body: unknown, headers: Headers) => {
 const request = async <T>(path: string, { timeout = DEFAULT_TIMEOUT, auth = true, body, ...options }: ApiRequestOptions = {}) => {
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), timeout);
-  const headers = buildHeaders(options.headers, body, auth);
+  const authStore = await resolveAuthStore();
+  const headers = buildHeaders(options.headers, body, auth, authStore);
 
   try {
     const response = await fetch(buildUrl(path), {
@@ -109,6 +121,13 @@ const request = async <T>(path: string, { timeout = DEFAULT_TIMEOUT, auth = true
     });
 
     const payload = response.status === 204 ? null : await parseResponseBody(response);
+
+    if (response.status === 401) {
+      await authStore?.logout?.();
+    }
+    if (response.status === 402) {
+      console.warn('余额不足，请检查账户点数。');
+    }
 
     if (!response.ok) {
       throw new ApiError({

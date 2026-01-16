@@ -4,6 +4,7 @@ import router from '../router';
 import { fetchMe, login as loginRequest, register as registerRequest, updateProfile as updateProfileRequest } from '../api/modules/auth';
 
 const TOKEN_STORAGE_KEY = 'auth_token';
+const USER_STORAGE_KEY = 'auth_user';
 
 export const useAuthStore = defineStore('auth', () => {
   const user = ref(null);
@@ -11,10 +12,34 @@ export const useAuthStore = defineStore('auth', () => {
   const creditSnapshot = ref({ total: 0, remaining: 0 });
 
   const isAuthenticated = computed(() => Boolean(user.value));
+  const credits = computed(() => Number(user.value?.credits) || 0);
+  const authToken = computed(() => token.value || getStoredToken());
 
   const getStoredToken = () => {
     if (typeof window === 'undefined') return '';
     return window.localStorage.getItem(TOKEN_STORAGE_KEY) || '';
+  };
+
+  const getStoredUser = () => {
+    if (typeof window === 'undefined') return null;
+    const raw = window.localStorage.getItem(USER_STORAGE_KEY);
+    if (!raw) return null;
+    try {
+      const parsed = JSON.parse(raw);
+      return parsed && typeof parsed === 'object' ? parsed : null;
+    } catch (error) {
+      console.warn('Failed to parse stored user snapshot', error);
+      return null;
+    }
+  };
+
+  const persistUser = (nextUser) => {
+    if (typeof window === 'undefined') return;
+    if (nextUser) {
+      window.localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(nextUser));
+    } else {
+      window.localStorage.removeItem(USER_STORAGE_KEY);
+    }
   };
 
   const persistToken = (nextToken) => {
@@ -40,7 +65,13 @@ export const useAuthStore = defineStore('auth', () => {
       return;
     }
     const account = payload.user || payload.data || payload;
-    user.value = account;
+    const resolvedCredits = payload.currentCredits ?? payload.credits ?? account?.credits;
+    const parsedCredits = Number(resolvedCredits);
+    user.value = {
+      ...account,
+      credits: Number.isFinite(parsedCredits) ? parsedCredits : account?.credits ?? 0,
+    };
+    persistUser(user.value);
     const credits = payload.credits || payload.creditSnapshot || account?.credits;
     if (credits && typeof credits === 'object') {
       setCredits(credits);
@@ -53,6 +84,10 @@ export const useAuthStore = defineStore('auth', () => {
       user.value = null;
       token.value = '';
       return false;
+    }
+    const cachedUser = getStoredUser();
+    if (cachedUser) {
+      user.value = cachedUser;
     }
     try {
       token.value = storedToken;
@@ -109,8 +144,29 @@ export const useAuthStore = defineStore('auth', () => {
   const logout = async () => {
     persistToken('');
     user.value = null;
+    persistUser(null);
     creditSnapshot.value = { total: 0, remaining: 0 };
     router.replace({ name: 'login' });
+  };
+
+  const updateCredits = (newCredits) => {
+    const parsedCredits = Number(newCredits);
+    if (!Number.isFinite(parsedCredits)) return;
+    if (!user.value) {
+      user.value = { credits: parsedCredits };
+    } else {
+      user.value = {
+        ...user.value,
+        credits: parsedCredits,
+      };
+    }
+    if (creditSnapshot.value.total) {
+      creditSnapshot.value = {
+        ...creditSnapshot.value,
+        remaining: parsedCredits,
+      };
+    }
+    persistUser(user.value);
   };
 
   const updateProfile = async (payload) => {
@@ -132,6 +188,7 @@ export const useAuthStore = defineStore('auth', () => {
         ...resolvedProfile,
       },
     };
+    persistUser(user.value);
     return response;
   };
 
@@ -142,6 +199,7 @@ export const useAuthStore = defineStore('auth', () => {
       ...user.value,
       plan: plan || user.value.plan || 'personal-free',
     };
+    persistUser(user.value);
 
     if (credits && typeof credits === 'object') {
       setCredits(credits);
@@ -164,9 +222,12 @@ export const useAuthStore = defineStore('auth', () => {
   return {
     user,
     token,
+    authToken,
     isAuthenticated,
+    credits,
     creditUsage,
     setCredits,
+    updateCredits,
     login,
     register,
     logout,

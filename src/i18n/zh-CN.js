@@ -52,6 +52,7 @@ export default {
     feedback: '反馈',
     upgrade: '升级',
     credits: '{value} 额度',
+    creditsBalance: '余额 {value}',
     remainingOf: '剩余 {value}',
   },
   loginPrompt: {
