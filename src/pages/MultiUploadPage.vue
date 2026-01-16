@@ -316,7 +316,7 @@ const handleUpload = async () => {
           .join('；');
         showWarning(failureDetails);
       }
-      router.push({ name: 'Scan' });
+      router.push({ name: 'dashboard' });
     } else {
       scanStore.uploadError = '文件解析失败，请重试';
     }

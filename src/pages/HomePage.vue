@@ -74,6 +74,6 @@ const handleScan = () => {
   }
   scanStore.setInputText(text);
   console.log('Redirecting to ScanPage with text length:', text.length);
-  router.push({ name: 'Scan' });
+  router.push({ name: 'dashboard' });
 };
 </script>
