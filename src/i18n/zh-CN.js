@@ -137,6 +137,7 @@ export default {
       formats: '支持格式：pdf、txt、doc、docx',
       ready: '已就绪',
     },
+    supportedFormats: '支持格式：PDF, DOCX, TXT',
     limits: {
       title: '单批 3 个文件上限',
       badge: '免费',

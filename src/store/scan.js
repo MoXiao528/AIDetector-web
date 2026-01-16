@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia';
 import { computed, ref, watch } from 'vue';
 import { globalT } from '../i18n';
+import { detectText } from '../api/modules/scan';
 import { readTextFromFile } from '../utils/fileReaders';
 
 const examples = [
@@ -69,13 +70,117 @@ const extractTextFromHtml = (html = '') => {
   return doc.body.textContent || '';
 };
 
+const tokenizeText = (text = '') => {
+  const normalized = String(text).replace(/\r\n/g, '\n');
+  const regex = /([^\n。.!?;！？]+[。.!?;！？]?|\n)/g;
+  const tokens = [];
+  let match;
+  while ((match = regex.exec(normalized)) !== null) {
+    const raw = match[0];
+    if (raw === '\n') {
+      tokens.push({ type: 'break', raw });
+      continue;
+    }
+    const trimmed = raw.trim();
+    if (!trimmed) continue;
+    tokens.push({ type: 'sentence', raw, text: trimmed });
+  }
+  return tokens;
+};
+
+const buildHighlightedHtml = (text, sentences) => {
+  const classMap = {
+    ai: 'bg-amber-100 text-amber-900',
+    mixed: 'bg-violet-100 text-violet-900',
+    human: 'bg-emerald-100 text-emerald-900',
+  };
+  const tokens = tokenizeText(text);
+  if (!tokens.length) {
+    return plainTextToHtml(text);
+  }
+  let sentenceIndex = 0;
+  return tokens
+    .map((token) => {
+      if (token.type === 'break') {
+        return '<br />';
+      }
+      const sentence = sentences[sentenceIndex];
+      sentenceIndex += 1;
+      if (!sentence) {
+        return `<span class="highlight-chip">${escapeHtml(token.raw)}</span>`;
+      }
+      const classes = classMap[sentence.type] || 'bg-slate-100 text-slate-700';
+      return `<span class="highlight-chip ${classes}" data-sentence-id="${sentence.id}">${escapeHtml(token.raw)}</span>`;
+    })
+    .join('');
+};
+
 const historyHighlightClasses = {
   ai: 'bg-amber-100 text-amber-900',
   mixed: 'bg-violet-100 text-violet-900',
   human: 'bg-emerald-100 text-emerald-900',
 };
 
-const buildSeedHistoryAnalysis = ({ summary, sentences, translation = '', polish = [], citations = [] }) => {
+const labelToTypeMap = {
+  AI: 'ai',
+  Human: 'human',
+  Mixed: 'mixed',
+};
+
+const parseSummaryValue = (value) => {
+  if (typeof value === 'number') return value;
+  if (typeof value === 'string') {
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : null;
+  }
+  return null;
+};
+
+const normalizeSummary = ({ summary, sentences, score }) => {
+  const parsed = {
+    ai: parseSummaryValue(summary?.ai),
+    mixed: parseSummaryValue(summary?.mixed),
+    human: parseSummaryValue(summary?.human),
+  };
+  const hasParsed = Object.values(parsed).every((value) => typeof value === 'number' && Number.isFinite(value));
+  if (hasParsed) {
+    const total = parsed.ai + parsed.mixed + parsed.human;
+    if (total !== 100) {
+      parsed.human = Math.max(0, parsed.human - (total - 100));
+    }
+    return parsed;
+  }
+
+  if (sentences.length) {
+    const counts = sentences.reduce(
+      (acc, sentence) => {
+        acc[sentence.type] += 1;
+        return acc;
+      },
+      { ai: 0, mixed: 0, human: 0 }
+    );
+    const total = sentences.length;
+    const computed = {
+      ai: Math.round((counts.ai / total) * 100),
+      mixed: Math.round((counts.mixed / total) * 100),
+      human: Math.round((counts.human / total) * 100),
+    };
+    const diff = computed.ai + computed.mixed + computed.human - 100;
+    if (diff !== 0) {
+      computed.human = Math.max(0, computed.human - diff);
+    }
+    return computed;
+  }
+
+  const safeScore = typeof score === 'number' && Number.isFinite(score) ? Math.max(0, Math.min(score, 100)) : 0;
+  return {
+    ai: safeScore,
+    mixed: 0,
+    human: Math.max(0, 100 - safeScore),
+  };
+};
+
+const buildSeedHistoryAnalysis = ({ summary, sentences, translation = '', polish = '', citations = [] }) => {
   const normalizedSentences = sentences.map((item, index) => ({
     id: item.id || `seed-sentence-${index}`,
     text: item.text,
@@ -110,6 +215,8 @@ export const useScanStore = defineStore('scan', () => {
   const lastUploadedFileName = ref('');
   const selectedFunctions = ref(['scan']);
   const historyRecords = ref([...seedHistoryRecords]);
+  const result = ref(null);
+  const analysisError = ref({ type: '', message: '' });
   let isRestoring = false;
   let isHydratingHistory = false;
 
@@ -120,6 +227,10 @@ export const useScanStore = defineStore('scan', () => {
     inputText.value = normalized;
     editorHtml.value = plainTextToHtml(normalized);
     selectedExampleKey.value = '';
+  };
+
+  const setInputText = (value) => {
+    setText(value);
   };
 
   const setEditorHtml = (value = '') => {
@@ -210,6 +321,15 @@ export const useScanStore = defineStore('scan', () => {
     resetFunctions();
   };
 
+  const resetResult = () => {
+    result.value = null;
+    analysisError.value = null;
+  };
+
+  const resetAnalysisError = () => {
+    analysisError.value = { type: '', message: '' };
+  };
+
   const persistHistory = () => {
     if (isHydratingHistory || typeof window === 'undefined') return;
     try {
@@ -219,7 +339,7 @@ export const useScanStore = defineStore('scan', () => {
           ? {
               ...item.analysis,
               sentences: (item.analysis.sentences || []).map((sentence) => ({ ...sentence })),
-              polish: (item.analysis.polish || []).map((entry) => ({ ...entry })),
+              polish: item.analysis.polish || '',
               citations: (item.analysis.citations || []).map((entry) => ({ ...entry })),
             }
           : null,
@@ -255,26 +375,27 @@ export const useScanStore = defineStore('scan', () => {
                     id: sentence.id || `history-${index}-sentence-${sentenceIndex}`,
                     text: sentence.text || '',
                     raw: sentence.raw || sentence.text || '',
-                    type: ['ai', 'mixed', 'human'].includes(sentence.type) ? sentence.type : 'human',
-                    probability: typeof sentence.probability === 'number' ? sentence.probability : 0.5,
-                    reason: sentence.reason || '',
+                    type: ['ai', 'mixed', 'human'].includes(sentence.type)
+                      ? sentence.type
+                      : labelToTypeMap[sentence.label] || 'human',
+                    probability:
+                      typeof sentence.probability === 'number'
+                        ? sentence.probability
+                        : Number(sentence.score || 0) / 100,
+                    score: typeof sentence.score === 'number' ? sentence.score : Number(sentence.score || 0),
+                    reason: sentence.reason || sentence.suggestion || '',
+                    suggestion: sentence.suggestion || sentence.reason || '',
                   }))
                 : [],
               translation: record.analysis.translation || '',
               polish: Array.isArray(record.analysis.polish)
-                ? record.analysis.polish.map((entry, entryIndex) => ({
-                    id: entry.id || `history-${index}-polish-${entryIndex}`,
-                    original: entry.original || '',
-                    suggestion: entry.suggestion || '',
-                    reason: entry.reason || '',
-                  }))
-                : [],
+                ? record.analysis.polish.map((entry) => entry?.suggestion).filter(Boolean).join('\n\n')
+                : record.analysis.polish || '',
               citations: Array.isArray(record.analysis.citations)
                 ? record.analysis.citations.map((entry, entryIndex) => ({
                     id: entry.id || `history-${index}-citation-${entryIndex}`,
-                    excerpt: entry.excerpt || '',
-                    status: entry.status || '待验证',
-                    note: entry.note || '',
+                    text: entry.text || entry.excerpt || '',
+                    source: entry.source || entry.note || entry.status || '',
                   }))
                 : [],
               aiLikelyCount:
@@ -301,26 +422,30 @@ export const useScanStore = defineStore('scan', () => {
     const recordAnalysis = analysis
       ? {
           ...analysis,
+          summary: analysis.summary || { ai: 0, mixed: 0, human: 0 },
           sentences: (analysis.sentences || []).map((sentence, index) => ({
             id: sentence.id || `history-new-sentence-${index}`,
             text: sentence.text || '',
             raw: sentence.raw || sentence.text || '',
-            type: ['ai', 'mixed', 'human'].includes(sentence.type) ? sentence.type : 'human',
-            probability: typeof sentence.probability === 'number' ? sentence.probability : 0.5,
-            reason: sentence.reason || '',
+            type: ['ai', 'mixed', 'human'].includes(sentence.type)
+              ? sentence.type
+              : labelToTypeMap[sentence.label] || 'human',
+            probability: typeof sentence.probability === 'number' ? sentence.probability : Number(sentence.score || 0) / 100,
+            score: typeof sentence.score === 'number' ? sentence.score : Number(sentence.score || 0),
+            reason: sentence.reason || sentence.suggestion || '',
+            suggestion: sentence.suggestion || sentence.reason || '',
           })),
-          polish: (analysis.polish || []).map((entry, index) => ({
-            id: entry.id || `history-new-polish-${index}`,
-            original: entry.original || '',
-            suggestion: entry.suggestion || '',
-            reason: entry.reason || '',
-          })),
-          citations: (analysis.citations || []).map((entry, index) => ({
-            id: entry.id || `history-new-citation-${index}`,
-            excerpt: entry.excerpt || '',
-            status: entry.status || '待验证',
-            note: entry.note || '',
-          })),
+          translation: analysis.translation || '',
+          polish: Array.isArray(analysis.polish)
+            ? analysis.polish.map((entry) => entry?.suggestion).filter(Boolean).join('\n\n')
+            : analysis.polish || '',
+          citations: Array.isArray(analysis.citations)
+            ? analysis.citations.map((entry, index) => ({
+                id: entry.id || `history-new-citation-${index}`,
+                text: entry.text || entry.excerpt || '',
+                source: entry.source || entry.note || entry.status || '',
+              }))
+            : [],
           aiLikelyCount:
             typeof analysis.aiLikelyCount === 'number'
               ? analysis.aiLikelyCount
@@ -344,6 +469,72 @@ export const useScanStore = defineStore('scan', () => {
 
     historyRecords.value = [record, ...historyRecords.value].slice(0, 30);
     persistHistory();
+  };
+
+  const mapAnalysisResult = (response, originalText) => {
+    const analysis = response?.result;
+    const inputTextValue = response?.input_text || originalText || '';
+    const normalizedSentences = (analysis?.sentences || []).map((sentence, index) => {
+      const type = labelToTypeMap[sentence.label] || 'human';
+      const score = typeof sentence.score === 'number' ? sentence.score : Number(sentence.score || 0);
+      return {
+        id: sentence.id || `sentence-${response?.id || Date.now()}-${index}`,
+        text: sentence.text || '',
+        raw: sentence.text || '',
+        type,
+        probability: score / 100,
+        score,
+        reason: sentence.suggestion || '',
+        suggestion: sentence.suggestion || '',
+      };
+    });
+    const summary = normalizeSummary({
+      summary: analysis?.summary,
+      sentences: normalizedSentences,
+      score: analysis?.score,
+    });
+    const highlightedHtml = buildHighlightedHtml(inputTextValue, normalizedSentences);
+    return {
+      summary,
+      sentences: normalizedSentences,
+      translation: analysis?.translation || '',
+      polish: analysis?.polish || '',
+      citations: Array.isArray(analysis?.citations)
+        ? analysis.citations.map((item, index) => ({
+            id: `citation-${response?.id || Date.now()}-${index}`,
+            text: item.text || '',
+            source: item.source || '',
+          }))
+        : [],
+      aiLikelyCount: normalizedSentences.filter((item) => item.type === 'ai' || item.type === 'mixed').length,
+      highlightedHtml,
+    };
+  };
+
+  const analyzeText = async (text, options = {}) => {
+    resetAnalysisError();
+    const functions = Array.from(
+      new Set(
+        (options.functions || selectedFunctions.value || [])
+          .filter((item) => typeof item === 'string' && validFunctionKeys.includes(item))
+      )
+    );
+    try {
+      const response = await detectText({ text, functions: functions.length ? functions : ['scan'] });
+      const analysis = mapAnalysisResult(response, text);
+      result.value = analysis;
+      return analysis;
+    } catch (error) {
+      if (error?.status === 402) {
+        analysisError.value = { type: 'credits_insufficient', message: error?.message || '' };
+      } else if (error?.status === 429) {
+        analysisError.value = { type: 'rate_limit', message: error?.message || '' };
+      } else {
+        analysisError.value = { type: '', message: error?.message || '' };
+      }
+      result.value = null;
+      throw error;
+    }
   };
 
   const persistState = () => {
@@ -418,17 +609,23 @@ export const useScanStore = defineStore('scan', () => {
     characterCount,
     characterLimit: CHARACTER_LIMIT,
     setText,
+    setInputText,
      setEditorHtml,
     applyExample,
     readFile,
     readFiles,
     resetError,
+    resetAnalysisError,
     toggleFunction,
     setFunctions,
     resetFunctions,
     resetText,
     resetAll,
+    resetResult,
     commitDraftToStorage,
+    result,
+    analysisError,
+    analyzeText,
     historyRecords,
     addHistoryRecord,
   };

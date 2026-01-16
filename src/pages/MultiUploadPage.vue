@@ -23,30 +23,53 @@
           </div>
         </div>
       </section>
+      
       <section class="flex justify-center">
-        <div class="flex flex-wrap items-center justify-center gap-3 rounded-3xl border border-slate-200 bg-white/90 px-4 py-3 shadow-sm backdrop-blur">
-          <button
-            v-for="mode in scanModes"
-            :key="mode.key"
-            type="button"
-            :class="[
-              'flex items-center gap-2 rounded-2xl px-5 py-2 text-sm font-semibold transition',
-              selectedMode === mode.key
-                ? 'bg-slate-900 text-white shadow'
-                : 'bg-white text-slate-600 hover:bg-slate-100',
-            ]"
-            @click="selectMode(mode.key)"
-          >
-            <span
-              :class="[
-                'flex h-5 w-5 items-center justify-center rounded-md border text-[10px] font-semibold transition',
-                selectedMode === mode.key ? 'border-transparent bg-slate-900 text-white' : 'border-slate-300 text-slate-400',
-              ]"
-            >
-              ✓
-            </span>
-            {{ mode.label }}
-          </button>
+        <div class="w-full max-w-2xl rounded-3xl border border-slate-200 bg-white/90 px-5 py-4 shadow-sm">
+          <div class="space-y-4">
+            <div class="space-y-3">
+              <p class="text-xs font-bold uppercase tracking-tight text-slate-400">{{ t('scan.results.verification') }}</p>
+              <div class="grid grid-cols-2 gap-3">
+                <template v-for="option in functionOptions" :key="option.key">
+                  <button
+                    v-if="['scan', 'citation'].includes(option.key)"
+                    type="button"
+                    :class="[
+                      'flex flex-col items-center justify-center gap-2 rounded-xl border px-3 py-3 text-xs font-semibold transition-all duration-200',
+                      selectedFunctions.includes(option.key)
+                        ? 'bg-primary-50 border-primary-500 text-primary-700 ring-1 ring-primary-500'
+                        : 'bg-white border-slate-200 text-slate-600 hover:border-primary-300 hover:bg-slate-50',
+                    ]"
+                    @click="toggleFunction(option.key)"
+                  >
+                    <component :is="option.icon" class="h-5 w-5" />
+                    <span class="text-center">{{ option.label }}</span>
+                  </button>
+                </template>
+              </div>
+            </div>
+            <div class="space-y-3">
+              <p class="text-xs font-bold uppercase tracking-tight text-slate-400">{{ t('scan.results.enhancement') }}</p>
+              <div class="grid grid-cols-2 gap-3">
+                <template v-for="option in functionOptions" :key="option.key">
+                  <button
+                    v-if="['polish', 'translate'].includes(option.key)"
+                    type="button"
+                    :class="[
+                      'flex flex-col items-center justify-center gap-2 rounded-xl border px-3 py-3 text-xs font-semibold transition-all duration-200',
+                      selectedFunctions.includes(option.key)
+                        ? 'bg-primary-50 border-primary-500 text-primary-700 ring-1 ring-primary-500'
+                        : 'bg-white border-slate-200 text-slate-600 hover:border-primary-300 hover:bg-slate-50',
+                    ]"
+                    @click="toggleFunction(option.key)"
+                  >
+                    <component :is="option.icon" class="h-5 w-5" />
+                    <span class="text-center">{{ option.label }}</span>
+                  </button>
+                </template>
+              </div>
+            </div>
+          </div>
         </div>
       </section>
 
@@ -68,22 +91,45 @@
             {{ t('multiUpload.uploader.titlePrefix') }}
             <button type="button" class="text-primary-600 hover:underline" @click="openFilePicker">{{ t('multiUpload.uploader.cta') }}</button>
           </p>
-          <p class="mt-2 text-sm text-slate-400">{{ t('multiUpload.uploader.formats') }}</p>
+          <p class="mt-2 text-sm text-slate-400">{{ t('multiUpload.supportedFormats') }}</p>
           <input
             ref="fileInput"
             type="file"
             class="hidden"
             multiple
-            accept=".pdf,.txt,.doc,.docx,.md,.json,.csv,.yaml,.yml,.tex,.tax"
+            accept=".pdf,.docx,.txt"
             @change="onFileChange"
           />
           <p v-if="uploadError" class="mt-3 text-sm font-semibold text-red-600">{{ uploadError }}</p>
-          <ul v-if="uploadedFiles.length" class="mt-8 w-full max-w-md space-y-2 text-sm text-slate-600">
-            <li v-for="file in uploadedFiles" :key="file" class="flex items-center justify-between rounded-2xl border border-slate-200 bg-white px-4 py-2">
-              <span class="truncate">{{ file }}</span>
-              <span class="text-xs text-slate-400">{{ t('multiUpload.uploader.ready') }}</span>
+          <p v-if="warningMessage" class="mt-2 text-sm font-semibold text-amber-600">{{ warningMessage }}</p>
+          <p v-if="isUploading" class="mt-3 text-sm font-semibold text-primary-600">文件解析中，请稍候...</p>
+          <ul v-if="fileList.length" class="mt-8 w-full max-w-md space-y-2 text-sm text-slate-600">
+            <li
+              v-for="file in fileList"
+              :key="`${file.name}-${file.size}`"
+              class="flex items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-white px-4 py-2"
+            >
+              <div class="min-w-0">
+                <p class="truncate font-semibold text-slate-700">{{ file.name }}</p>
+                <p class="text-xs text-slate-400">{{ formatFileSize(file.size) }}</p>
+              </div>
+              <button
+                type="button"
+                class="rounded-full border border-slate-200 px-2 py-1 text-xs font-semibold text-slate-500 transition hover:border-rose-200 hover:text-rose-500"
+                @click="removeFile(file)"
+              >
+                ×
+              </button>
             </li>
           </ul>
+          <button
+            v-if="fileList.length"
+            type="button"
+            class="mt-6 inline-flex items-center justify-center rounded-full bg-primary-600 px-6 py-2 text-sm font-semibold text-white shadow hover:bg-primary-500"
+            @click="handleUpload"
+          >
+            开始解析
+          </button>
         </div>
       </section>
 
@@ -140,7 +186,14 @@
 import { computed, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { useI18n } from '../i18n';
+import {
+  DocumentMagnifyingGlassIcon,
+  LanguageIcon,
+  PencilSquareIcon,
+  ShieldCheckIcon,
+} from '@heroicons/vue/24/outline';
 import AppHeader from '../sections/AppHeader.vue';
+import { parseFiles } from '../api/modules/scan';
 import { useScanStore } from '../store/scan';
 
 const router = useRouter();
@@ -148,10 +201,11 @@ const scanStore = useScanStore();
 const BATCH_LIMIT = 3;
 const { t } = useI18n();
 
-const scanModes = computed(() => [
-  { key: 'basic', label: t('multiUpload.modes.basic') },
-  { key: 'advanced', label: t('multiUpload.modes.advanced') },
-  { key: 'plagiarism', label: t('multiUpload.modes.plagiarism') },
+const functionOptions = computed(() => [
+  { key: 'scan', label: t('scan.functions.scan'), icon: ShieldCheckIcon },
+  { key: 'polish', label: t('scan.functions.polish'), icon: PencilSquareIcon },
+  { key: 'translate', label: t('scan.functions.translate'), icon: LanguageIcon },
+  { key: 'citation', label: t('scan.functions.citation'), icon: DocumentMagnifyingGlassIcon },
 ]);
 
 const flowSteps = computed(() => [
@@ -161,41 +215,122 @@ const flowSteps = computed(() => [
   { key: 'download', order: 4, label: t('multiUpload.flow.steps.download.label'), description: t('multiUpload.flow.steps.download.description') },
 ]);
 
-const selectedMode = ref('basic');
 const fileInput = ref(null);
 const dragActive = ref(false);
-const uploadedFiles = ref([]);
+const isUploading = ref(false);
+const fileList = ref([]);
+const selectedFunctions = ref([...scanStore.selectedFunctions]);
+const warningMessage = ref('');
+let warningTimer;
 const uploadError = computed(() => scanStore.uploadError);
-
-const selectMode = (mode) => {
-  selectedMode.value = mode;
-};
 
 const openFilePicker = () => {
   scanStore.resetError();
   fileInput.value?.click();
 };
 
-const handleFiles = async (files) => {
+const showWarning = (message) => {
+  warningMessage.value = message;
+  if (warningTimer) {
+    clearTimeout(warningTimer);
+  }
+  warningTimer = setTimeout(() => {
+    warningMessage.value = '';
+  }, 4000);
+};
+
+const isDocFile = (fileName = '') => fileName.toLowerCase().endsWith('.doc');
+
+const formatFileSize = (size) => {
+  if (!size && size !== 0) return '';
+  const units = ['B', 'KB', 'MB', 'GB'];
+  let value = size;
+  let unitIndex = 0;
+  while (value >= 1024 && unitIndex < units.length - 1) {
+    value /= 1024;
+    unitIndex += 1;
+  }
+  return `${value.toFixed(value >= 10 ? 0 : 1)} ${units[unitIndex]}`;
+};
+
+const removeFile = (target) => {
+  fileList.value = fileList.value.filter((file) => !(file.name === target.name && file.size === target.size));
+};
+
+const toggleFunction = (key) => {
+  const next = new Set(selectedFunctions.value);
+  if (next.has(key)) {
+    next.delete(key);
+  } else {
+    next.add(key);
+  }
+  selectedFunctions.value = Array.from(next);
+};
+
+const handleFiles = (files) => {
   const list = Array.from(files || []).filter(Boolean);
   if (!list.length) return;
   scanStore.resetError();
-  if (list.length > BATCH_LIMIT) {
+  warningMessage.value = '';
+  const nextList = [...fileList.value];
+  const rejected = list.filter((file) => isDocFile(file.name));
+  if (rejected.length) {
+    showWarning('不支持 .doc 格式，请转换为 .docx');
+  }
+  const accepted = list.filter((file) => !isDocFile(file.name));
+  accepted.forEach((file) => {
+    if (!nextList.find((item) => item.name === file.name && item.size === file.size)) {
+      nextList.push(file);
+    }
+  });
+  if (nextList.length > BATCH_LIMIT) {
     scanStore.uploadError = t('multiUpload.errors.limit', { limit: BATCH_LIMIT });
     return;
   }
+  fileList.value = nextList;
+};
+
+const handleUpload = async () => {
+  if (!fileList.value.length) return;
+  scanStore.resetError();
+  warningMessage.value = '';
+  if (!selectedFunctions.value.length) {
+    showWarning('请至少选择一项功能');
+    return;
+  }
   try {
-    await scanStore.readFiles(list);
-    uploadedFiles.value = list.map((file) => file.name);
-    router.push({ name: 'dashboard', query: { panel: 'document' } });
+    const formData = new FormData();
+    fileList.value.forEach((file) => formData.append('files', file));
+    isUploading.value = true;
+    const response = await parseFiles(formData);
+    const results = Array.isArray(response?.results) ? response.results : [];
+    const validFiles = results.filter((item) => item?.content && !item?.error);
+    const errors = results.filter((item) => item?.error);
+    if (validFiles.length > 0) {
+      const mergedText = validFiles.map((item) => item?.content).join('\n\n');
+      scanStore.setInputText(mergedText);
+      scanStore.setFunctions(selectedFunctions.value);
+      scanStore.resetResult();
+      if (errors.length) {
+        const failureDetails = errors
+          .map((item) => `${item.fileName || '文件'} 解析失败: ${item.error}`)
+          .join('；');
+        showWarning(failureDetails);
+      }
+      router.push({ name: 'dashboard', query: { panel: 'document' } });
+    } else {
+      scanStore.uploadError = '文件解析失败，请重试';
+    }
   } catch (error) {
     scanStore.uploadError = scanStore.uploadError || t('multiUpload.errors.parse');
+  } finally {
+    isUploading.value = false;
   }
 };
 
 const onFileChange = async (event) => {
   const { files } = event.target;
-  await handleFiles(files);
+  handleFiles(files);
   event.target.value = '';
 };
 
@@ -214,7 +349,7 @@ const onDragLeave = () => {
 const onDrop = async (event) => {
   dragActive.value = false;
   const files = event.dataTransfer?.files;
-  await handleFiles(files);
+  handleFiles(files);
 };
 
 const upgradeForMore = () => {
