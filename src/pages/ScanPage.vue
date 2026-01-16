@@ -1403,6 +1403,15 @@ watch(
   }
 );
 
+watch(
+  () => scanStore.inputText,
+  (value) => {
+    if (value && !scanStore.editorHtml) {
+      scanStore.setText(value);
+    }
+  }
+);
+
 watch(availableResultTabs, (tabs) => {
   if (!tabs.find((tab) => tab.key === activeResultTab.value)) {
     activeResultTab.value = 'scan';

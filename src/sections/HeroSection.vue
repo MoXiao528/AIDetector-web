@@ -77,6 +77,8 @@
                 rows="10"
                 class="mt-3 w-full rounded-2xl border border-slate-200 bg-slate-50/80 p-4 text-sm text-slate-700 shadow-inner focus:border-primary-400 focus:outline-none focus:ring-2 focus:ring-primary-100"
                 :placeholder="t('hero.form.placeholder')"
+                @dragover.prevent
+                @drop.prevent="handleDrop"
               ></textarea>
             </div>
             <div class="flex flex-wrap items-center justify-between gap-3">
@@ -126,6 +128,19 @@
                 </svg>
                 <span>{{ scanStore.uploadError }}</span>
               </div>
+              <div v-if="warningMessage" class="flex items-center space-x-2 rounded-2xl bg-amber-50 px-3 py-2 text-amber-700">
+                <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v4m0 4h.01M12 3l9 16H3L12 3z" />
+                </svg>
+                <span>{{ warningMessage }}</span>
+                <button
+                  type="button"
+                  class="text-xs font-semibold text-amber-700 underline underline-offset-2"
+                  @click="goToMultiUpload"
+                >
+                  去多文件上传
+                </button>
+              </div>
               <div v-if="scanStore.lastUploadedFileName" class="flex items-center space-x-2 text-slate-500">
                 <svg class="h-4 w-4 text-primary-500" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" d="M4 16.75V5a2 2 0 012-2h6.586a2 2 0 011.414.586l5.414 5.414a2 2 0 01.586 1.414V19a2 2 0 01-2 2H6a2 2 0 01-2-2" />
@@ -139,7 +154,7 @@
                   ref="fileInput"
                   type="file"
                   class="hidden"
-                  accept=".txt,.md,.doc,.docx,.pdf,.json,.csv,.yaml,.yml,.tex,.tax"
+                  accept=".pdf,.docx,.txt"
                   @change="onFileChange"
                 />
                 <button
@@ -148,7 +163,7 @@
                   @click="triggerUpload"
                 >
                   <ArrowUpTrayIcon class="mr-2 h-4 w-4" />
-                  {{ scanStore.isUploading ? t('hero.uploading') : t('hero.upload') }}
+                  {{ isParsing ? t('hero.uploading') : t('hero.upload') }}
                 </button>
               </div>
               <button
@@ -178,11 +193,15 @@ import {
   ShieldCheckIcon,
 } from '@heroicons/vue/24/outline';
 import { useScanStore } from '../store/scan';
+import { parseFiles } from '../api/modules/scan';
 
 const router = useRouter();
 const scanStore = useScanStore();
 const fileInput = ref(null);
 const { t } = useI18n();
+const isParsing = ref(false);
+const warningMessage = ref('');
+let warningTimer;
 
 const functionOptions = computed(() => [
   { key: 'scan', label: t('hero.functions.scan'), icon: ShieldCheckIcon },
@@ -215,6 +234,16 @@ onMounted(() => {
   scanStore.resetError();
 });
 
+const showWarning = (message) => {
+  warningMessage.value = message;
+  if (warningTimer) {
+    clearTimeout(warningTimer);
+  }
+  warningTimer = setTimeout(() => {
+    warningMessage.value = '';
+  }, 4000);
+};
+
 const isFunctionSelected = (key) => scanStore.selectedFunctions.includes(key);
 
 const toggleFunction = (key) => {
@@ -234,16 +263,76 @@ const triggerUpload = () => {
   fileInput.value?.click();
 };
 
-const onFileChange = async (event) => {
-  const [file] = event.target.files || [];
-  if (!file) return;
+const isDocFile = (fileName = '') => fileName.toLowerCase().endsWith('.doc');
+
+const handleParseFiles = async (files) => {
+  if (!files?.length) return;
+  scanStore.resetError();
+  warningMessage.value = '';
   try {
-    await scanStore.readFile(file);
+    const formData = new FormData();
+    files.forEach((file) => formData.append('files', file));
+    isParsing.value = true;
+    const response = await parseFiles(formData);
+    const results = Array.isArray(response?.results) ? response.results : [];
+    const successes = results.filter((item) => item?.content && !item?.error);
+    const failures = results.filter((item) => item?.error);
+    if (!successes.length) {
+      scanStore.uploadError = t('multiUpload.errors.parse');
+      return;
+    }
+    if (failures.length) {
+      const failureDetails = failures
+        .map((item) => `${item.fileName || '文件'} 解析失败: ${item.error}`)
+        .join('；');
+      showWarning(failureDetails);
+    }
+    const mergedText = successes
+      .map((item) => item?.content)
+      .filter((content) => content && String(content).trim())
+      .join('\n\n');
+    scanStore.setInputText(mergedText);
+    router.push({ name: 'dashboard', query: { panel: 'document' } });
   } catch (error) {
-    console.error(error);
+    scanStore.uploadError = scanStore.uploadError || t('multiUpload.errors.parse');
   } finally {
-    event.target.value = '';
+    isParsing.value = false;
   }
+};
+
+const handleSingleFileUpload = async (file) => {
+  if (!file) return;
+  if (isDocFile(file.name)) {
+    showWarning('不支持 .doc 格式，请转换为 .docx');
+    return;
+  }
+  await handleParseFiles([file]);
+};
+
+const onFileChange = async (event) => {
+  const files = Array.from(event.target.files || []).filter(Boolean);
+  if (!files.length) return;
+  if (files.length > 1) {
+    showWarning('落地页仅支持单文件快速检测，批量检测请前往多文件上传页面。');
+    event.target.value = '';
+    return;
+  }
+  await handleSingleFileUpload(files[0]);
+  event.target.value = '';
+};
+
+const handleDrop = async (event) => {
+  const files = Array.from(event.dataTransfer?.files || []).filter(Boolean);
+  if (!files.length) return;
+  if (files.length > 1) {
+    showWarning('落地页仅支持单文件快速检测，批量检测请前往多文件上传页面。');
+    return;
+  }
+  await handleSingleFileUpload(files[0]);
+};
+
+const goToMultiUpload = () => {
+  router.push({ name: 'multi-upload' });
 };
 
 const openDashboard = () => {
@@ -251,11 +340,8 @@ const openDashboard = () => {
     scanStore.setFunctions(['scan']);
   }
   const features = (scanStore.selectedFunctions.length ? scanStore.selectedFunctions : ['scan']).join(',');
-  const target = router.resolve({ name: 'dashboard', query: { features, panel: 'document' } });
   scanStore.commitDraftToStorage();
-  if (typeof window !== 'undefined') {
-    window.open(target.href, '_blank', 'noopener');
-  }
+  router.push({ name: 'dashboard', query: { features, panel: 'document' } });
 };
 
 const handleScan = () => {
