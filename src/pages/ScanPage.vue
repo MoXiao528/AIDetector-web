@@ -431,35 +431,35 @@
                       <span class="summary-badge">{{ t('scan.results.summary.badge') }}</span>
                     </div>
                     <div class="summary-hero">
-                      <span class="summary-hero__value">{{ detectionResults.summary.ai }}%</span>
+                      <span class="summary-hero__value">{{ scanStore.result.summary.ai }}%</span>
                       <span class="summary-hero__label">{{ t('scan.results.summary.label') }}</span>
                     </div>
                     <div class="summary-rows">
                       <div class="summary-row">
                         <div class="summary-row__head">
                           <span class="summary-row__label">{{ t('scan.results.summary.ai') }}</span>
-                          <span class="summary-row__value">{{ detectionResults.summary.ai }}%</span>
+                          <span class="summary-row__value">{{ scanStore.result.summary.ai }}%</span>
                         </div>
                         <div class="summary-row__bar">
-                          <div class="summary-row__fill summary-row__fill--ai" :style="{ width: detectionResults.summary.ai + '%' }"></div>
+                          <div class="summary-row__fill summary-row__fill--ai" :style="{ width: scanStore.result.summary.ai + '%' }"></div>
                         </div>
                       </div>
                       <div class="summary-row">
                         <div class="summary-row__head">
                           <span class="summary-row__label">{{ t('scan.results.summary.mixed') }}</span>
-                          <span class="summary-row__value">{{ detectionResults.summary.mixed }}%</span>
+                          <span class="summary-row__value">{{ scanStore.result.summary.mixed }}%</span>
                         </div>
                         <div class="summary-row__bar">
-                          <div class="summary-row__fill summary-row__fill--mixed" :style="{ width: detectionResults.summary.mixed + '%' }"></div>
+                          <div class="summary-row__fill summary-row__fill--mixed" :style="{ width: scanStore.result.summary.mixed + '%' }"></div>
                         </div>
                       </div>
                       <div class="summary-row">
                         <div class="summary-row__head">
                           <span class="summary-row__label">{{ t('scan.results.summary.human') }}</span>
-                          <span class="summary-row__value">{{ detectionResults.summary.human }}%</span>
+                          <span class="summary-row__value">{{ scanStore.result.summary.human }}%</span>
                         </div>
                         <div class="summary-row__bar">
-                          <div class="summary-row__fill summary-row__fill--human" :style="{ width: detectionResults.summary.human + '%' }"></div>
+                          <div class="summary-row__fill summary-row__fill--human" :style="{ width: scanStore.result.summary.human + '%' }"></div>
                         </div>
                       </div>
                     </div>
@@ -496,7 +496,7 @@
 
                   <div v-if="activeResultTab === 'scan'" class="space-y-4">
                     <div
-                      v-for="sentence in detectionResults.sentences"
+                      v-for="sentence in scanStore.result.sentences"
                       :key="sentence.id"
                       :class="['rounded-2xl border p-4 text-sm', highlightBorderClass(sentence.type)]"
                     >
@@ -519,21 +519,16 @@
 
                   <div v-else-if="activeResultTab === 'polish'" class="space-y-4">
                     <p class="text-xs font-semibold text-slate-500">{{ t('scan.results.polish') }}</p>
-                    <div
-                      v-for="suggestion in detectionResults.polish"
-                      :key="suggestion.id"
-                      class="rounded-2xl border border-slate-200 bg-white p-4 text-sm"
-                    >
-                      <p class="font-semibold text-slate-700">{{ suggestion.suggestion }}</p>
-                      <p class="mt-1 text-xs text-slate-500">{{ suggestion.reason }}</p>
-                      <button
-                        type="button"
-                        class="mt-3 inline-flex items-center rounded-full bg-primary-600 px-3 py-1 text-xs font-semibold text-white hover:bg-primary-500"
-                        @click="applyPolishSuggestion(suggestion)"
-                      >
-                        {{ t('scan.results.apply') }}
-                      </button>
+                    <div class="rounded-2xl border border-slate-200 bg-white p-4 text-sm whitespace-pre-line text-slate-700">
+                      {{ detectionResults.polish }}
                     </div>
+                    <button
+                      type="button"
+                      class="inline-flex items-center rounded-full bg-primary-600 px-3 py-1 text-xs font-semibold text-white hover:bg-primary-500"
+                      @click="applyPolishSuggestion(detectionResults.polish)"
+                    >
+                      {{ t('scan.results.apply') }}
+                    </button>
                     <p class="text-[11px] text-slate-400">{{ t('scan.results.applyHint') }}</p>
                   </div>
 
@@ -544,13 +539,8 @@
                       :key="item.id"
                       class="rounded-2xl border border-slate-200 bg-white p-4 text-sm"
                     >
-                      <div class="flex items-start justify-between">
-                        <p class="flex-1 text-slate-700">{{ item.excerpt }}</p>
-                        <span class="ml-3 rounded-full px-2 py-0.5 text-[11px] font-semibold" :class="citationStatusClass(item.status)">
-                          {{ item.status }}
-                        </span>
-                      </div>
-                      <p class="mt-2 text-xs text-slate-500">{{ item.note }}</p>
+                      <p class="text-slate-700">{{ item.text }}</p>
+                      <p v-if="item.source" class="mt-2 text-xs text-slate-500">{{ item.source }}</p>
                     </div>
                     <p class="text-[11px] text-slate-400">{{ t('scan.results.citationHint') }}</p>
                   </div>
@@ -770,21 +760,16 @@
 
                   <div v-else-if="activeHistoryTab === 'polish'" class="space-y-4">
                     <p class="text-xs font-semibold text-slate-500">{{ t('scan.results.polish') }}</p>
-                    <div
-                      v-for="suggestion in activeHistoryRecord.analysis.polish"
-                      :key="suggestion.id"
-                      class="rounded-2xl border border-slate-200 bg-white p-4 text-sm"
-                    >
-                      <p class="font-semibold text-slate-700">{{ suggestion.suggestion }}</p>
-                      <p class="mt-1 text-xs text-slate-500">{{ suggestion.reason }}</p>
-                      <button
-                        type="button"
-                        class="mt-3 inline-flex items-center rounded-full bg-primary-600 px-3 py-1 text-xs font-semibold text-white hover:bg-primary-500"
-                        @click="applyPolishSuggestion(suggestion)"
-                      >
-                        {{ t('scan.results.apply') }}
-                      </button>
+                    <div class="rounded-2xl border border-slate-200 bg-white p-4 text-sm whitespace-pre-line text-slate-700">
+                      {{ activeHistoryRecord.analysis.polish }}
                     </div>
+                    <button
+                      type="button"
+                      class="inline-flex items-center rounded-full bg-primary-600 px-3 py-1 text-xs font-semibold text-white hover:bg-primary-500"
+                      @click="applyPolishSuggestion(activeHistoryRecord.analysis.polish)"
+                    >
+                      {{ t('scan.results.apply') }}
+                    </button>
                   </div>
 
                   <div v-else-if="activeHistoryTab === 'citation'" class="space-y-4">
@@ -794,13 +779,8 @@
                       :key="item.id"
                       class="rounded-2xl border border-slate-200 bg-white p-4 text-sm"
                     >
-                      <div class="flex items-start justify-between">
-                        <p class="flex-1 text-slate-700">{{ item.excerpt }}</p>
-                        <span class="ml-3 rounded-full px-2 py-0.5 text-[11px] font-semibold" :class="citationStatusClass(item.status)">
-                          {{ item.status }}
-                        </span>
-                      </div>
-                      <p class="mt-2 text-xs text-slate-500">{{ item.note }}</p>
+                      <p class="text-slate-700">{{ item.text }}</p>
+                      <p v-if="item.source" class="mt-2 text-xs text-slate-500">{{ item.source }}</p>
                     </div>
                     <p class="text-[11px] text-slate-400">{{ t('scan.results.citationHint') }}</p>
                   </div>
@@ -905,7 +885,7 @@ const fontSizeSelection = ref('');
 const editorMode = ref('edit');
 const isScanning = ref(false);
 const dragActive = ref(false);
-const detectionResults = ref(null);
+const detectionResults = computed(() => scanStore.result);
 const highlightedPreviewHtml = ref('');
 const showLoginModal = ref(false);
 const loginMessage = ref(t('scan.loginPrompt.default'));
@@ -1232,13 +1212,13 @@ const hasResults = computed(() => Boolean(detectionResults.value));
 
 const availableResultTabs = computed(() => {
   const tabs = [{ key: 'scan', label: t('scan.functions.scan') }];
-  if (scanStore.selectedFunctions.includes('polish')) {
+  if (scanStore.result?.polish) {
     tabs.push({ key: 'polish', label: t('scan.results.polish') });
   }
-  if (scanStore.selectedFunctions.includes('translate')) {
+  if (scanStore.result?.translation) {
     tabs.push({ key: 'translate', label: t('scan.results.translation') });
   }
-  if (scanStore.selectedFunctions.includes('citation')) {
+  if (scanStore.result?.citations?.length) {
     tabs.push({ key: 'citation', label: t('scan.results.citation') });
   }
   return tabs;
@@ -1267,13 +1247,13 @@ const availableHistoryTabs = computed(() => {
     return [];
   }
   const tabs = [{ key: 'scan', label: t('scan.functions.scan') }];
-  if (record.functions.includes('polish') && analysis.polish?.length) {
+  if (analysis.polish) {
     tabs.push({ key: 'polish', label: t('scan.results.polish') });
   }
-  if (record.functions.includes('translate') && analysis.translation) {
+  if (analysis.translation) {
     tabs.push({ key: 'translate', label: t('scan.results.translation') });
   }
-  if (record.functions.includes('citation') && analysis.citations?.length) {
+  if (analysis.citations?.length) {
     tabs.push({ key: 'citation', label: t('scan.results.citation') });
   }
   return tabs;
@@ -1306,44 +1286,6 @@ const highlightBorderClass = (type) => {
   return 'border-emerald-200 bg-emerald-50';
 };
 
-const citationStatusLabels = computed(() => ({
-  missing: t('scan.citation.status.missing'),
-  pending: t('scan.citation.status.pending'),
-  found: t('scan.citation.status.found'),
-}));
-
-const citationFallbacks = computed(() => t('scan.citation.fallbacks'));
-
-const normalizeCitationStatus = (status = '') => {
-  if (status === citationStatusLabels.value.missing || citationFallbacks.value.missing?.includes(status)) {
-    return 'missing';
-  }
-  if (status === citationStatusLabels.value.pending || citationFallbacks.value.pending?.includes(status)) {
-    return 'pending';
-  }
-  if (status === citationStatusLabels.value.found || citationFallbacks.value.found?.includes(status)) {
-    return 'found';
-  }
-  return status;
-};
-
-const citationStatusClass = (status) => {
-  const normalized = normalizeCitationStatus(status);
-  if (normalized === 'missing') {
-    return 'bg-rose-100 text-rose-600';
-  }
-  if (normalized === 'pending') {
-    return 'bg-amber-100 text-amber-600';
-  }
-  return 'bg-emerald-100 text-emerald-600';
-};
-
-const marketingReasons = computed(() => ({
-  ai: t('scan.simulation.reasons.ai'),
-  mixed: t('scan.simulation.reasons.mixed'),
-  human: t('scan.simulation.reasons.human'),
-}));
-
 const escapeHtml = (value = '') =>
   String(value)
     .replace(/&/g, '&amp;')
@@ -1351,47 +1293,6 @@ const escapeHtml = (value = '') =>
     .replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;')
     .replace(/'/g, '&#39;');
-
-const tokenizeText = (text = '') => {
-  const normalized = String(text).replace(/\r\n/g, '\n');
-  const regex = /([^\n。！？!?]+[。！？!?]?|\n)/g;
-  const tokens = [];
-  let match;
-  while ((match = regex.exec(normalized)) !== null) {
-    const raw = match[0];
-    if (raw === '\n') {
-      tokens.push({ type: 'break', raw });
-      continue;
-    }
-    const trimmed = raw.trim();
-    if (!trimmed) continue;
-    tokens.push({ type: 'sentence', raw, text: trimmed });
-  }
-  return tokens;
-};
-
-const buildHighlightedHtml = (tokens, sentences) => {
-  const classMap = {
-    ai: 'bg-amber-100 text-amber-900',
-    mixed: 'bg-violet-100 text-violet-900',
-    human: 'bg-emerald-100 text-emerald-900',
-  };
-  let sentenceIndex = 0;
-  return tokens
-    .map((token) => {
-      if (token.type === 'break') {
-        return '<br />';
-      }
-      const sentence = sentences[sentenceIndex];
-      sentenceIndex += 1;
-      if (!sentence) {
-        return `<span class="highlight-chip">${escapeHtml(token.raw)}</span>`;
-      }
-      const classes = classMap[sentence.type] || 'bg-slate-100 text-slate-700';
-      return `<span class="highlight-chip ${classes}" data-sentence-id="${sentence.id}">${escapeHtml(token.raw)}</span>`;
-    })
-    .join('');
-};
 
 const parsePanel = (value) => {
   if (typeof value !== 'string') return 'home';
@@ -1457,106 +1358,6 @@ const formatHistorySummary = (record) => {
   }
   const { ai = 0, mixed = 0, human = 0 } = record.analysis.summary;
   return t('scan.history.summaryLine', { ai, mixed, human });
-};
-
-const classifyOrder = ['ai', 'mixed', 'human'];
-
-const simulateAnalysis = () => {
-  const text = scanStore.inputText.trim();
-  const tokens = tokenizeText(text);
-  const sentenceTokens = tokens.filter((token) => token.type === 'sentence');
-
-  if (!sentenceTokens.length) {
-    return {
-      summary: { ai: 0, mixed: 0, human: 100 },
-      sentences: [],
-      translation: t('scan.simulation.emptyTranslation'),
-      polish: [],
-      citations: [],
-      aiLikelyCount: 0,
-      highlightedHtml: `<p class="text-sm text-slate-400">${t('scan.simulation.emptyContent')}</p>`,
-    };
-  }
-
-  const counts = { ai: 0, mixed: 0, human: 0 };
-  const sentences = sentenceTokens.map((token, index) => {
-    const type = classifyOrder[index % classifyOrder.length];
-    counts[type] += 1;
-    const probability =
-      type === 'ai'
-        ? Number((0.72 + (index % 3) * 0.06).toFixed(2))
-        : type === 'mixed'
-        ? Number((0.46 + (index % 3) * 0.08).toFixed(2))
-        : Number((0.18 + (index % 3) * 0.05).toFixed(2));
-    return {
-      id: `sentence-${index}`,
-      text: token.text,
-      raw: token.raw,
-      type,
-      probability,
-      reason: marketingReasons.value[type],
-    };
-  });
-
-  const total = sentences.length;
-  const summary = {
-    ai: Math.round((counts.ai / total) * 100),
-    mixed: Math.round((counts.mixed / total) * 100),
-    human: Math.round((counts.human / total) * 100),
-  };
-  const diff = summary.ai + summary.mixed + summary.human - 100;
-  if (diff !== 0) {
-    summary.human = Math.max(0, summary.human - diff);
-  }
-
-  const translation = sentenceTokens
-    .map((token, index) =>
-      t('scan.simulation.translationLine', {
-        index: index + 1,
-        text: token.text,
-        translated: token.text.replace(/。?$/, '。'),
-      })
-    )
-    .join('\n');
-
-  const polish = sentences.slice(0, Math.min(4, sentences.length)).map((item, index) => ({
-    id: `polish-${index}`,
-    original: item.text,
-    suggestion: t('scan.simulation.polishSuggestion', { text: item.text.replace(/。?$/, '') }),
-    reason:
-      item.type === 'human'
-        ? t('scan.simulation.polishReasonHuman')
-        : t('scan.simulation.polishReasonAi'),
-  }));
-
-  const citations = sentenceTokens.slice(0, Math.min(3, sentenceTokens.length)).map((token, index) => {
-    const statusCycle = [
-      citationStatusLabels.value.pending,
-      citationStatusLabels.value.missing,
-      citationStatusLabels.value.found,
-    ];
-    return {
-      id: `citation-${index}`,
-      excerpt: token.text,
-      status: statusCycle[index % statusCycle.length],
-      note:
-        statusCycle[index % statusCycle.length] === citationStatusLabels.value.missing
-          ? t('scan.simulation.citationNoteMissing')
-          : statusCycle[index % statusCycle.length] === citationStatusLabels.value.pending
-          ? t('scan.simulation.citationNotePending')
-          : t('scan.simulation.citationNoteFound'),
-    };
-  });
-
-  return {
-    summary,
-    sentences,
-    translation,
-    polish,
-    citations,
-    aiLikelyCount: counts.ai + counts.mixed,
-    highlightedHtml: buildHighlightedHtml(tokens, sentences),
-  };
 };
 
 const syncEditorFromStore = () => {
@@ -1751,7 +1552,7 @@ const handleIntegrationAction = (integration) => {
 
 const applyExample = (key) => {
   scanStore.applyExample(key);
-  detectionResults.value = null;
+  scanStore.resetResult();
   highlightedPreviewHtml.value = '';
   editorMode.value = 'edit';
   nextTick(() => {
@@ -1763,14 +1564,14 @@ const isFunctionSelected = (key) => scanStore.selectedFunctions.includes(key);
 
 const toggleFunction = (key) => {
   scanStore.toggleFunction(key);
-  detectionResults.value = null;
+  scanStore.resetResult();
   highlightedPreviewHtml.value = '';
   editorMode.value = 'edit';
 };
 
 const onEditorInput = (event) => {
   scanStore.setEditorHtml(event.target.innerHTML);
-  detectionResults.value = null;
+  scanStore.resetResult();
   highlightedPreviewHtml.value = '';
   editorMode.value = 'edit';
 };
@@ -1812,18 +1613,23 @@ const handleScan = async () => {
   }
 
   isScanning.value = true;
-  detectionResults.value = null;
+  scanStore.resetResult();
   highlightedPreviewHtml.value = '';
-  await new Promise((resolve) => setTimeout(resolve, 1200));
-  const analysis = simulateAnalysis();
-  detectionResults.value = analysis;
-  highlightedPreviewHtml.value = analysis.highlightedHtml;
-  editorMode.value = 'preview';
-  activeResultTab.value = 'scan';
-  markOnboardingStep('scan');
-  markOnboardingStep('review');
-  isScanning.value = false;
-  scanStore.commitDraftToStorage();
+  try {
+    const analysis = await scanStore.analyzeText(scanStore.inputText, {
+      functions: scanStore.selectedFunctions,
+    });
+    highlightedPreviewHtml.value = analysis?.highlightedHtml || '';
+    editorMode.value = 'preview';
+    activeResultTab.value = 'scan';
+    markOnboardingStep('scan');
+    markOnboardingStep('review');
+  } catch (error) {
+    console.error(error);
+  } finally {
+    isScanning.value = false;
+    scanStore.commitDraftToStorage();
+  }
 };
 
 const exportReport = () => {
@@ -1846,7 +1652,7 @@ const exportReport = () => {
 
 const resetEditor = () => {
   scanStore.resetText();
-  detectionResults.value = null;
+  scanStore.resetResult();
   highlightedPreviewHtml.value = '';
   editorMode.value = 'edit';
   nextTick(() => {
@@ -1855,11 +1661,10 @@ const resetEditor = () => {
   scanStore.commitDraftToStorage();
 };
 
-const applyPolishSuggestion = (suggestion) => {
-  if (!suggestion?.original || !suggestion?.suggestion) return;
-  const updated = scanStore.inputText.replace(suggestion.original, suggestion.suggestion);
-  scanStore.setText(updated);
-  detectionResults.value = null;
+const applyPolishSuggestion = (polishText) => {
+  if (!polishText) return;
+  scanStore.setText(polishText);
+  scanStore.resetResult();
   highlightedPreviewHtml.value = '';
   editorMode.value = 'edit';
   nextTick(() => {
@@ -1878,7 +1683,7 @@ const onFileChange = async (event) => {
   if (!file) return;
   try {
     await scanStore.readFile(file);
-    detectionResults.value = null;
+    scanStore.resetResult();
     highlightedPreviewHtml.value = '';
     editorMode.value = 'edit';
     nextTick(() => {
@@ -1916,7 +1721,7 @@ const onDrop = async (event) => {
   if (!files?.length) return;
   try {
     await scanStore.readFiles(files);
-    detectionResults.value = null;
+    scanStore.resetResult();
     highlightedPreviewHtml.value = '';
     editorMode.value = 'edit';
     nextTick(() => {
@@ -1942,7 +1747,7 @@ const startNewScan = () => {
   newMenuOpen.value = false;
   setActivePanel('document');
   scanStore.resetAll();
-  detectionResults.value = null;
+  scanStore.resetResult();
   highlightedPreviewHtml.value = '';
   editorMode.value = 'edit';
   activeResultTab.value = 'scan';
