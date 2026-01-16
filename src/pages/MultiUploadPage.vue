@@ -49,6 +49,28 @@
           </button>
         </div>
       </section>
+      <section class="flex justify-center">
+        <div class="w-full max-w-2xl rounded-3xl border border-slate-200 bg-white/90 px-5 py-4 shadow-sm">
+          <p class="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">功能选择</p>
+          <div class="mt-3 grid gap-3 sm:grid-cols-2">
+            <label
+              v-for="option in functionOptions"
+              :key="option.key"
+              class="flex items-center gap-3 rounded-2xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-600"
+            >
+              <input
+                type="checkbox"
+                class="h-4 w-4 rounded border-slate-300 text-primary-600 focus:ring-primary-200"
+                :value="option.key"
+                :checked="selectedFunctions.includes(option.key)"
+                :disabled="option.disabled"
+                @change="toggleFunction(option.key)"
+              />
+              <span>{{ option.label }}</span>
+            </label>
+          </div>
+        </div>
+      </section>
 
       <section class="flex justify-center">
         <div
@@ -178,6 +200,13 @@ const scanModes = computed(() => [
   { key: 'plagiarism', label: t('multiUpload.modes.plagiarism') },
 ]);
 
+const functionOptions = computed(() => [
+  { key: 'scan', label: 'AI Content Detection', disabled: true },
+  { key: 'polish', label: 'Smart Polishing' },
+  { key: 'citation', label: 'Citation Generator' },
+  { key: 'translate', label: 'Language Translation' },
+]);
+
 const flowSteps = computed(() => [
   { key: 'upload', order: 1, label: t('multiUpload.flow.steps.upload.label'), description: t('multiUpload.flow.steps.upload.description') },
   { key: 'queue', order: 2, label: t('multiUpload.flow.steps.queue.label'), description: t('multiUpload.flow.steps.queue.description') },
@@ -190,6 +219,9 @@ const fileInput = ref(null);
 const dragActive = ref(false);
 const isUploading = ref(false);
 const fileList = ref([]);
+const selectedFunctions = ref(
+  Array.from(new Set(['scan', ...(scanStore.selectedFunctions.length ? scanStore.selectedFunctions : [])]))
+);
 const warningMessage = ref('');
 let warningTimer;
 const uploadError = computed(() => scanStore.uploadError);
@@ -231,6 +263,18 @@ const removeFile = (target) => {
   fileList.value = fileList.value.filter((file) => !(file.name === target.name && file.size === target.size));
 };
 
+const toggleFunction = (key) => {
+  if (key === 'scan') return;
+  const next = new Set(selectedFunctions.value);
+  if (next.has(key)) {
+    next.delete(key);
+  } else {
+    next.add(key);
+  }
+  next.add('scan');
+  selectedFunctions.value = Array.from(next);
+};
+
 const handleFiles = (files) => {
   const list = Array.from(files || []).filter(Boolean);
   if (!list.length) return;
@@ -258,6 +302,7 @@ const handleUpload = async () => {
   if (!fileList.value.length) return;
   scanStore.resetError();
   warningMessage.value = '';
+  scanStore.setFunctions(selectedFunctions.value);
   try {
     const formData = new FormData();
     fileList.value.forEach((file) => formData.append('files', file));

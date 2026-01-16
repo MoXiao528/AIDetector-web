@@ -73,7 +73,7 @@
                 </button>
               </label>
               <textarea
-                v-model="textModel"
+                v-model="heroText"
                 rows="10"
                 class="mt-3 w-full rounded-2xl border border-slate-200 bg-slate-50/80 p-4 text-sm text-slate-700 shadow-inner focus:border-primary-400 focus:outline-none focus:ring-2 focus:ring-primary-100"
                 :placeholder="t('hero.form.placeholder')"
@@ -119,7 +119,7 @@
                 </button>
               </div>
               <div class="flex flex-wrap items-center gap-3">
-                <span>{{ t('hero.examples.wordCount', { current: scanStore.characterCount, limit: scanStore.characterLimit }) }}</span>
+                <span>{{ t('hero.examples.wordCount', { current: heroText.length, limit: scanStore.characterLimit }) }}</span>
                 <span>{{ t('hero.examples.selectedFunctions', { value: selectedFunctionSummary }) }}</span>
               </div>
               <div v-if="scanStore.uploadError" class="flex items-center space-x-2 rounded-2xl bg-rose-50 px-3 py-2 text-rose-600">
@@ -212,10 +212,7 @@ const functionOptions = computed(() => [
 
 const highlightItems = computed(() => t('hero.highlights'));
 
-const textModel = computed({
-  get: () => scanStore.inputText,
-  set: (value) => scanStore.setText(value),
-});
+const heroText = ref('');
 
 const selectedFunctionSummary = computed(() => {
   if (!scanStore.selectedFunctions.length) {
@@ -232,6 +229,9 @@ const selectedFunctionSummary = computed(() => {
 
 onMounted(() => {
   scanStore.resetError();
+  if (scanStore.inputText) {
+    heroText.value = scanStore.inputText;
+  }
 });
 
 const showWarning = (message) => {
@@ -255,7 +255,7 @@ const applyExample = (key) => {
 };
 
 const resetInput = () => {
-  scanStore.resetText();
+  heroText.value = '';
 };
 
 const triggerUpload = () => {
@@ -291,8 +291,7 @@ const handleParseFiles = async (files) => {
       .map((item) => item?.content)
       .filter((content) => content && String(content).trim())
       .join('\n\n');
-    scanStore.setInputText(mergedText);
-    router.push({ name: 'dashboard', query: { panel: 'document' } });
+    heroText.value = mergedText;
   } catch (error) {
     scanStore.uploadError = scanStore.uploadError || t('multiUpload.errors.parse');
   } finally {
@@ -345,6 +344,7 @@ const openDashboard = () => {
 };
 
 const handleScan = () => {
+  scanStore.setInputText(heroText.value);
   openDashboard();
 };
 

@@ -881,6 +881,7 @@ const showOnboarding = ref(false);
 const onboardingSteps = ref([]);
 const onboardingStorageKey = 'ai-detector-onboarding-v1';
 const fontSizeSelection = ref('');
+const localText = ref('');
 
 const editorMode = ref('edit');
 const isScanning = ref(false);
@@ -1406,10 +1407,14 @@ watch(
 watch(
   () => scanStore.inputText,
   (value) => {
+    if (value && value !== localText.value) {
+      localText.value = value;
+    }
     if (value && !scanStore.editorHtml) {
       scanStore.setText(value);
     }
-  }
+  },
+  { immediate: true }
 );
 
 watch(availableResultTabs, (tabs) => {
@@ -1583,6 +1588,7 @@ const toggleFunction = (key) => {
 
 const onEditorInput = (event) => {
   scanStore.setEditorHtml(event.target.innerHTML);
+  localText.value = scanStore.inputText;
   scanStore.resetResult();
   highlightedPreviewHtml.value = '';
   editorMode.value = 'edit';
