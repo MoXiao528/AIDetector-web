@@ -35,3 +35,6 @@ export const fetchScanHistory = async () => apiClient.get('/api/scan/history');
 
 export const detectText = async (payload: { text: string; functions: string[] }) =>
   apiClient.post<DetectionResponse>('/api/v1/detections', payload);
+
+export const parseFiles = async (formData: FormData) =>
+  apiClient.post('/api/v1/detections/parse-files', formData);

@@ -229,6 +229,10 @@ export const useScanStore = defineStore('scan', () => {
     selectedExampleKey.value = '';
   };
 
+  const setInputText = (value) => {
+    setText(value);
+  };
+
   const setEditorHtml = (value = '') => {
     editorHtml.value = value || '';
     inputText.value = extractTextFromHtml(editorHtml.value);
@@ -605,6 +609,7 @@ export const useScanStore = defineStore('scan', () => {
     characterCount,
     characterLimit: CHARACTER_LIMIT,
     setText,
+    setInputText,
      setEditorHtml,
     applyExample,
     readFile,

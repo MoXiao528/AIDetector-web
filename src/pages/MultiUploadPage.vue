@@ -78,6 +78,8 @@
             @change="onFileChange"
           />
           <p v-if="uploadError" class="mt-3 text-sm font-semibold text-red-600">{{ uploadError }}</p>
+          <p v-if="warningMessage" class="mt-2 text-sm font-semibold text-amber-600">{{ warningMessage }}</p>
+          <p v-if="isUploading" class="mt-3 text-sm font-semibold text-primary-600">文件解析中，请稍候...</p>
           <ul v-if="uploadedFiles.length" class="mt-8 w-full max-w-md space-y-2 text-sm text-slate-600">
             <li v-for="file in uploadedFiles" :key="file" class="flex items-center justify-between rounded-2xl border border-slate-200 bg-white px-4 py-2">
               <span class="truncate">{{ file }}</span>
@@ -141,6 +143,7 @@ import { computed, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { useI18n } from '../i18n';
 import AppHeader from '../sections/AppHeader.vue';
+import { parseFiles } from '../api/modules/scan';
 import { useScanStore } from '../store/scan';
 
 const router = useRouter();
@@ -164,7 +167,10 @@ const flowSteps = computed(() => [
 const selectedMode = ref('basic');
 const fileInput = ref(null);
 const dragActive = ref(false);
+const isUploading = ref(false);
 const uploadedFiles = ref([]);
+const warningMessage = ref('');
+let warningTimer;
 const uploadError = computed(() => scanStore.uploadError);
 
 const selectMode = (mode) => {
@@ -176,20 +182,50 @@ const openFilePicker = () => {
   fileInput.value?.click();
 };
 
+const showWarning = (message) => {
+  warningMessage.value = message;
+  if (warningTimer) {
+    clearTimeout(warningTimer);
+  }
+  warningTimer = setTimeout(() => {
+    warningMessage.value = '';
+  }, 4000);
+};
+
 const handleFiles = async (files) => {
   const list = Array.from(files || []).filter(Boolean);
   if (!list.length) return;
   scanStore.resetError();
+  warningMessage.value = '';
   if (list.length > BATCH_LIMIT) {
     scanStore.uploadError = t('multiUpload.errors.limit', { limit: BATCH_LIMIT });
     return;
   }
   try {
-    await scanStore.readFiles(list);
+    const formData = new FormData();
+    list.forEach((file) => formData.append('files', file));
+    isUploading.value = true;
+    const response = await parseFiles(formData);
+    const successes = Array.isArray(response?.successes) ? response.successes : [];
+    const failures = Array.isArray(response?.failures) ? response.failures : [];
     uploadedFiles.value = list.map((file) => file.name);
+    if (!successes.length) {
+      scanStore.uploadError = t('multiUpload.errors.parse');
+      return;
+    }
+    if (failures.length) {
+      showWarning(`有 ${failures.length} 个文件解析失败，已跳过。`);
+    }
+    const mergedText = successes
+      .map((item) => item?.content)
+      .filter((content) => content && String(content).trim())
+      .join('\n\n');
+    scanStore.setInputText(mergedText);
     router.push({ name: 'dashboard', query: { panel: 'document' } });
   } catch (error) {
     scanStore.uploadError = scanStore.uploadError || t('multiUpload.errors.parse');
+  } finally {
+    isUploading.value = false;
   }
 };
 
