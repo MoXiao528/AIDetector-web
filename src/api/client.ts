@@ -66,10 +66,9 @@ const buildErrorMessage = (status: number, payload: any) => {
   return '请求失败，请稍后重试。';
 };
 
-const buildHeaders = (headers: HeadersInit | undefined, body: unknown, auth: boolean) => {
+const buildHeaders = (headers: HeadersInit | undefined, body: unknown, auth: boolean, token: string) => {
   const finalHeaders = new Headers(headers || {});
   if (auth) {
-    const token = typeof window === 'undefined' ? '' : window.localStorage.getItem(TOKEN_STORAGE_KEY);
     if (token) {
       finalHeaders.set('Authorization', `Bearer ${token}`);
     }
@@ -92,7 +91,19 @@ const normalizeBody = (body: unknown, headers: Headers) => {
 const request = async <T>(path: string, { timeout = DEFAULT_TIMEOUT, auth = true, body, ...options }: ApiRequestOptions = {}) => {
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), timeout);
-  const headers = buildHeaders(options.headers, body, auth);
+  let resolvedToken = '';
+  if (typeof window !== 'undefined') {
+    resolvedToken = window.localStorage.getItem(TOKEN_STORAGE_KEY) || '';
+    if (!resolvedToken) {
+      try {
+        const { useAuthStore } = await import('../store/auth');
+        resolvedToken = useAuthStore().authToken || '';
+      } catch (error) {
+        console.warn('Failed to resolve auth token from store', error);
+      }
+    }
+  }
+  const headers = buildHeaders(options.headers, body, auth, resolvedToken);
 
   try {
     const response = await fetch(buildUrl(path), {
