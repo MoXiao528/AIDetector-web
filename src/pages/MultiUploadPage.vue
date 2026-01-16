@@ -74,7 +74,7 @@
             type="file"
             class="hidden"
             multiple
-            accept=".pdf,.txt,.doc,.docx,.md,.json,.csv,.yaml,.yml,.tex,.tax"
+            accept=".pdf,.docx,.txt"
             @change="onFileChange"
           />
           <p v-if="uploadError" class="mt-3 text-sm font-semibold text-red-600">{{ uploadError }}</p>
@@ -206,15 +206,19 @@ const handleFiles = async (files) => {
     list.forEach((file) => formData.append('files', file));
     isUploading.value = true;
     const response = await parseFiles(formData);
-    const successes = Array.isArray(response?.successes) ? response.successes : [];
-    const failures = Array.isArray(response?.failures) ? response.failures : [];
+    const results = Array.isArray(response?.results) ? response.results : [];
+    const successes = results.filter((item) => item?.content && !item?.error);
+    const failures = results.filter((item) => item?.error);
     uploadedFiles.value = list.map((file) => file.name);
     if (!successes.length) {
       scanStore.uploadError = t('multiUpload.errors.parse');
       return;
     }
     if (failures.length) {
-      showWarning(`有 ${failures.length} 个文件解析失败，已跳过。`);
+      const failureDetails = failures
+        .map((item) => `${item.fileName || '文件'} 解析失败: ${item.error}`)
+        .join('；');
+      showWarning(failureDetails);
     }
     const mergedText = successes
       .map((item) => item?.content)
