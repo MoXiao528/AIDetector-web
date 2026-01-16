@@ -73,7 +73,8 @@ const handleScan = () => {
     return;
   }
   scanStore.setInputText(text);
+  scanStore.resetResult();
   console.log('Redirecting to ScanPage with text length:', text.length);
-  router.push({ name: 'dashboard' });
+  router.push({ name: 'dashboard', query: { panel: 'document' } });
 };
 </script>

@@ -310,13 +310,14 @@ const handleUpload = async () => {
       const mergedText = validFiles.map((item) => item?.content).join('\n\n');
       scanStore.setInputText(mergedText);
       scanStore.setFunctions(selectedFunctions.value);
+      scanStore.resetResult();
       if (errors.length) {
         const failureDetails = errors
           .map((item) => `${item.fileName || '文件'} 解析失败: ${item.error}`)
           .join('；');
         showWarning(failureDetails);
       }
-      router.push({ name: 'dashboard' });
+      router.push({ name: 'dashboard', query: { panel: 'document' } });
     } else {
       scanStore.uploadError = '文件解析失败，请重试';
     }

@@ -323,7 +323,7 @@ export const useScanStore = defineStore('scan', () => {
 
   const resetResult = () => {
     result.value = null;
-    analysisError.value = { type: '', message: '' };
+    analysisError.value = null;
   };
 
   const resetAnalysisError = () => {
