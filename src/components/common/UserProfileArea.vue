@@ -88,6 +88,7 @@
 
 <script setup>
 import { computed } from 'vue';
+import { storeToRefs } from 'pinia';
 import { useI18n } from '../../i18n';
 import { useAuthStore } from '../../store/auth';
 
@@ -102,14 +103,13 @@ defineEmits(['upgrade', 'feedback']);
 
 const { t, locale } = useI18n();
 const authStore = useAuthStore();
+const { creditUsage } = storeToRefs(authStore);
 const numberFormatter = computed(() => new Intl.NumberFormat(locale.value));
 const compactFormatter = computed(() => new Intl.NumberFormat(locale.value, { notation: 'compact', maximumFractionDigits: 1 }));
-const creditUsage = computed(() => authStore.creditUsage || { total: 0, remaining: 0, percentRemaining: 0 });
-
-const totalCredits = computed(() => Math.max(0, Number(creditUsage.value.total) || 0));
-const remainingCredits = computed(() => Math.max(0, Number(creditUsage.value.remaining) || 0));
+const totalCredits = computed(() => Math.max(0, Number(creditUsage.value?.total) || 0));
+const remainingCredits = computed(() => Math.max(0, Number(creditUsage.value?.remaining) || 0));
 const percentRemaining = computed(() => {
-  const percent = Number(creditUsage.value.percentRemaining);
+  const percent = Number(creditUsage.value?.percentRemaining);
   if (!Number.isFinite(percent)) return 0;
   return Math.min(100, Math.max(0, percent));
 });

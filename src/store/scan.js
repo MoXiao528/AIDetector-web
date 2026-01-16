@@ -523,7 +523,7 @@ export const useScanStore = defineStore('scan', () => {
     );
     try {
       const response = await detectText({ text, functions: functions.length ? functions : ['scan'] });
-      if (response?.currentCredits !== undefined && response?.currentCredits !== null) {
+      if (typeof response?.currentCredits === 'number' && Number.isFinite(response.currentCredits)) {
         authStore.updateCredits(response.currentCredits);
       }
       const analysis = mapAnalysisResult(response, text);

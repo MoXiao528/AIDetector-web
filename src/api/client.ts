@@ -34,23 +34,6 @@ const getBaseUrl = () => {
 
 const TOKEN_STORAGE_KEY = 'auth_token';
 
-const resolveAuthStore = async () => {
-  if (typeof window === 'undefined') return null;
-  try {
-    const { useAuthStore } = await import('../store/auth');
-    return useAuthStore();
-  } catch (error) {
-    console.warn('Failed to resolve auth store', error);
-    return null;
-  }
-};
-
-const resolveAuthToken = (authStore: { authToken?: string } | null) => {
-  if (authStore?.authToken) return authStore.authToken;
-  if (typeof window === 'undefined') return '';
-  return window.localStorage.getItem(TOKEN_STORAGE_KEY) || '';
-};
-
 const buildUrl = (path: string) => {
   if (/^https?:\/\//i.test(path)) return path;
   const baseUrl = getBaseUrl();
@@ -83,15 +66,10 @@ const buildErrorMessage = (status: number, payload: any) => {
   return '请求失败，请稍后重试。';
 };
 
-const buildHeaders = (
-  headers: HeadersInit | undefined,
-  body: unknown,
-  auth: boolean,
-  authStore: { authToken?: string } | null
-) => {
+const buildHeaders = (headers: HeadersInit | undefined, body: unknown, auth: boolean) => {
   const finalHeaders = new Headers(headers || {});
   if (auth) {
-    const token = resolveAuthToken(authStore);
+    const token = typeof window === 'undefined' ? '' : window.localStorage.getItem(TOKEN_STORAGE_KEY);
     if (token) {
       finalHeaders.set('Authorization', `Bearer ${token}`);
     }
@@ -114,8 +92,7 @@ const normalizeBody = (body: unknown, headers: Headers) => {
 const request = async <T>(path: string, { timeout = DEFAULT_TIMEOUT, auth = true, body, ...options }: ApiRequestOptions = {}) => {
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), timeout);
-  const authStore = await resolveAuthStore();
-  const headers = buildHeaders(options.headers, body, auth, authStore);
+  const headers = buildHeaders(options.headers, body, auth);
 
   try {
     const response = await fetch(buildUrl(path), {
@@ -128,20 +105,17 @@ const request = async <T>(path: string, { timeout = DEFAULT_TIMEOUT, auth = true
 
     const payload = response.status === 204 ? null : await parseResponseBody(response);
 
-    if (response.status === 401) {
-      if (typeof window !== 'undefined') {
+    if (!response.ok) {
+      if (response.status === 401 && typeof window !== 'undefined') {
         window.localStorage.removeItem(TOKEN_STORAGE_KEY);
         if (window.location.pathname !== '/login') {
           window.location.assign('/login');
         } else {
           window.location.reload();
         }
+      } else if (response.status === 402) {
+        console.warn('余额不足，请检查账户点数。');
       }
-    } else if (response.status === 402) {
-      console.warn('余额不足，请检查账户点数。');
-    }
-
-    if (!response.ok) {
       throw new ApiError({
         status: response.status,
         code: mapStatusToCode(response.status),

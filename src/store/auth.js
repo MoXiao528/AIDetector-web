@@ -9,7 +9,7 @@ const USER_STORAGE_KEY = 'auth_user';
 export const useAuthStore = defineStore('auth', () => {
   const user = ref(null);
   const token = ref('');
-  const creditSnapshot = ref({ total: 0, remaining: 0 });
+  const creditSnapshot = ref({ total: 0, remaining: 0, used: 0 });
 
   const isAuthenticated = computed(() => Boolean(user.value));
   const credits = computed(() => Number(user.value?.credits) || 0);
@@ -65,9 +65,12 @@ export const useAuthStore = defineStore('auth', () => {
   const setCredits = ({ total, remaining } = {}) => {
     const parsedTotal = Number(total);
     const parsedRemaining = Number(remaining);
+    const safeTotal = Number.isFinite(parsedTotal) ? parsedTotal : creditSnapshot.value.total;
+    const safeRemaining = Number.isFinite(parsedRemaining) ? parsedRemaining : creditSnapshot.value.remaining;
     creditSnapshot.value = {
-      total: Number.isFinite(parsedTotal) ? parsedTotal : creditSnapshot.value.total,
-      remaining: Number.isFinite(parsedRemaining) ? parsedRemaining : creditSnapshot.value.remaining,
+      total: safeTotal,
+      remaining: safeRemaining,
+      used: Math.max(0, safeTotal - safeRemaining),
     };
     if (Number.isFinite(parsedRemaining)) {
       syncUserCredits(parsedRemaining);
@@ -162,7 +165,7 @@ export const useAuthStore = defineStore('auth', () => {
     persistToken('');
     user.value = null;
     persistUser(null);
-    creditSnapshot.value = { total: 0, remaining: 0 };
+    creditSnapshot.value = { total: 0, remaining: 0, used: 0 };
     router.replace({ name: 'login' });
   };
 
@@ -177,9 +180,11 @@ export const useAuthStore = defineStore('auth', () => {
         credits: parsedCredits,
       };
     }
+    const safeTotal = Number(creditSnapshot.value.total) || 0;
     creditSnapshot.value = {
       ...creditSnapshot.value,
       remaining: parsedCredits,
+      used: Math.max(0, safeTotal - parsedCredits),
     };
     persistUser(user.value);
   };
