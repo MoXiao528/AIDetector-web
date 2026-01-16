@@ -322,7 +322,7 @@ import AppHeader from '../sections/AppHeader.vue';
 import AppFooter from '../sections/AppFooter.vue';
 import { useI18n } from '../i18n';
 import { useAuthStore } from '../store/auth';
-import { createOrder, fetchSubscriptionSnapshot, payOrder, planQuotaByKey } from '../utils/billing';
+import { createOrder, fetchSubscriptionSnapshot, payOrder, planQuotaByKey } from '../api/modules/billing';
 
 const props = defineProps({
   embedded: {
@@ -459,8 +459,15 @@ const quotaLabel = computed(() => {
 
 const refreshSubscription = async () => {
   if (!selectedPlan.value) return;
-  const snapshot = await fetchSubscriptionSnapshot(selectedPlan.value.key, selectedPlan.value.planCode);
-  authStore.applySubscription(snapshot);
+  // 支付成功后刷新订阅失败也不应覆盖支付结果，只提示刷新失败。
+  try {
+    const snapshot = await fetchSubscriptionSnapshot(selectedPlan.value.key, selectedPlan.value.planCode);
+    authStore.applySubscription(snapshot);
+    paymentMessage.value = t('pricingPage.checkout.messages.updated');
+  } catch (error) {
+    console.warn('Failed to refresh subscription snapshot.', error);
+    paymentMessage.value = '订阅信息刷新失败，请稍后重试。';
+  }
 };
 
 const handleSubmitPayment = async () => {
@@ -481,8 +488,8 @@ const handleSubmitPayment = async () => {
     if (paymentResult.status === 'succeeded') {
       paymentStatus.value = 'success';
       paymentMessage.value = t('pricingPage.checkout.messages.refreshing');
-      await refreshSubscription();
-      paymentMessage.value = t('pricingPage.checkout.messages.updated');
+      // 注意：支付成功状态不应因订阅刷新失败而变为 failed。
+      refreshSubscription();
     } else if (paymentResult.status === 'canceled') {
       paymentStatus.value = 'canceled';
       paymentMessage.value = paymentResult.message || t('pricingPage.checkout.messages.canceled');
