@@ -1,7 +1,7 @@
 import { defineStore } from 'pinia';
 import { computed, ref } from 'vue';
 import router from '../router';
-import { fetchMe, login as loginRequest, register as registerRequest } from '../api/modules/auth';
+import { fetchMe, login as loginRequest, register as registerRequest, updateProfile as updateProfileRequest } from '../api/modules/auth';
 
 const TOKEN_STORAGE_KEY = 'auth_token';
 
@@ -113,17 +113,20 @@ export const useAuthStore = defineStore('auth', () => {
     router.replace({ name: 'login' });
   };
 
-  const updateProfile = (payload) => {
+  const updateProfile = async (payload) => {
     if (!user.value) {
       throw new Error('请先登录后再更新个人信息。');
     }
+    const response = await updateProfileRequest(payload);
+    const nextProfile = response?.profile || response?.data?.profile || response?.data || response;
     user.value = {
       ...user.value,
       profile: {
         ...(user.value.profile || {}),
-        ...payload,
+        ...(nextProfile && typeof nextProfile === 'object' ? nextProfile : {}),
       },
     };
+    return response;
   };
 
   const applySubscription = ({ plan, credits } = {}) => {

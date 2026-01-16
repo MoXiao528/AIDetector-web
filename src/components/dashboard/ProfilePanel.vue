@@ -15,6 +15,9 @@
         <h1 class="text-2xl font-semibold text-slate-900">{{ t('profilePanel.title') }}</h1>
         <p class="mt-2 text-sm text-slate-500">{{ t('profilePanel.subtitle') }}</p>
       </section>
+      <div class="rounded-2xl bg-blue-50 px-4 py-3 text-sm text-blue-700">
+        {{ t('profilePanel.tips.identity') }}
+      </div>
       <form class="space-y-6 rounded-3xl border border-slate-200 bg-white p-8 shadow-lg shadow-slate-200/60" @submit.prevent="handleSubmit">
         <div class="grid gap-6 md:grid-cols-2">
           <div class="space-y-2">
@@ -173,7 +176,7 @@ const handleSubmit = async () => {
   errorMessage.value = '';
   isSaving.value = true;
   try {
-    authStore.updateProfile({
+    await authStore.updateProfile({
       firstName: profileForm.firstName,
       surname: profileForm.surname,
       organization: profileForm.organization,

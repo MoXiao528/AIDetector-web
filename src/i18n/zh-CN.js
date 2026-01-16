@@ -216,6 +216,9 @@ export default {
     },
     title: '个人资料',
     subtitle: '完善个人资料，帮助团队快速了解你的身份与需求。',
+    tips: {
+      identity: '温馨提示：用户账号用于登录系统；下方设置的真实姓名将用于检测报告的正式署名及团队协作识别。',
+    },
     fields: {
       firstName: '名',
       surname: '姓',
@@ -774,11 +777,11 @@ export default {
       title: '创建你的账号',
       subtitle: '注册以解锁完整的 AI 检测能力。',
       email: '邮箱',
-      name: '姓名',
+      name: '用户账号',
       password: '密码',
       confirm: '确认密码',
       placeholderEmail: 'name@company.com',
-      placeholderName: '你的姓名',
+      placeholderName: '设置唯一登录账号 (ID)',
       placeholderPassword: '至少 8 位字符',
       submit: '创建账号',
       haveAccount: '已经有账号？',
