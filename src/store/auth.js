@@ -119,11 +119,17 @@ export const useAuthStore = defineStore('auth', () => {
     }
     const response = await updateProfileRequest(payload);
     const nextProfile = response?.profile || response?.data?.profile || response?.data || response;
+    const resolvedProfile =
+      nextProfile && typeof nextProfile === 'object'
+        ? nextProfile
+        : payload && typeof payload === 'object'
+          ? payload
+          : {};
     user.value = {
       ...user.value,
       profile: {
         ...(user.value.profile || {}),
-        ...(nextProfile && typeof nextProfile === 'object' ? nextProfile : {}),
+        ...resolvedProfile,
       },
     };
     return response;

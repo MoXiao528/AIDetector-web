@@ -757,7 +757,7 @@ export default {
     login: {
       title: '欢迎回来',
       subtitle: '登录后即可使用检测、润色、翻译等全部功能。',
-      identifier: '邮箱或用户名',
+      identifier: '邮箱或用户账号',
       placeholder: 'test 或 name@company.com',
       password: '密码',
       passwordPlaceholder: '至少 8 位字符',

@@ -6,4 +6,4 @@ export const register = async (payload) => apiClient.post('/api/auth/register', 
 
 export const fetchMe = async () => apiClient.get('/api/auth/me');
 
-export const updateProfile = async (payload) => apiClient.patch('/auth/me/profile', payload);
+export const updateProfile = async (payload) => apiClient.patch('/api/auth/me/profile', payload);
