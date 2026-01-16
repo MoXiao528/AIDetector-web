@@ -66,11 +66,19 @@ const buildErrorMessage = (status: number, payload: any) => {
   return '请求失败，请稍后重试。';
 };
 
-const buildHeaders = (headers: HeadersInit | undefined, body: unknown, auth: boolean, token: string) => {
+const getDebugToken = () => {
+  if (typeof window === 'undefined') return '';
+  return window.localStorage.getItem(TOKEN_STORAGE_KEY) || '';
+};
+
+const buildHeaders = (headers: HeadersInit | undefined, body: unknown, auth: boolean) => {
   const finalHeaders = new Headers(headers || {});
   if (auth) {
+    const token = getDebugToken();
     if (token) {
       finalHeaders.set('Authorization', `Bearer ${token}`);
+    } else {
+      console.error('[API Error] Auth required but NO TOKEN found in localStorage!');
     }
   }
   if (body && typeof body === 'object' && !(body instanceof FormData) && !finalHeaders.has('Content-Type')) {
@@ -91,22 +99,14 @@ const normalizeBody = (body: unknown, headers: Headers) => {
 const request = async <T>(path: string, { timeout = DEFAULT_TIMEOUT, auth = true, body, ...options }: ApiRequestOptions = {}) => {
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), timeout);
-  let resolvedToken = '';
-  if (typeof window !== 'undefined') {
-    resolvedToken = window.localStorage.getItem(TOKEN_STORAGE_KEY) || '';
-    if (resolvedToken === 'undefined' || resolvedToken === 'null') {
-      resolvedToken = '';
-    }
-    if (!resolvedToken) {
-      try {
-        const { useAuthStore } = await import('../store/auth');
-        resolvedToken = useAuthStore().authToken || '';
-      } catch (error) {
-        console.warn('Failed to resolve auth token from store', error);
-      }
-    }
-  }
-  const headers = buildHeaders(options.headers, body, auth, resolvedToken);
+  const debugToken = getDebugToken();
+  console.log(
+    '[API Debug] Requesting:',
+    path,
+    'Header Token:',
+    debugToken ? `${debugToken.substring(0, 10)}...` : 'NULL'
+  );
+  const headers = buildHeaders(options.headers, body, auth);
 
   try {
     const response = await fetch(buildUrl(path), {
@@ -121,6 +121,7 @@ const request = async <T>(path: string, { timeout = DEFAULT_TIMEOUT, auth = true
 
     if (!response.ok) {
       if (response.status === 401 && typeof window !== 'undefined') {
+        console.error('[API] 401 Unauthorized - Token invalid or expired');
         window.localStorage.removeItem(TOKEN_STORAGE_KEY);
         if (window.location.pathname !== '/login') {
           window.location.assign('/login');
