@@ -141,6 +141,7 @@ export default {
       formats: 'Supported formats: pdf, txt, doc, docx',
       ready: 'Ready',
     },
+    supportedFormats: 'Supported formats: PDF, DOCX, TXT',
     limits: {
       title: '3 File Batch Limit',
       badge: 'FREE',
