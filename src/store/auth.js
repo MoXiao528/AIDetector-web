@@ -17,7 +17,9 @@ export const useAuthStore = defineStore('auth', () => {
 
   const getStoredToken = () => {
     if (typeof window === 'undefined') return '';
-    return window.localStorage.getItem(TOKEN_STORAGE_KEY) || '';
+    const stored = window.localStorage.getItem(TOKEN_STORAGE_KEY) || '';
+    if (!stored || stored === 'undefined' || stored === 'null') return '';
+    return stored;
   };
 
   const getStoredUser = () => {
@@ -44,12 +46,14 @@ export const useAuthStore = defineStore('auth', () => {
 
   const persistToken = (nextToken) => {
     if (typeof window === 'undefined') return;
-    if (nextToken) {
-      window.localStorage.setItem(TOKEN_STORAGE_KEY, nextToken);
+    const sanitizedToken =
+      typeof nextToken === 'string' && nextToken && nextToken !== 'undefined' && nextToken !== 'null' ? nextToken : '';
+    if (sanitizedToken) {
+      window.localStorage.setItem(TOKEN_STORAGE_KEY, sanitizedToken);
     } else {
       window.localStorage.removeItem(TOKEN_STORAGE_KEY);
     }
-    token.value = nextToken || '';
+    token.value = sanitizedToken || '';
   };
 
   const syncUserCredits = (nextRemaining) => {

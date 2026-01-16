@@ -94,6 +94,9 @@ const request = async <T>(path: string, { timeout = DEFAULT_TIMEOUT, auth = true
   let resolvedToken = '';
   if (typeof window !== 'undefined') {
     resolvedToken = window.localStorage.getItem(TOKEN_STORAGE_KEY) || '';
+    if (resolvedToken === 'undefined' || resolvedToken === 'null') {
+      resolvedToken = '';
+    }
     if (!resolvedToken) {
       try {
         const { useAuthStore } = await import('../store/auth');
