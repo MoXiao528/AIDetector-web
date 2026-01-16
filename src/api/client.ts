@@ -1,6 +1,4 @@
 const DEFAULT_TIMEOUT = 15000;
-const TOKEN_STORAGE_KEYS = ['auth_token', 'access_token', 'token'];
-
 export type ApiErrorCode =
   | 'UNAUTHORIZED'
   | 'FORBIDDEN'
@@ -34,10 +32,7 @@ const getBaseUrl = () => {
   return String(base).replace(/\/$/, '');
 };
 
-const resolveAuthToken = () => {
-  if (typeof window === 'undefined') return '';
-  return TOKEN_STORAGE_KEYS.map((key) => window.localStorage.getItem(key)).find((token) => token) || '';
-};
+const TOKEN_STORAGE_KEY = 'auth_token';
 
 const buildUrl = (path: string) => {
   if (/^https?:\/\//i.test(path)) return path;
@@ -71,12 +66,19 @@ const buildErrorMessage = (status: number, payload: any) => {
   return '请求失败，请稍后重试。';
 };
 
+const getDebugToken = () => {
+  if (typeof window === 'undefined') return '';
+  return window.localStorage.getItem(TOKEN_STORAGE_KEY) || '';
+};
+
 const buildHeaders = (headers: HeadersInit | undefined, body: unknown, auth: boolean) => {
   const finalHeaders = new Headers(headers || {});
   if (auth) {
-    const token = resolveAuthToken();
+    const token = getDebugToken();
     if (token) {
       finalHeaders.set('Authorization', `Bearer ${token}`);
+    } else {
+      console.error('[API Error] Auth required but NO TOKEN found in localStorage!');
     }
   }
   if (body && typeof body === 'object' && !(body instanceof FormData) && !finalHeaders.has('Content-Type')) {
@@ -97,6 +99,13 @@ const normalizeBody = (body: unknown, headers: Headers) => {
 const request = async <T>(path: string, { timeout = DEFAULT_TIMEOUT, auth = true, body, ...options }: ApiRequestOptions = {}) => {
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), timeout);
+  const debugToken = getDebugToken();
+  console.log(
+    '[API Debug] Requesting:',
+    path,
+    'Header Token:',
+    debugToken ? `${debugToken.substring(0, 10)}...` : 'NULL'
+  );
   const headers = buildHeaders(options.headers, body, auth);
 
   try {
@@ -111,6 +120,17 @@ const request = async <T>(path: string, { timeout = DEFAULT_TIMEOUT, auth = true
     const payload = response.status === 204 ? null : await parseResponseBody(response);
 
     if (!response.ok) {
+      if (response.status === 401 && typeof window !== 'undefined') {
+        console.error('[API] 401 Unauthorized - Token invalid or expired');
+        window.localStorage.removeItem(TOKEN_STORAGE_KEY);
+        if (window.location.pathname !== '/login') {
+          window.location.assign('/login');
+        } else {
+          window.location.reload();
+        }
+      } else if (response.status === 402) {
+        console.warn('余额不足，请检查账户点数。');
+      }
       throw new ApiError({
         status: response.status,
         code: mapStatusToCode(response.status),

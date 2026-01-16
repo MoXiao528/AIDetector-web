@@ -3,6 +3,7 @@ import { computed, ref, watch } from 'vue';
 import { globalT } from '../i18n';
 import { detectText } from '../api/modules/scan';
 import { readTextFromFile } from '../utils/fileReaders';
+import { useAuthStore } from './auth';
 
 const examples = [
   {
@@ -207,6 +208,7 @@ const buildSeedHistoryAnalysis = ({ summary, sentences, translation = '', polish
 const seedHistoryRecords = [];
 
 export const useScanStore = defineStore('scan', () => {
+  const authStore = useAuthStore();
   const inputText = ref('');
   const editorHtml = ref('');
   const selectedExampleKey = ref('');
@@ -521,6 +523,9 @@ export const useScanStore = defineStore('scan', () => {
     );
     try {
       const response = await detectText({ text, functions: functions.length ? functions : ['scan'] });
+      if (typeof response?.currentCredits === 'number' && Number.isFinite(response.currentCredits)) {
+        authStore.updateCredits(response.currentCredits);
+      }
       const analysis = mapAnalysisResult(response, text);
       result.value = analysis;
       return analysis;

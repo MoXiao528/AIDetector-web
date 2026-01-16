@@ -52,6 +52,7 @@ export default {
     feedback: 'Feedback',
     upgrade: 'Upgrade',
     credits: '{value} credits',
+    creditsBalance: 'Credits {value}',
     remainingOf: 'of {value} remaining',
   },
   loginPrompt: {

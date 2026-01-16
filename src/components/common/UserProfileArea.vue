@@ -72,9 +72,9 @@
       </button>
     </div>
     <div class="flex items-center gap-4">
-      <div class="hidden min-w-[200px] flex-1 md:block">
+      <div v-if="authStore.isAuthenticated" class="hidden min-w-[220px] flex-1 md:block">
         <div class="flex items-center justify-between text-[11px] font-semibold text-slate-400">
-          <span>{{ t('profileArea.credits', { value: compactRemaining }) }}</span>
+          <span>{{ t('profileArea.creditsBalance', { value: compactRemaining }) }}</span>
           <span>{{ t('profileArea.remainingOf', { value: compactTotal }) }}</span>
         </div>
         <div class="mt-1.5 h-2 w-full overflow-hidden rounded-full bg-slate-200">
@@ -88,47 +88,39 @@
 
 <script setup>
 import { computed } from 'vue';
+import { storeToRefs } from 'pinia';
 import { useI18n } from '../../i18n';
+import { useAuthStore } from '../../store/auth';
 
 const props = defineProps({
   variant: {
     type: String,
     default: 'standard',
   },
-  creditsRemaining: {
-    type: Number,
-    default: 0,
-  },
-  creditsTotal: {
-    type: Number,
-    default: 0,
-  },
 });
 
 defineEmits(['upgrade', 'feedback']);
 
 const { t, locale } = useI18n();
+const authStore = useAuthStore();
+const { creditUsage } = storeToRefs(authStore);
 const numberFormatter = computed(() => new Intl.NumberFormat(locale.value));
 const compactFormatter = computed(() => new Intl.NumberFormat(locale.value, { notation: 'compact', maximumFractionDigits: 1 }));
-
-const boundedTotal = computed(() => (Number.isFinite(props.creditsTotal) && props.creditsTotal > 0 ? props.creditsTotal : 0));
-const boundedRemaining = computed(() => {
-  if (!Number.isFinite(props.creditsRemaining)) return 0;
-  return Math.min(Math.max(props.creditsRemaining, 0), boundedTotal.value || props.creditsRemaining);
-});
-
+const totalCredits = computed(() => Math.max(0, Number(creditUsage.value?.total) || 0));
+const remainingCredits = computed(() => Math.max(0, Number(creditUsage.value?.remaining) || 0));
 const percentRemaining = computed(() => {
-  if (!boundedTotal.value) return 0;
-  return Math.min(100, Math.max(0, Math.round((boundedRemaining.value / boundedTotal.value) * 100)));
+  const percent = Number(creditUsage.value?.percentRemaining);
+  if (!Number.isFinite(percent)) return 0;
+  return Math.min(100, Math.max(0, percent));
 });
 
 const circumference = 2 * Math.PI * 15;
 const strokeOffset = computed(() => circumference * ((100 - percentRemaining.value) / 100));
 
-const formattedRemaining = computed(() => numberFormatter.value.format(Math.round(boundedRemaining.value)));
-const formattedTotal = computed(() => numberFormatter.value.format(Math.round(boundedTotal.value)));
-const compactRemaining = computed(() => compactFormatter.value.format(Math.round(boundedRemaining.value)));
-const compactTotal = computed(() => compactFormatter.value.format(Math.round(boundedTotal.value)));
+const formattedRemaining = computed(() => numberFormatter.value.format(Math.round(remainingCredits.value)));
+const formattedTotal = computed(() => numberFormatter.value.format(Math.round(totalCredits.value)));
+const compactRemaining = computed(() => compactFormatter.value.format(Math.round(remainingCredits.value)));
+const compactTotal = computed(() => compactFormatter.value.format(Math.round(totalCredits.value)));
 </script>
 
 <style scoped>

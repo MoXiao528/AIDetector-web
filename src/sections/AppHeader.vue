@@ -56,8 +56,6 @@
             <template v-if="authStore.isAuthenticated">
               <UserProfileArea
                 :variant="dashboardProfileVariant"
-                :credits-remaining="creditUsage.remaining"
-                :credits-total="creditUsage.total"
                 @upgrade="openUpgrade"
                 @feedback="openFeedback"
               >
@@ -288,14 +286,6 @@ const isDashboard = computed(() => props.mode === 'dashboard');
 const isAuth = computed(() => props.mode === 'auth');
 
 const showMarketingNav = computed(() => isMarketing.value || isAuth.value);
-const creditUsage = computed(() => {
-  const usage = authStore.creditUsage || { total: 0, remaining: 0, percentRemaining: 0 };
-  return {
-    total: usage.total ?? 0,
-    remaining: usage.remaining ?? 0,
-    percentRemaining: usage.percentRemaining ?? 0,
-  };
-});
 const dashboardProfileVariant = computed(() => {
   if (!isDashboard.value) return 'standard';
   return props.dashboardContext === 'scan' ? 'scan' : 'standard';
