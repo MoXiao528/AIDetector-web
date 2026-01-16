@@ -52,11 +52,26 @@ export const useAuthStore = defineStore('auth', () => {
     token.value = nextToken || '';
   };
 
-  const setCredits = ({ total, remaining } = {}) => {
-    creditSnapshot.value = {
-      total: Number.isFinite(total) ? Number(total) : creditSnapshot.value.total,
-      remaining: Number.isFinite(remaining) ? Number(remaining) : creditSnapshot.value.remaining,
+  const syncUserCredits = (nextRemaining) => {
+    if (!user.value) return;
+    const parsedRemaining = Number(nextRemaining);
+    if (!Number.isFinite(parsedRemaining)) return;
+    user.value = {
+      ...user.value,
+      credits: parsedRemaining,
     };
+  };
+
+  const setCredits = ({ total, remaining } = {}) => {
+    const parsedTotal = Number(total);
+    const parsedRemaining = Number(remaining);
+    creditSnapshot.value = {
+      total: Number.isFinite(parsedTotal) ? parsedTotal : creditSnapshot.value.total,
+      remaining: Number.isFinite(parsedRemaining) ? parsedRemaining : creditSnapshot.value.remaining,
+    };
+    if (Number.isFinite(parsedRemaining)) {
+      syncUserCredits(parsedRemaining);
+    }
   };
 
   const applyMeSnapshot = (payload) => {
@@ -75,6 +90,8 @@ export const useAuthStore = defineStore('auth', () => {
     const credits = payload.credits || payload.creditSnapshot || account?.credits;
     if (credits && typeof credits === 'object') {
       setCredits(credits);
+    } else if (Number.isFinite(parsedCredits)) {
+      setCredits({ remaining: parsedCredits });
     }
   };
 
@@ -160,12 +177,10 @@ export const useAuthStore = defineStore('auth', () => {
         credits: parsedCredits,
       };
     }
-    if (creditSnapshot.value.total) {
-      creditSnapshot.value = {
-        ...creditSnapshot.value,
-        remaining: parsedCredits,
-      };
-    }
+    creditSnapshot.value = {
+      ...creditSnapshot.value,
+      remaining: parsedCredits,
+    };
     persistUser(user.value);
   };
 
@@ -208,7 +223,8 @@ export const useAuthStore = defineStore('auth', () => {
 
   const creditUsage = computed(() => {
     const total = Math.max(0, Number(creditSnapshot.value.total) || 0);
-    const remaining = Math.max(0, Math.min(total, Number(creditSnapshot.value.remaining) || 0));
+    const remainingRaw = Math.max(0, Number(creditSnapshot.value.remaining) || 0);
+    const remaining = total > 0 ? Math.min(total, remainingRaw) : 0;
     return {
       total,
       remaining,

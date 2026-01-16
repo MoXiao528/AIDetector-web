@@ -32,6 +32,8 @@ const getBaseUrl = () => {
   return String(base).replace(/\/$/, '');
 };
 
+const TOKEN_STORAGE_KEY = 'auth_token';
+
 const resolveAuthStore = async () => {
   if (typeof window === 'undefined') return null;
   try {
@@ -43,7 +45,11 @@ const resolveAuthStore = async () => {
   }
 };
 
-const resolveAuthToken = (authStore: { authToken?: string } | null) => authStore?.authToken || '';
+const resolveAuthToken = (authStore: { authToken?: string } | null) => {
+  if (authStore?.authToken) return authStore.authToken;
+  if (typeof window === 'undefined') return '';
+  return window.localStorage.getItem(TOKEN_STORAGE_KEY) || '';
+};
 
 const buildUrl = (path: string) => {
   if (/^https?:\/\//i.test(path)) return path;
@@ -123,9 +129,15 @@ const request = async <T>(path: string, { timeout = DEFAULT_TIMEOUT, auth = true
     const payload = response.status === 204 ? null : await parseResponseBody(response);
 
     if (response.status === 401) {
-      await authStore?.logout?.();
-    }
-    if (response.status === 402) {
+      if (typeof window !== 'undefined') {
+        window.localStorage.removeItem(TOKEN_STORAGE_KEY);
+        if (window.location.pathname !== '/login') {
+          window.location.assign('/login');
+        } else {
+          window.location.reload();
+        }
+      }
+    } else if (response.status === 402) {
       console.warn('余额不足，请检查账户点数。');
     }
 
