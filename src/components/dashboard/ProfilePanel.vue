@@ -39,6 +39,16 @@
             />
           </div>
           <div class="space-y-2">
+            <label class="text-sm font-semibold text-slate-700" for="account-name">{{ t('profilePanel.fields.accountName') }}</label>
+            <input
+              id="account-name"
+              :value="accountName"
+              type="text"
+              disabled
+              class="w-full cursor-not-allowed rounded-2xl border border-slate-200 bg-slate-50 px-4 py-2 text-sm text-slate-500"
+            />
+          </div>
+          <div class="space-y-2">
             <label class="text-sm font-semibold text-slate-700" for="email">{{ t('profilePanel.fields.email') }}</label>
             <input
               id="email"
@@ -149,6 +159,7 @@ const successMessage = ref('');
 const errorMessage = ref('');
 const isSaving = ref(false);
 
+const accountName = computed(() => authStore.user?.name || '');
 const email = computed(() => authStore.user?.email || '');
 
 const syncForm = () => {

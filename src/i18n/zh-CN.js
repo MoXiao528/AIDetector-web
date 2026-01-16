@@ -222,6 +222,7 @@ export default {
     fields: {
       firstName: '名',
       surname: '姓',
+      accountName: '用户账号',
       email: '邮箱',
       organization: '组织类型',
       role: '角色',
