@@ -134,7 +134,7 @@ export default {
     uploader: {
       titlePrefix: '拖拽文件或',
       cta: '选择文件',
-      formats: '支持格式：pdf、txt、doc、docx',
+      formats: '支持格式：pdf、txt、docx',
       ready: '已就绪',
     },
     supportedFormats: '支持格式：PDF, DOCX, TXT',
@@ -311,7 +311,7 @@ export default {
     primaryCta: '体验识别工作台',
     secondaryCta: '查看润色工作流 →',
     trust: '已被 2,000+ 创作者信赖',
-    highlights: ['段落级 AI 概率热力图', '自动保留段落结构与引用', '支持 TXT / DOC / PDF 等常见格式', '润色与翻译共享同一份上下文'],
+    highlights: ['段落级 AI 概率热力图', '自动保留段落结构与引用', '支持 TXT / DOCX / PDF 等常见格式', '润色与翻译共享同一份上下文'],
     previewBadge: '实时扫描预览',
     form: {
       label: '粘贴或输入文本',

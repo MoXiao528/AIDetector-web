@@ -337,7 +337,7 @@
                 ref="fileInput"
                 type="file"
                 class="hidden"
-                accept=".txt,.md,.doc,.docx,.pdf,.json,.csv,.yaml,.yml,.tex,.tax"
+                accept=".txt,.md,.docx,.pdf,.json,.csv,.yaml,.yml,.tex,.tax"
                 @change="onFileChange"
               />
             </section>
@@ -1369,16 +1369,13 @@ const syncEditorFromStore = () => {
   }
 };
 
-onMounted(() => {
+onMounted(async () => {
   console.log('ScanPage Mounted. Store text:', scanStore.inputText);
   if (scanStore.inputText && scanStore.inputText.trim() !== '') {
     localText.value = scanStore.inputText;
   }
   if (scanStore.inputText && !scanStore.editorHtml) {
     scanStore.setText(scanStore.inputText);
-  }
-  if (editorRef.value && scanStore.editorHtml) {
-    editorRef.value.innerHTML = scanStore.editorHtml;
   }
   const initialPanel = parsePanel(route.query.panel);
   activePanel.value = initialPanel;
@@ -1392,6 +1389,8 @@ onMounted(() => {
   if (features.length) {
     scanStore.setFunctions(features);
   }
+  await nextTick();
+  syncEditorFromStore();
   maybeShowOnboarding();
   document.addEventListener('click', onGlobalClick);
 });
@@ -1571,14 +1570,13 @@ const handleIntegrationAction = (integration) => {
   }
 };
 
-const applyExample = (key) => {
+const applyExample = async (key) => {
   scanStore.applyExample(key);
   scanStore.resetResult();
   highlightedPreviewHtml.value = '';
   editorMode.value = 'edit';
-  nextTick(() => {
-    syncEditorFromStore();
-  });
+  await nextTick();
+  syncEditorFromStore();
 };
 
 const isFunctionSelected = (key) => scanStore.selectedFunctions.includes(key);
@@ -1672,14 +1670,13 @@ const exportReport = () => {
   markOnboardingStep('export');
 };
 
-const resetEditor = () => {
+const resetEditor = async () => {
   scanStore.resetText();
   scanStore.resetResult();
   highlightedPreviewHtml.value = '';
   editorMode.value = 'edit';
-  nextTick(() => {
-    syncEditorFromStore();
-  });
+  await nextTick();
+  syncEditorFromStore();
   scanStore.commitDraftToStorage();
 };
 

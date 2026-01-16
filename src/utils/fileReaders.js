@@ -16,7 +16,7 @@ const TEXT_LIKE_EXTENSIONS = [
   'tax',
 ];
 
-const DOCX_EXTENSIONS = ['docx', 'doc'];
+const DOCX_EXTENSIONS = ['docx'];
 
 const PDF_EXTENSIONS = ['pdf'];
 
