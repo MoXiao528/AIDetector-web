@@ -1,20 +1,18 @@
 # AIDetector Web V1.0
 
-`AIDetector-web` 是 AIDetector V1.0 的前端仓库，当前正式交付的是一个以检测为核心的 Web 工作台，不是完整学术写作平台。
+`AIDetector-web` 是 AIDetector V1.0 的前端仓库。当前正式交付的是一个以 AI 文本检测为核心的 Web 工作台，不是完整的学术写作平台。
 
 V1.0 当前正式提供：
-
-- 首页与营销入口
+- 首页与产品入口
 - 检测工作台
 - 游客 / 登录 / 注册
-- 历史记录与报告下载
-- API Key 管理相关入口
+- 历史记录与 PDF 报告
+- API Key 相关页面与入口
 - 管理后台页面
 
 ## V1.0 边界
 
 ### 已开放
-
 - 文本检测 `scan`
 - 历史记录
 - PDF 报告
@@ -24,7 +22,6 @@ V1.0 当前正式提供：
 - 管理后台
 
 ### 未开放
-
 - `polish`
 - `translate`
 - `citation`
@@ -33,9 +30,8 @@ V1.0 当前正式提供：
 - `contact`
 
 说明：
-
-- 代码里如果仍有占位字段或旧页面，不代表功能已上线
-- V1.0 对外口径只以上面“已开放”列表为准
+- 代码里如果仍有占位字段或旧页面，不代表功能已上线。
+- V1.0 对外口径只以“已开放”列表为准。
 
 ## 技术栈
 
@@ -62,7 +58,7 @@ npm run build
 
 ### `VITE_API_BASE_URL`
 
-生产推荐留空：
+生产环境推荐留空：
 
 ```env
 VITE_API_BASE_URL=
@@ -72,10 +68,10 @@ VITE_API_BASE_URL=
 
 ### `VITE_DEV_PROXY_TARGET`
 
-本地开发默认：
+本地开发默认代理到后端 `8020`：
 
 ```env
-VITE_DEV_PROXY_TARGET=http://localhost:8000
+VITE_DEV_PROXY_TARGET=http://localhost:8020
 ```
 
 ## 本地开发
@@ -93,7 +89,7 @@ npm install
 npm run dev
 ```
 
-默认开发地址通常是：
+默认前端开发地址通常是：
 
 - `http://localhost:5173`
 
@@ -110,7 +106,7 @@ npm run build
 
 ## V1.0 推荐部署方式
 
-你的目标部署结构应该是：
+推荐结构：
 
 1. 前端 `dist/` 直接放到服务器静态目录
 2. 后端服务只监听 `127.0.0.1:8020`
@@ -124,7 +120,7 @@ Browser -> https://your-domain.example
 Browser -> https://your-domain.example/api/... -> reverse proxy -> 127.0.0.1:8020
 ```
 
-不要把前端生产环境写成请求 `localhost:8020`，因为浏览器里的 `localhost` 指向用户自己的机器。
+不要把前端生产环境写成请求 `localhost:8020`，因为浏览器里的 `localhost` 指向的是用户自己的机器。
 
 ## 当前真实页面边界
 
@@ -143,7 +139,7 @@ Browser -> https://your-domain.example/api/... -> reverse proxy -> 127.0.0.1:802
 - `/scan` 重定向到 `/dashboard`
 - `/multi-upload` 重定向到 `/dashboard`
 
-下面这些页面代码存在，但默认不会对用户开放：
+下面这些页面代码存在，但默认不对用户开放：
 
 - `/contact`
 - `/qa`
@@ -185,21 +181,18 @@ npm run build
 ## 后续优化方向
 
 ### 体验层
-
 - 更稳的句级定位
 - 更细的检测结果 hover / 对照联动
 - 长文档编辑体验和版本回滚
 - 结构化上传结果的差异对比
 
 ### 产品层
-
 - 润色建议
 - 翻译
 - 引用核查
 - 学术写作工作流
 
 ### 工程层
-
 - 更完整的 E2E 回归
 - 与 OpenAPI 的类型同步进一步自动化
 - 收口隐藏页面与历史占位模块
