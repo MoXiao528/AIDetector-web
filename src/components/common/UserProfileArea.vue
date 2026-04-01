@@ -1,0 +1,113 @@
+<template>
+  <div
+    v-if="variant === 'scan'"
+    class="flex items-center gap-5 text-sm text-slate-600"
+  >
+    <span class="inline-flex items-center rounded-full bg-slate-200 px-2.5 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-slate-600">
+      {{ t('profileArea.freeBadge') }}
+    </span>
+    <div class="flex items-center gap-3 text-xs">
+      <div class="text-[13px] font-medium text-slate-700">
+        {{ t('profileArea.creditsLeft', { remaining: formattedRemaining, total: formattedTotal }) }}
+      </div>
+      <div class="relative h-10 w-10">
+        <svg viewBox="0 0 36 36" class="h-full w-full">
+          <path
+            class="text-slate-200"
+            stroke="currentColor"
+            stroke-width="3.5"
+            fill="none"
+            stroke-linecap="round"
+            d="M18 3a15 15 0 110 30 15 15 0 010-30z"
+          />
+          <path
+            class="text-primary-500"
+            stroke="currentColor"
+            stroke-width="3.5"
+            fill="none"
+            stroke-linecap="round"
+            :stroke-dasharray="circumference"
+            :stroke-dashoffset="strokeOffset"
+            d="M18 3a15 15 0 110 30 15 15 0 010-30z"
+          />
+        </svg>
+        <div class="absolute inset-0 flex items-center justify-center text-[11px] font-semibold text-slate-600">
+          {{ percentRemaining }}%
+        </div>
+      </div>
+    </div>
+    <slot name="avatar" />
+  </div>
+  <div
+    v-else
+    class="flex flex-wrap items-center justify-end gap-3 text-sm text-slate-600 md:flex-nowrap"
+  >
+    <div class="flex items-center gap-4">
+      <button
+        type="button"
+        class="hidden items-center justify-center rounded-full border border-slate-200 bg-white px-3.5 py-1.5 text-[13px] font-semibold text-slate-600 transition hover:border-slate-300 hover:text-slate-800 sm:inline-flex"
+        @click="$emit('feedback')"
+      >
+        {{ t('profileArea.feedback') }}
+      </button>
+      <span class="inline-flex items-center rounded-full bg-slate-200 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wide text-slate-600">
+        {{ t('profileArea.freeBadge') }}
+      </span>
+    </div>
+    <div class="flex items-center gap-4">
+      <div v-if="authStore.isAuthenticated" class="hidden min-w-[220px] flex-1 md:block">
+        <div class="flex items-center justify-between text-[11px] font-semibold text-slate-400">
+          <span>{{ t('profileArea.creditsBalance', { value: compactRemaining }) }}</span>
+          <span>{{ t('profileArea.remainingOf', { value: compactTotal }) }}</span>
+        </div>
+        <div class="mt-1.5 h-2 w-full overflow-hidden rounded-full bg-slate-200">
+          <div class="h-full rounded-full bg-primary-500" :style="{ width: percentRemaining + '%' }"></div>
+        </div>
+      </div>
+      <slot name="avatar" />
+    </div>
+  </div>
+</template>
+
+<script setup>
+import { computed } from 'vue';
+import { storeToRefs } from 'pinia';
+import { useI18n } from '../../i18n';
+import { useAuthStore } from '../../store/auth';
+
+const props = defineProps({
+  variant: {
+    type: String,
+    default: 'standard',
+  },
+});
+
+defineEmits(['upgrade', 'feedback']);
+
+const { t, locale } = useI18n();
+const authStore = useAuthStore();
+const { creditUsage } = storeToRefs(authStore);
+const numberFormatter = computed(() => new Intl.NumberFormat(locale.value));
+const compactFormatter = computed(() => new Intl.NumberFormat(locale.value, { notation: 'compact', maximumFractionDigits: 1 }));
+const totalCredits = computed(() => Math.max(0, Number(creditUsage.value?.total) || 0));
+const remainingCredits = computed(() => Math.max(0, Number(creditUsage.value?.remaining) || 0));
+const percentRemaining = computed(() => {
+  const percent = Number(creditUsage.value?.percentRemaining);
+  if (!Number.isFinite(percent)) return 0;
+  return Math.min(100, Math.max(0, percent));
+});
+
+const circumference = 2 * Math.PI * 15;
+const strokeOffset = computed(() => circumference * ((100 - percentRemaining.value) / 100));
+
+const formattedRemaining = computed(() => numberFormatter.value.format(Math.round(remainingCredits.value)));
+const formattedTotal = computed(() => numberFormatter.value.format(Math.round(totalCredits.value)));
+const compactRemaining = computed(() => compactFormatter.value.format(Math.round(remainingCredits.value)));
+const compactTotal = computed(() => compactFormatter.value.format(Math.round(totalCredits.value)));
+</script>
+
+<style scoped>
+svg {
+  transform: rotate(-90deg);
+}
+</style>

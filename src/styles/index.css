@@ -1,0 +1,49 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html {
+    @apply scroll-smooth;
+  }
+
+  body {
+    @apply font-sans text-neutral-900 bg-neutral-50 antialiased;
+  }
+
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: rgb(148 163 184 / 0.8) transparent;
+  }
+
+  ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+
+  ::-webkit-scrollbar-track {
+    @apply bg-neutral-100;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    @apply bg-neutral-300/70 rounded-full;
+    border: 2px solid transparent;
+    background-clip: content-box;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    @apply bg-neutral-400/80;
+  }
+}
+
+a {
+  @apply text-primary-600 hover:text-primary-500 transition-colors;
+}
+
+.section-title {
+  @apply text-3xl md:text-4xl font-semibold text-neutral-900 tracking-tight;
+}
+
+.section-subtitle {
+  @apply mt-4 text-lg text-neutral-600 max-w-3xl;
+}
