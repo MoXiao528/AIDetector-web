@@ -351,7 +351,7 @@ export default {
     },
   },
   hero: {
-    badge: '#1 AI Detector - New V1.0 is live',
+    badge: '#1 AI Detector - New V2.0 is live',
     titlePrefix: 'Detect and resolve',
     titleHighlight: 'AI-generated text',
     subtitle: 'RepreGuard is currently focused on AI text detection. Paste or upload text to get sentence- and passage-level risk signals you can review directly.',

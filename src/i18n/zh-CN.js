@@ -343,7 +343,7 @@ export default {
     },
   },
   hero: {
-    badge: '#1 AI Detector - 新版 V1.0 已上线',
+    badge: '#1 AI Detector - 新版 V2.0 已上线',
     titlePrefix: '检测并处理',
     titleHighlight: 'AI 生成文本',
     subtitle: 'RepreGuard 当前专注于 AI 文本检测。粘贴或上传文本后，你可以直接查看句子级和段落级风险信号。',
