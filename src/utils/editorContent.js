@@ -21,6 +21,58 @@ const CONTAINER_TAGS = new Set([
   'TH',
 ]);
 const SKIP_TAGS = new Set(['SCRIPT', 'STYLE', 'NOSCRIPT']);
+const SAFE_HTML_TAGS = new Set([
+  'p',
+  'br',
+  'strong',
+  'b',
+  'em',
+  'i',
+  'u',
+  's',
+  'span',
+  'div',
+  'ul',
+  'ol',
+  'li',
+  'h1',
+  'h2',
+  'h3',
+  'h4',
+  'h5',
+  'h6',
+  'blockquote',
+  'pre',
+  'code',
+  'table',
+  'thead',
+  'tbody',
+  'tr',
+  'th',
+  'td',
+  'a',
+  'sub',
+  'sup',
+  'section',
+]);
+const DROP_HTML_TAGS = new Set(['script', 'style', 'noscript', 'iframe', 'object', 'embed', 'meta', 'link']);
+const EMPTY_KEEP_TAGS = new Set(['p', 'li', 'blockquote', 'pre', 'th', 'td']);
+const SAFE_URL_PROTOCOLS = new Set(['http:', 'https:', 'mailto:']);
+const SAFE_CLASS_TOKENS = new Set([
+  'highlight-chip',
+  'highlight-chip--structured',
+  'bg-rose-100',
+  'text-rose-900',
+  'bg-orange-100',
+  'text-orange-900',
+  'bg-amber-100',
+  'text-amber-900',
+  'bg-lime-100',
+  'text-lime-900',
+  'bg-emerald-100',
+  'text-emerald-900',
+]);
+const SAFE_DATA_SENTENCE_ID_PATTERN = /^[\w:.-]+$/;
 
 const isElementNode = (node) => node?.nodeType === Node.ELEMENT_NODE;
 const isTextNode = (node) => node?.nodeType === Node.TEXT_NODE;
@@ -47,6 +99,138 @@ export const plainTextToHtml = (value = '') => {
         .replace(/\t/g, '&nbsp;&nbsp;&nbsp;&nbsp;')}</p>`;
     })
     .join('');
+};
+
+const sanitizeHref = (value = '') => {
+  const raw = String(value || '').trim();
+  if (!raw) return '';
+  if (raw.startsWith('#') || raw.startsWith('/')) {
+    return raw;
+  }
+
+  try {
+    const parsed = new URL(raw, 'https://aidetector.local');
+    return SAFE_URL_PROTOCOLS.has(parsed.protocol) ? raw : '';
+  } catch {
+    return '';
+  }
+};
+
+const copySafeAttributes = (source, target, tagName) => {
+  if (tagName === 'a') {
+    const href = sanitizeHref(source.getAttribute('href'));
+    if (href) {
+      target.setAttribute('href', href);
+      target.setAttribute('target', '_blank');
+      target.setAttribute('rel', 'noopener noreferrer');
+    }
+  }
+
+  if (tagName === 'td' || tagName === 'th') {
+    const colspan = source.getAttribute('colspan');
+    const rowspan = source.getAttribute('rowspan');
+    if (colspan && /^\d+$/.test(colspan)) {
+      target.setAttribute('colspan', colspan);
+    }
+    if (rowspan && /^\d+$/.test(rowspan)) {
+      target.setAttribute('rowspan', rowspan);
+    }
+  }
+
+  const safeClasses = String(source.getAttribute('class') || '')
+    .split(/\s+/)
+    .map((item) => item.trim())
+    .filter((item) => SAFE_CLASS_TOKENS.has(item));
+  if (safeClasses.length) {
+    target.setAttribute('class', Array.from(new Set(safeClasses)).join(' '));
+  }
+
+  const sentenceId = source.getAttribute('data-sentence-id');
+  if (sentenceId && SAFE_DATA_SENTENCE_ID_PATTERN.test(sentenceId)) {
+    target.setAttribute('data-sentence-id', sentenceId);
+  }
+
+  const pdfPage = source.getAttribute('data-pdf-page');
+  if (tagName === 'section' && pdfPage && /^\d+$/.test(pdfPage)) {
+    target.setAttribute('data-pdf-page', pdfPage);
+  }
+};
+
+const sanitizeHtmlNode = (node, doc) => {
+  if (!node) return null;
+  if (node.nodeType === Node.TEXT_NODE) {
+    return doc.createTextNode(node.textContent || '');
+  }
+  if (node.nodeType !== Node.ELEMENT_NODE) {
+    return null;
+  }
+
+  const tagName = node.tagName?.toLowerCase?.() || '';
+  if (!tagName || DROP_HTML_TAGS.has(tagName)) {
+    return null;
+  }
+
+  if (!SAFE_HTML_TAGS.has(tagName)) {
+    const fragment = doc.createDocumentFragment();
+    Array.from(node.childNodes || []).forEach((child) => {
+      const safeChild = sanitizeHtmlNode(child, doc);
+      if (safeChild) {
+        fragment.appendChild(safeChild);
+      }
+    });
+    return fragment;
+  }
+
+  const safeElement = doc.createElement(tagName);
+  copySafeAttributes(node, safeElement, tagName);
+
+  Array.from(node.childNodes || []).forEach((child) => {
+    const safeChild = sanitizeHtmlNode(child, doc);
+    if (safeChild) {
+      safeElement.appendChild(safeChild);
+    }
+  });
+
+  if (!safeElement.childNodes.length && EMPTY_KEEP_TAGS.has(tagName)) {
+    safeElement.appendChild(doc.createElement('br'));
+  }
+
+  if (tagName === 'a' && !safeElement.getAttribute('href')) {
+    const fragment = doc.createDocumentFragment();
+    Array.from(safeElement.childNodes || []).forEach((child) => {
+      fragment.appendChild(child);
+    });
+    return fragment;
+  }
+
+  return safeElement;
+};
+
+export const sanitizeHtmlForEditor = (html = '', fallbackText = '') => {
+  if (typeof window === 'undefined') {
+    return plainTextToHtml(fallbackText || String(html || '').replace(/<[^>]+>/g, ' '));
+  }
+
+  const parsed = createDocumentFromHtml(html || '');
+  if (!parsed?.body) {
+    return plainTextToHtml(fallbackText || String(html || '').replace(/<[^>]+>/g, ' '));
+  }
+
+  const safeDoc = document.implementation.createHTMLDocument('');
+  const safeBody = safeDoc.body;
+  Array.from(parsed.body.childNodes || []).forEach((child) => {
+    const safeNode = sanitizeHtmlNode(child, safeDoc);
+    if (safeNode) {
+      safeBody.appendChild(safeNode);
+    }
+  });
+
+  const normalizedHtml = safeBody.innerHTML.trim();
+  if (normalizedHtml) {
+    return normalizedHtml;
+  }
+
+  return plainTextToHtml(fallbackText || extractTextFromHtml(String(html || '')));
 };
 
 const createDocumentFromHtml = (html = '') => {
@@ -111,8 +295,61 @@ const extractOwnInlineText = (element) =>
 
 const hasOwnMeaningfulText = (element) => normalizeBlockText(extractOwnInlineText(element)).length > 0;
 
+const normalizeRootInlineRuns = (root) => {
+  if (!root?.ownerDocument) return;
+
+  let run = [];
+  const flushRun = (beforeNode = null) => {
+    if (!run.length) return;
+
+    const hasText = run.some((node) => normalizeBlockText(extractNodeText(node)).length > 0);
+    if (!hasText) {
+      run = [];
+      return;
+    }
+
+    const paragraph = root.ownerDocument.createElement('p');
+    root.insertBefore(paragraph, beforeNode);
+    run.forEach((node) => {
+      paragraph.appendChild(node);
+    });
+    run = [];
+  };
+
+  Array.from(root.childNodes || []).forEach((child) => {
+    if (isTextNode(child)) {
+      if ((child.textContent || '').trim() || run.length) {
+        run.push(child);
+      }
+      return;
+    }
+
+    if (!isElementNode(child)) {
+      flushRun(child);
+      return;
+    }
+
+    const tagName = child.tagName?.toUpperCase?.() || '';
+    if (tagName === 'BR') {
+      flushRun(child);
+      child.remove();
+      return;
+    }
+    if (SKIP_TAGS.has(tagName) || isStructuralTagName(tagName)) {
+      flushRun(child);
+      return;
+    }
+
+    run.push(child);
+  });
+
+  flushRun(null);
+};
+
 const collectRenderableBlocks = (root) => {
   if (!root) return [];
+
+  normalizeRootInlineRuns(root);
 
   const blocks = [];
   const visit = (node) => {
@@ -293,17 +530,20 @@ export const buildHighlightedPreviewHtml = ({
   const normalizedSentences = Array.isArray(sentences) ? sentences : [];
 
   if (!editorHtml) {
-    return fallbackHighlightedHtml || buildPlainHighlightedHtml(fallbackText, normalizedSentences);
+    return sanitizeHtmlForEditor(fallbackHighlightedHtml || buildPlainHighlightedHtml(fallbackText, normalizedSentences), fallbackText);
   }
 
   const doc = createDocumentFromHtml(editorHtml);
   if (!doc) {
-    return fallbackHighlightedHtml || buildPlainHighlightedHtml(fallbackText, normalizedSentences);
+    return sanitizeHtmlForEditor(fallbackHighlightedHtml || buildPlainHighlightedHtml(fallbackText, normalizedSentences), fallbackText);
   }
 
   const blocks = collectRenderableBlocks(doc.body);
   if (!blocks.length) {
-    return fallbackHighlightedHtml || buildPlainHighlightedHtml(fallbackText || extractTextFromHtml(editorHtml), normalizedSentences);
+    return sanitizeHtmlForEditor(
+      fallbackHighlightedHtml || buildPlainHighlightedHtml(fallbackText || extractTextFromHtml(editorHtml), normalizedSentences),
+      fallbackText
+    );
   }
 
   blocks.forEach((block, index) => {
@@ -314,5 +554,5 @@ export const buildHighlightedPreviewHtml = ({
     applyStructuredHighlight(block, sentence, index);
   });
 
-  return doc.body.innerHTML || fallbackHighlightedHtml || buildPlainHighlightedHtml(fallbackText, normalizedSentences);
+  return sanitizeHtmlForEditor(doc.body.innerHTML || fallbackHighlightedHtml || buildPlainHighlightedHtml(fallbackText, normalizedSentences), fallbackText);
 };

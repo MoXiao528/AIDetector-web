@@ -1,49 +1,10 @@
 import { globalT } from '../i18n';
-import { escapeHtml, extractTextFromHtml, plainTextToHtml } from './editorContent';
+import { escapeHtml, extractTextFromHtml, plainTextToHtml, sanitizeHtmlForEditor } from './editorContent';
 
 const TEXT_LIKE_EXTENSIONS = ['txt', 'md', 'markdown', 'json', 'csv', 'yml', 'yaml', 'xml', 'log', 'tex', 'tax'];
 const HTML_LIKE_EXTENSIONS = ['html', 'htm'];
 const DOCX_EXTENSIONS = ['docx'];
 const PDF_EXTENSIONS = ['pdf'];
-
-const decoder = new TextDecoder();
-
-const HTML_BLOCK_TAGS = new Set([
-  'p',
-  'br',
-  'strong',
-  'b',
-  'em',
-  'i',
-  'u',
-  's',
-  'span',
-  'ul',
-  'ol',
-  'li',
-  'h1',
-  'h2',
-  'h3',
-  'h4',
-  'h5',
-  'h6',
-  'blockquote',
-  'pre',
-  'code',
-  'table',
-  'thead',
-  'tbody',
-  'tr',
-  'th',
-  'td',
-  'a',
-  'sub',
-  'sup',
-]);
-
-const HTML_DROP_TAGS = new Set(['script', 'style', 'noscript', 'iframe', 'object', 'embed', 'meta', 'link']);
-const EMPTY_KEEP_TAGS = new Set(['p', 'li', 'blockquote', 'pre', 'th', 'td']);
-const SAFE_URL_PROTOCOLS = new Set(['http:', 'https:', 'mailto:']);
 
 const readAsText = (file) =>
   new Promise((resolve, reject) => {
@@ -80,117 +41,7 @@ const buildImportedFileContent = ({ text = '', html = '', sourceType = 'text', f
   };
 };
 
-const sanitizeHref = (value = '') => {
-  const raw = String(value || '').trim();
-  if (!raw) return '';
-  if (raw.startsWith('#') || raw.startsWith('/')) {
-    return raw;
-  }
-
-  try {
-    const parsed = new URL(raw, 'https://aidetector.local');
-    if (!SAFE_URL_PROTOCOLS.has(parsed.protocol)) {
-      return '';
-    }
-    return raw;
-  } catch {
-    return '';
-  }
-};
-
-const sanitizeImportedNode = (node, doc) => {
-  if (!node) return null;
-  if (node.nodeType === Node.TEXT_NODE) {
-    return doc.createTextNode(node.textContent || '');
-  }
-  if (node.nodeType !== Node.ELEMENT_NODE) {
-    return null;
-  }
-
-  const tagName = node.tagName?.toLowerCase?.() || '';
-  if (!tagName || HTML_DROP_TAGS.has(tagName)) {
-    return null;
-  }
-
-  if (!HTML_BLOCK_TAGS.has(tagName)) {
-    const fragment = doc.createDocumentFragment();
-    Array.from(node.childNodes || []).forEach((child) => {
-      const safeChild = sanitizeImportedNode(child, doc);
-      if (safeChild) {
-        fragment.appendChild(safeChild);
-      }
-    });
-    return fragment;
-  }
-
-  const safeElement = doc.createElement(tagName);
-
-  if (tagName === 'a') {
-    const href = sanitizeHref(node.getAttribute('href'));
-    if (href) {
-      safeElement.setAttribute('href', href);
-      safeElement.setAttribute('target', '_blank');
-      safeElement.setAttribute('rel', 'noopener noreferrer');
-    }
-  }
-
-  if (tagName === 'td' || tagName === 'th') {
-    const colspan = node.getAttribute('colspan');
-    const rowspan = node.getAttribute('rowspan');
-    if (colspan && /^\d+$/.test(colspan)) {
-      safeElement.setAttribute('colspan', colspan);
-    }
-    if (rowspan && /^\d+$/.test(rowspan)) {
-      safeElement.setAttribute('rowspan', rowspan);
-    }
-  }
-
-  Array.from(node.childNodes || []).forEach((child) => {
-    const safeChild = sanitizeImportedNode(child, doc);
-    if (safeChild) {
-      safeElement.appendChild(safeChild);
-    }
-  });
-
-  if (!safeElement.childNodes.length && EMPTY_KEEP_TAGS.has(tagName)) {
-    safeElement.appendChild(doc.createElement('br'));
-  }
-
-  if (tagName === 'a' && !safeElement.getAttribute('href')) {
-    const fragment = doc.createDocumentFragment();
-    Array.from(safeElement.childNodes || []).forEach((child) => {
-      fragment.appendChild(child);
-    });
-    return fragment;
-  }
-
-  return safeElement;
-};
-
-export const sanitizeImportedHtml = (html = '', fallbackText = '') => {
-  if (typeof window === 'undefined') {
-    return plainTextToHtml(fallbackText || String(html || '').replace(/<[^>]+>/g, ' '));
-  }
-
-  const parser = new DOMParser();
-  const parsed = parser.parseFromString(`<body>${html || ''}</body>`, 'text/html');
-  const safeDoc = document.implementation.createHTMLDocument('');
-  const safeBody = safeDoc.body;
-
-  Array.from(parsed.body.childNodes || []).forEach((child) => {
-    const safeNode = sanitizeImportedNode(child, safeDoc);
-    if (safeNode) {
-      safeBody.appendChild(safeNode);
-    }
-  });
-
-  const normalizedHtml = safeBody.innerHTML.trim();
-  if (normalizedHtml) {
-    return normalizedHtml;
-  }
-
-  return plainTextToHtml(fallbackText || extractTextFromHtml(String(html || '')));
-};
+export const sanitizeImportedHtml = (html = '', fallbackText = '') => sanitizeHtmlForEditor(html, fallbackText);
 
 const getPdfItemGeometry = (item = {}) => {
   const transform = Array.isArray(item.transform) ? item.transform : [];
@@ -439,17 +290,6 @@ const extractTextContent = async (file, extension) => {
   });
 };
 
-const extractUnknownText = async (file) => {
-  const buffer = await readAsArrayBuffer(file);
-  const text = decoder.decode(buffer);
-  return buildImportedFileContent({
-    text,
-    html: plainTextToHtml(text),
-    sourceType: 'text',
-    fileName: file.name,
-  });
-};
-
 export const combineImportedFileContents = (items = []) => {
   const normalizedItems = Array.from(items || []).filter((item) => item && (item.text || item.html));
   if (!normalizedItems.length) {
@@ -493,5 +333,5 @@ export const readTextFromFile = async (file) => {
     return extractPdfContent(file);
   }
 
-  return extractUnknownText(file);
+  throw new Error(globalT('errors.unknownFormat'));
 };

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { buildPdfHtmlFromPageItems, combineImportedFileContents, sanitizeImportedHtml } from './fileReaders';
+import { buildPdfHtmlFromPageItems, combineImportedFileContents, readTextFromFile, sanitizeImportedHtml } from './fileReaders';
 
 describe('fileReaders utils', () => {
   it('sanitizeImportedHtml 保留安全结构并移除危险标签', () => {
@@ -43,5 +43,11 @@ describe('fileReaders utils', () => {
     expect(output.text).toBe('Alpha\n\nBeta');
     expect(output.html).toContain('<section data-imported-file="true"><p>Alpha</p></section>');
     expect(output.html).toContain('<section data-pdf-page="1"><p>Beta</p></section>');
+  });
+
+  it('readTextFromFile rejects unknown binary-ish extensions instead of decoding as text', async () => {
+    const file = new File([new Uint8Array([0, 1, 2, 3])], 'payload.bin', { type: 'application/octet-stream' });
+
+    await expect(readTextFromFile(file)).rejects.toThrow();
   });
 });

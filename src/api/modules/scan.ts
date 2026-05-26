@@ -40,6 +40,13 @@ export interface DetectionResponse {
   detectionId?: number;
   history_id?: number;
   historyId?: number;
+  label?: 'human' | 'ai' | 'HUMAN' | 'AI';
+  score?: number;
+  model_name?: string;
+  modelName?: string;
+  raw_score?: number;
+  rawScore?: number;
+  threshold?: number;
   input_text?: string;
   inputText?: string;
   result?: AnalysisResult;
@@ -47,10 +54,6 @@ export interface DetectionResponse {
   cost?: number;
   currentCredits?: number;
 }
-
-export const submitScan = async (payload: any) => apiClient.post('/api/scan', payload);
-
-export const fetchScanHistory = async () => apiClient.get('/api/scan/history');
 
 export const detectText = async (payload: { text: string; functions: string[]; editorHtml?: string }) =>
   apiClient.post<DetectionResponse>('/api/v1/detect', payload, { guestAuth: true });

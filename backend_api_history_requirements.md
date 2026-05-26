@@ -1,5 +1,9 @@
 # 历史记录功能 - 后端 API 需求文档
 
+> 状态：历史归档文档，不再作为当前接口契约。
+>
+> 当前线上契约以 `D:\Code\AIDetector-Back\contract\openapi.yaml` 为准；历史接口实际统一在 `/api/v1/history`，响应字段由后端 Pydantic alias 输出为 camelCase，例如 `userId / createdAt / inputText / editorHtml`。本文中早期出现的 UUID、`snake_case` 响应示例、`per_page / total_pages` 等只代表旧需求阶段，不代表当前 active contract。
+
 ## 概述
 
 前端目前将历史记录存储在 `localStorage`，需要迁移到后端实现持久化存储和跨设备同步。
@@ -693,10 +697,10 @@ Authorization: Bearer <token>
 
 ## 🎯 推荐前端技术栈
 
-- **HTTP 客户端**: axios / fetch
-- **状态管理**: React Query / SWR（推荐，自动处理缓存和重新验证）
-- **UI 组件**: 现有的组件库
-- **虚拟滚动**: react-virtual / react-window（可选）
+- **HTTP 客户端**: 现有 `apiClient` / fetch 封装
+- **状态管理**: 现有 Pinia store；如果后续要服务端缓存，可选 `@tanstack/vue-query`
+- **UI 组件**: 现有 Vue 组件
+- **虚拟滚动**: `@vueuse/core` 的 `useVirtualList` 或 Vue 兼容虚拟列表库
 
 ## 📞 后端支持
 
