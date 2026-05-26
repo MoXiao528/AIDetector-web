@@ -4,6 +4,7 @@ import { reactive, nextTick } from 'vue';
 import { mount, flushPromises } from '@vue/test-utils';
 import ScanPage from './ScanPage.vue';
 import { createI18n } from '../i18n';
+import { useScanStore } from '../store/scan';
 
 const route = reactive({
   name: 'dashboard',
@@ -116,5 +117,39 @@ describe('ScanPage panel switching', () => {
     expect(wrapper.find('.editor-surface').exists()).toBe(true);
     expect(wrapper.find('.preview-surface').exists()).toBe(true);
     expect(wrapper.text()).not.toContain('Workspace overview');
+  });
+
+  it('clears stale upload errors after valid editor input', async () => {
+    const wrapper = mount(ScanPage, {
+      global: {
+        plugins: [createI18n()],
+        stubs: {
+          AppHeader: { template: '<div />' },
+          LoginPromptModal: { template: '<div />' },
+          BaseListbox: { template: '<div />' },
+          ProfilePanel: { template: '<div />' },
+          QAPanel: { template: '<div />' },
+          OnboardingStepsBar: { template: '<div />' },
+          UsageExamplesModal: { template: '<div />' },
+          PricingPage: { template: '<div />' },
+        },
+      },
+    });
+
+    await flushPromises();
+
+    const scanStore = useScanStore();
+    scanStore.uploadError = 'This file is too long';
+
+    const navButtons = wrapper.findAll('aside nav > button');
+    await navButtons[1].trigger('click');
+    await nextTick();
+    await flushPromises();
+
+    const editor = wrapper.find('.editor-surface');
+    editor.element.innerHTML = '<p>Valid text</p>';
+    await editor.trigger('input');
+
+    expect(scanStore.uploadError).toBe('');
   });
 });

@@ -442,17 +442,27 @@ export const useScanStore = defineStore('scan', () => {
     return String(globalT('scan.history.recordFallback') || fallbackTitle || '').trim();
   };
 
+  const syncUploadErrorForCurrentText = () => {
+    if (inputText.value.length > CHARACTER_LIMIT) {
+      uploadError.value = buildTextTooLongMessage({ current: inputText.value.length });
+      return;
+    }
+    uploadError.value = '';
+  };
+
   const setText = (value) => {
     const normalized = value || '';
     inputText.value = normalized;
     editorHtml.value = plainTextToHtml(normalized);
     selectedExampleKey.value = '';
+    syncUploadErrorForCurrentText();
   };
 
   const setImportedContent = ({ text = '', html = '' } = {}) => {
     inputText.value = text || '';
     editorHtml.value = sanitizeHtmlForEditor(html || plainTextToHtml(text || ''), text || '');
     selectedExampleKey.value = '';
+    syncUploadErrorForCurrentText();
   };
 
   const setInputText = (value) => {
@@ -467,6 +477,7 @@ export const useScanStore = defineStore('scan', () => {
     editorHtml.value = sanitizeHtmlForEditor(value || '');
     inputText.value = extractTextFromHtml(editorHtml.value);
     selectedExampleKey.value = '';
+    syncUploadErrorForCurrentText();
   };
 
   const applyExample = (key) => {
@@ -525,9 +536,6 @@ export const useScanStore = defineStore('scan', () => {
       }
       const combined = combineImportedFileContents(contents);
       setImportedContent(combined);
-      if (combined.text.length > CHARACTER_LIMIT) {
-        uploadError.value = buildTextTooLongMessage({ current: combined.text.length });
-      }
       lastUploadedFileName.value =
         fileList.length === 1 ? fileList[0].name : `${fileList[0].name} 等 ${fileList.length} 个文件`;
     } catch (error) {
