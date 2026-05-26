@@ -1,16 +1,18 @@
-# AIDetector Web V1.0
+﻿# AIDetector Web V2.0
 
-`AIDetector-web` 是 AIDetector V1.0 的前端仓库。当前正式交付的是一个以 AI 文本检测为核心的 Web 工作台，不是完整的学术写作平台。
+`AIDetector-web` 是 AIDetector V2.0 的前端仓库。当前正式交付的是一个以 AI 文本检测为核心的 Web 工作台，不是完整的学术写作平台。
 
-V1.0 当前正式提供：
+V2.0 当前正式提供：
 - 首页与产品入口
 - 检测工作台
 - 游客 / 登录 / 注册
 - 历史记录与 PDF 报告
 - API Key 相关页面与入口
 - 管理后台页面
+- Dashboard 内静态 QA 帮助面板
+- RoBERTa v2.0 概率分数展示、阈值语义摘要和段落高亮
 
-## V1.0 边界
+## V2.0 边界
 
 ### 已开放
 - 文本检测 `scan`
@@ -26,12 +28,11 @@ V1.0 当前正式提供：
 - `translate`
 - `citation`
 - `pricing`
-- `qa`
 - `contact`
 
 说明：
 - 代码里如果仍有占位字段或旧页面，不代表功能已上线。
-- V1.0 对外口径只以“已开放”列表为准。
+- V2.0 对外口径只以“已开放”列表为准。
 
 ## 技术栈
 
@@ -93,6 +94,15 @@ npm run dev
 
 - `http://localhost:5173`
 
+RoBERTa V2.0 本地联调顺序：
+
+```text
+RepreGuard detect service -> http://127.0.0.1:9000
+AIDetector-back API       -> http://127.0.0.1:8020
+AIDetector-web Vite       -> http://localhost:5173
+Docker API container      -> http://host.docker.internal:9000
+```
+
 ## 生产构建
 
 ```bash
@@ -104,7 +114,7 @@ npm run build
 
 - `dist/`
 
-## V1.0 推荐部署方式
+## V2.0 推荐部署方式
 
 推荐结构：
 
@@ -142,25 +152,29 @@ Browser -> https://your-domain.example/api/... -> reverse proxy -> 127.0.0.1:802
 下面这些页面代码存在，但默认不对用户开放：
 
 - `/contact`
-- `/qa`
 - `/pricing`
+
+说明：Dashboard 内的 `qa` 面板是静态帮助内容，当前可访问；独立路径 `/qa` 仍由路由守卫拦截，不作为 V2.0 对外页面。
 
 ## 上传和富文本预览
 
 当前可见上传链路已经支持：
 
 - 编辑器内容保留富文本结构高亮
+- `div / p` 等块级结构会映射为换行文本，避免送检文本被拼成 `FirstSecond`
 - `docx` 结构化导入
 - `pdf` 尽量结构化重建
+- 未知文件类型不会强行按文本读入编辑器
 
 但要知道：
 
 - 隐藏的后端 `/api/v1/detections/parse-files` 仍然只是纯文本解析接口
 - 当前可见上传体验依赖的是前端本地结构化导入逻辑
 
-## V1.0 验收清单
+## V2.0 验收清单
 
 ```bash
+npm run check
 npm run lint
 npm run typecheck
 npm run test:smoke
@@ -197,8 +211,9 @@ npm run build
 - 与 OpenAPI 的类型同步进一步自动化
 - 收口隐藏页面与历史占位模块
 
-后端部署和接口说明看：
+后端部署和接口说明看同级后端仓库：
 
-- [README.md](/D:/Code/AIDetector-Back/README.md)
-- [deploy-cutover-checklist.md](/D:/Code/AIDetector-Back/docs/deploy-cutover-checklist.md)
-- [openapi.yaml](/D:/Code/AIDetector-Back/contract/openapi.yaml)
+- `..\AIDetector-Back\README.md`
+- `..\AIDetector-Back\docs\deploy-cutover-checklist.md`
+- `..\AIDetector-Back\contract\openapi.yaml`
+

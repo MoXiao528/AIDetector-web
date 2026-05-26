@@ -432,7 +432,7 @@
                 </button>
               </div>
               <div class="flex flex-wrap items-center gap-4 text-xs font-medium text-neutral-400">
-                <span :class="{ 'text-primary-600': characterCount > 0 }">{{ characterUsage }}</span>
+                <span :class="{ 'text-primary-600': characterCount > 0 && !isOverCharacterLimit, 'text-rose-600': isOverCharacterLimit }">{{ characterUsage }}</span>
                 <span class="h-4 w-px bg-neutral-200"></span>
                 <span>{{ t('scan.editor.selectedFunctions', { value: selectedFunctionSummary }) }}</span>
                 <span v-if="scanStore.lastUploadedFileName" class="inline-flex items-center gap-1.5 rounded-full bg-primary-50 px-2.5 py-1 text-primary-700">
@@ -440,6 +440,14 @@
                   {{ scanStore.lastUploadedFileName }}
                 </span>
               </div>
+            </div>
+            <div v-if="scanStore.uploadError || scanStore.analysisError?.message" class="mt-3 space-y-2">
+              <p v-if="scanStore.uploadError" class="rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-sm font-medium text-rose-700">
+                {{ scanStore.uploadError }}
+              </p>
+              <p v-if="scanStore.analysisError?.message" class="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm font-medium text-amber-800">
+                {{ scanStore.analysisError.message }}
+              </p>
             </div>
           </div>
 
@@ -454,6 +462,7 @@
                     contenteditable="true"
                     :data-placeholder="t('scan.editor.placeholder')"
                     @input="onEditorInput"
+                    @paste="onEditorPaste"
                     @focus="editorMode = 'edit'"
                     @dragenter.prevent="onDragEnter"
                     @dragover.prevent="onDragOver"
@@ -534,15 +543,11 @@
                         {{ t('scan.toolbar.start') }}
                       </span>
                       <span class="font-mono">
-                        {{ detectableCharacterCount }} / {{ minDetectChars }}
+                        {{ scanReadinessCounter }}
                       </span>
                     </div>
                     <p class="mt-2 leading-5">
-                      {{
-                        canStartScan
-                          ? t('scan.editor.minDetectHint', { minimum: minDetectChars })
-                          : t('scan.editor.minDetectRemaining', { remaining: remainingToMinDetect })
-                      }}
+                      {{ scanReadinessMessage }}
                     </p>
                   </div>
 
@@ -810,36 +815,25 @@
               </button>
             </div>
           </div>
-          
-          <!-- 游客登录提示 -->
+
           <div v-if="!authStore.isAuthenticated" class="flex flex-1 items-center justify-center px-4 py-6">
             <div class="max-w-md space-y-6 rounded-3xl border border-slate-200 bg-white p-8 text-center shadow-sm">
               <div class="mx-auto flex h-20 w-20 items-center justify-center rounded-full bg-primary-100">
                 <ClockIcon class="h-10 w-10 text-primary-600" />
               </div>
               <div class="space-y-2">
-                <h3 class="text-xl font-semibold text-slate-900">需要登录查看历史记录</h3>
-                <p class="text-sm text-slate-600">
-                  登录后，您可以：
-                </p>
+                <h3 class="text-xl font-semibold text-slate-900">{{ t('scan.history.authPrompt.title') }}</h3>
+                <p class="text-sm text-slate-600">{{ t('scan.history.authPrompt.subtitle') }}</p>
                 <ul class="mt-4 space-y-2 text-left text-sm text-slate-600">
-                  <li class="flex items-start gap-2">
+                  <li
+                    v-for="item in historyAuthPromptItems"
+                    :key="item"
+                    class="flex items-start gap-2"
+                  >
                     <svg class="mt-0.5 h-5 w-5 flex-shrink-0 text-emerald-500" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
                       <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
                     </svg>
-                    <span>保存最多 <strong>100</strong> 条检测历史记录</span>
-                  </li>
-                  <li class="flex items-start gap-2">
-                    <svg class="mt-0.5 h-5 w-5 flex-shrink-0 text-emerald-500" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
-                    </svg>
-                    <span>跨设备同步，随时随地访问</span>
-                  </li>
-                  <li class="flex items-start gap-2">
-                    <svg class="mt-0.5 h-5 w-5 flex-shrink-0 text-emerald-500" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
-                    </svg>
-                    <span>每日检测额度提升至 <strong>30,000</strong> 字符</span>
+                    <span>{{ item }}</span>
                   </li>
                 </ul>
               </div>
@@ -848,12 +842,11 @@
                 class="inline-flex items-center rounded-full bg-primary-600 px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-primary-200/70 transition hover:-translate-y-0.5 hover:bg-primary-500"
                 @click="router.push({ name: 'login' })"
               >
-                立即登录
+                {{ t('scan.history.authPrompt.cta') }}
               </button>
             </div>
           </div>
 
-          <!-- 已登录用户的历史记录 -->
           <div v-else class="flex flex-1 flex-col lg:flex-row">
             <section class="w-full border-b border-slate-200 bg-white/70 px-4 py-6 lg:w-80 lg:border-b-0 lg:border-r">
               <div class="space-y-4">
@@ -884,7 +877,7 @@
                   </button>
                 </div>
                 <div v-else class="rounded-2xl border border-dashed border-slate-200 bg-slate-50 p-6 text-center text-sm text-slate-500">
-                  暂无历史记录
+                  {{ t('scan.history.empty') }}
                 </div>
               </div>
             </section>
@@ -1046,10 +1039,6 @@
           </div>
         </div>
 
-        <div v-else-if="isPanelActive('pricing')" class="flex-1 bg-[#FAFAF7] px-0 py-6">
-          <PricingPage embedded />
-        </div>
-
         <div v-else-if="isPanelActive('profile')" class="flex-1 px-4 py-6">
           <div class="mx-auto w-full max-w-4xl">
             <ProfilePanel />
@@ -1112,7 +1101,6 @@ import ProfilePanel from '../components/dashboard/ProfilePanel.vue';
 import QAPanel from '../components/dashboard/QAPanel.vue';
 import OnboardingStepsBar from '../components/dashboard/OnboardingStepsBar.vue';
 import UsageExamplesModal from '../components/common/UsageExamplesModal.vue';
-import PricingPage from './PricingPage.vue';
 import { useI18n } from '../i18n';
 import { clearGuestToken, ensureGuestToken } from '../api/modules/auth';
 import { extractApiErrorCode } from '../api/client';
@@ -1121,7 +1109,7 @@ import { exportPdfReport as requestPdfReport } from '../api/modules/reports';
 import { useAuthStore } from '../store/auth';
 import { useScanStore } from '../store/scan';
 import { clampProbability, getProbabilityCardClasses, getProbabilityTextClasses } from '../utils/detectionStyles';
-import { buildHighlightedPreviewHtml, escapeHtml, plainTextToHtml } from '../utils/editorContent';
+import { buildHighlightedPreviewHtml, escapeHtml, plainTextToHtml, sanitizeHtmlForEditor } from '../utils/editorContent';
 import { showComingSoon, showToast } from '../utils/toast';
 
 const authStore = useAuthStore();
@@ -1166,8 +1154,6 @@ const usageExampleItems = computed(() => scanStore.usageExamples);
 const showIntegrationHub = false;
 
 const allowedPanelSet = new Set(['home', 'document', 'history', 'profile', 'qa']);
-// 当前主路径只正式开放 scan。
-// 如果以后重新放开 polish / translate / citation，这里和结果 tab、README、后端 contract 要一起改。
 const allowedFunctionKeys = new Set(['scan']);
 let lastComingSoonAt = 0;
 
@@ -1210,7 +1196,7 @@ const functionOptions = computed(() => [
   },
 ]);
 
-const panelOptions = ['home', 'document', 'history', 'profile', 'qa', 'pricing'];
+const panelOptions = ['home', 'document', 'history', 'profile', 'qa'];
 
 const motivationalQuotes = computed(() => t('scan.quotes'));
 
@@ -1301,6 +1287,20 @@ const showExportLockedToast = () => {
   });
 };
 
+const showScanFailureToast = (error) => {
+  showToast({
+    title: t('scan.editor.scanErrorTitle'),
+    message: error?.message || t('scan.editor.scanErrorMessage'),
+  });
+};
+
+const showUploadFailureToast = (error) => {
+  showToast({
+    title: t('scan.editor.uploadErrorTitle'),
+    message: scanStore.uploadError || error?.message || t('errors.fileParseError'),
+  });
+};
+
 const userPlanTag = computed(() => {
   const plan = authStore.user?.plan || 'personal-free';
   if (plan.includes('team')) return t('scan.planTags.team');
@@ -1309,193 +1309,8 @@ const userPlanTag = computed(() => {
   return t('scan.planTags.free');
 });
 
-const dashboardHomeCopy = computed(() =>
-  locale.value === 'zh-CN'
-    ? {
-        commandCenterEyebrow: '工作台总览',
-        commandCenterTitle: '把扫描、额度和待处理风险放回同一屏里。',
-        commandCenterSubtitle: '首页不该只是欢迎语。这里优先给你今天还剩多少、哪些记录最该复核、下一步该进哪个面板。',
-        commandReadyEmpty: '等待草稿',
-        commandReadyDraft: '草稿待扫描',
-        commandReadyResult: '结果可复核',
-        primaryCta: '开始新扫描',
-        secondaryCta: '查看示例',
-        signalTitle: '优先处理信号',
-        snapshotEyebrow: '活动快照',
-        snapshotTitle: '最近记录与人工复核队列',
-        snapshotBadge: 'LIVE',
-        snapshotCta: '查看完整历史',
-        actionsTitle: '下一步',
-        stats: {
-          remaining: '今日剩余',
-          remainingDescription: '当前还能继续处理的字符额度',
-          used: '今日已用',
-          usedDescription: '今天已经消耗的检测额度',
-          records: '保存记录',
-          recordsDescription: '当前账号或本地草稿中的检测记录',
-          flagged: '高风险记录',
-          flaggedDescription: 'AI 倾向较高、建议优先复核的记录数',
-        },
-        signals: {
-          topRisk: '最高风险记录',
-          topRiskFallback: '暂无记录',
-          topRiskDescription: '优先打开 AI 倾向最高的一条记录',
-          draft: '当前草稿',
-          draftReady: '已载入',
-          draftEmpty: '未准备',
-          draftDescriptionReady: '文档面板里已经有可扫描内容',
-          draftDescriptionEmpty: '还没有放入文本或上传文件',
-          actor: '当前模式',
-          actorDescription: '显示你现在是访客还是已登录账号',
-          guest: '访客模式',
-        },
-        activity: {
-          reviewBadge: '复核',
-          savedBadge: '已保存',
-          fallback: [
-            {
-              title: '载入一段示例文本',
-              summary: '先跑通“粘贴文本 → 扫描 → 查看句级结果”的完整路径。',
-              meta: '建议从首页范例开始',
-              badge: '起步',
-              badgeClass: 'bg-primary-50 text-primary-700 ring-1 ring-primary-700/10',
-            },
-            {
-              title: '进入文档面板',
-              summary: '把真实草稿粘进去，再看右侧结果区是否足够支撑人工判断。',
-              meta: '优先验证主链路',
-              badge: '流程',
-              badgeClass: 'bg-slate-100 text-slate-700 ring-1 ring-slate-200',
-            },
-            {
-              title: '登录后同步历史',
-              summary: '如果你要长期使用这套工具，再决定是否把访客流程切换成账号流程。',
-              meta: '可选',
-              badge: '账号',
-              badgeClass: 'bg-emerald-50 text-emerald-700 ring-1 ring-emerald-700/10',
-            },
-          ],
-        },
-        actions: [
-          {
-            key: 'new-scan',
-            title: '新建扫描',
-            description: '直接清空当前上下文，进入文档面板开始一轮新的检测。',
-          },
-          {
-            key: 'document',
-            title: '打开文档面板',
-            description: '继续编辑当前草稿，或准备上传真实文件。',
-          },
-          {
-            key: 'history',
-            title: '查看历史记录',
-            description: '快速回到最近的结果，核对是否需要人工改写。',
-          },
-          {
-            key: 'examples',
-            title: '调出示例库',
-            description: '对比一组标准示例，确认产品的扫描呈现是否够有说服力。',
-          },
-        ],
-        integrations: {
-          live: '可用',
-          preview: '预览',
-        },
-      }
-    : {
-        commandCenterEyebrow: 'Workspace overview',
-        commandCenterTitle: 'Put scans, quota state, and review priorities on one screen.',
-        commandCenterSubtitle: 'The home view should do more than greet the user. It should show remaining quota, the records that need review first, and the next panel worth opening.',
-        commandReadyEmpty: 'Awaiting draft',
-        commandReadyDraft: 'Draft ready',
-        commandReadyResult: 'Results ready',
-        primaryCta: 'Start a new scan',
-        secondaryCta: 'View examples',
-        signalTitle: 'Priority signals',
-        snapshotEyebrow: 'Activity snapshot',
-        snapshotTitle: 'Recent records and manual review queue',
-        snapshotBadge: 'LIVE',
-        snapshotCta: 'Open full history',
-        actionsTitle: 'Next actions',
-        stats: {
-          remaining: 'Remaining today',
-          remainingDescription: 'Characters still available for processing today',
-          used: 'Used today',
-          usedDescription: 'Allowance already consumed today',
-          records: 'Saved records',
-          recordsDescription: 'Records stored for this account or local guest session',
-          flagged: 'Flagged records',
-          flaggedDescription: 'Higher-risk items that likely need manual review',
-        },
-        signals: {
-          topRisk: 'Top-risk record',
-          topRiskFallback: 'No records yet',
-          topRiskDescription: 'Open the record with the strongest AI tendency first',
-          draft: 'Current draft',
-          draftReady: 'Loaded',
-          draftEmpty: 'Empty',
-          draftDescriptionReady: 'There is content ready to scan in the document panel',
-          draftDescriptionEmpty: 'No text or uploaded file has been prepared yet',
-          actor: 'Current mode',
-          actorDescription: 'Shows whether you are in guest mode or using an account',
-          guest: 'Guest mode',
-        },
-        activity: {
-          reviewBadge: 'Review',
-          savedBadge: 'Saved',
-          fallback: [
-            {
-              title: 'Load a sample passage',
-              summary: 'Run the full path of paste -> scan -> sentence-level review before anything else.',
-              meta: 'Best first check',
-              badge: 'Start',
-              badgeClass: 'bg-primary-50 text-primary-700 ring-1 ring-primary-700/10',
-            },
-            {
-              title: 'Open the document panel',
-              summary: 'Drop in a real draft and judge whether the results area supports a real manual decision.',
-              meta: 'Validate the main workflow',
-              badge: 'Flow',
-              badgeClass: 'bg-slate-100 text-slate-700 ring-1 ring-slate-200',
-            },
-            {
-              title: 'Sign in only if you need continuity',
-              summary: 'Keep the guest path intact until saved history and quota sync become necessary.',
-              meta: 'Optional',
-              badge: 'Account',
-              badgeClass: 'bg-emerald-50 text-emerald-700 ring-1 ring-emerald-700/10',
-            },
-          ],
-        },
-        actions: [
-          {
-            key: 'new-scan',
-            title: 'New scan',
-            description: 'Clear the current context and begin a fresh detection pass.',
-          },
-          {
-            key: 'document',
-            title: 'Open document panel',
-            description: 'Continue editing the current draft or prepare a real file upload.',
-          },
-          {
-            key: 'history',
-            title: 'Inspect history',
-            description: 'Return to recent results and confirm what still needs manual rewriting.',
-          },
-          {
-            key: 'examples',
-            title: 'Open the example library',
-            description: 'Compare the built-in examples and judge whether the scan presentation is convincing enough.',
-          },
-        ],
-        integrations: {
-          live: 'Live',
-          preview: 'Preview',
-        },
-      }
-);
+const dashboardHomeCopy = computed(() => t('scan.dashboard'));
+const historyAuthPromptItems = computed(() => t('scan.history.authPrompt.items'));
 
 const pickRandomQuote = () => {
   if (!motivationalQuotes.value.length) {
@@ -1730,8 +1545,6 @@ const minDetectChars = 200;
 const countVisibleCharacters = (value = '') => String(value || '').replace(/\s/g, '').length;
 const clampPercent = (value) => Math.max(0, Math.min(100, Math.round(Number(value) || 0)));
 const collapseSummaryForDisplay = (summary) => {
-  // 当前用户主路径只展示 AI / Human，两类之和固定回收到 100。
-  // 如果以后重新放开 mixed，这里、历史摘要和 PDF 统计要一起恢复。
   const ai = clampPercent(summary?.ai);
   return {
     ai,
@@ -1744,9 +1557,28 @@ const characterUsage = computed(() =>
 );
 
 const characterCount = computed(() => scanStore.characterCount);
+const isOverCharacterLimit = computed(() => characterCount.value > scanStore.characterLimit);
+const overflowCharacterCount = computed(() => Math.max(characterCount.value - scanStore.characterLimit, 0));
 const detectableCharacterCount = computed(() => countVisibleCharacters(scanStore.inputText));
 const remainingToMinDetect = computed(() => Math.max(minDetectChars - detectableCharacterCount.value, 0));
-const canStartScan = computed(() => detectableCharacterCount.value >= minDetectChars);
+const canStartScan = computed(() => detectableCharacterCount.value >= minDetectChars && !isOverCharacterLimit.value);
+const scanReadinessCounter = computed(() =>
+  isOverCharacterLimit.value
+    ? `${characterCount.value} / ${scanStore.characterLimit}`
+    : `${detectableCharacterCount.value} / ${minDetectChars}`
+);
+const scanReadinessMessage = computed(() => {
+  if (isOverCharacterLimit.value) {
+    return t('scan.editor.tooLongHint', {
+      limit: scanStore.characterLimit,
+      overflow: overflowCharacterCount.value,
+    });
+  }
+  if (canStartScan.value) {
+    return t('scan.editor.minDetectHint', { minimum: minDetectChars });
+  }
+  return t('scan.editor.minDetectRemaining', { remaining: remainingToMinDetect.value });
+});
 const resultHasMergedBlocks = computed(() =>
   Boolean(scanStore.result?.sentences?.some((item) => String(item.text || '').includes('\n')))
 );
@@ -1755,20 +1587,17 @@ const historyHasMergedBlocks = computed(() =>
 );
 const resultDisplaySummary = computed(() => collapseSummaryForDisplay(scanStore.result?.summary));
 const activeHistoryDisplaySummary = computed(() => collapseSummaryForDisplay(activeHistoryRecord.value?.analysis?.summary));
-const modelVersionLabel = computed(() => (
-  // 这是用户可见的版本标签，不等于上游真实 provider model name。
-  String(locale.value || '').toLowerCase().startsWith('zh') ? '模型 v1.0' : 'Model v1.0'
-));
-const mergedDetectionNotice = computed(() => (
-  String(locale.value || '').toLowerCase().startsWith('zh')
-    ? '为保证准确性，少于 200 个非空白字符的相邻段落会自动合并检测。预览区仍保持原始段落结构，相同颜色表示这些段落共享同一检测结果。'
-    : 'For accuracy, adjacent paragraphs under 200 non-whitespace characters are merged into one detection block. The preview keeps the original paragraph layout; identical colors mean those paragraphs share the same detection result.'
-));
-const aiLikelyHintText = computed(() => (
-  String(locale.value || '').toLowerCase().startsWith('zh')
-    ? '含 AI 生成特征的检测块总数'
-    : 'Total detection blocks with AI characteristics'
-));
+const normalizeModelVersionLabel = (modelName) => {
+  const normalized = String(modelName || '').trim();
+  if (!normalized) return '';
+  const version = normalized.match(/v\d+(?:\.\d+)?/i)?.[0];
+  return version ? t('scan.results.summary.modelBadge', { version }) : normalized;
+};
+const modelVersionLabel = computed(() =>
+  normalizeModelVersionLabel(scanStore.result?.modelName || scanStore.result?.model_name) || t('scan.results.summary.badge')
+);
+const mergedDetectionNotice = computed(() => t('scan.results.mergeNotice'));
+const aiLikelyHintText = computed(() => t('scan.history.aiLikelyHint'));
 
 const formatQuotaValue = (value) => {
   const numeric = Number(value ?? 0);
@@ -1897,16 +1726,13 @@ const refreshQuota = async ({ retryOnGuestError = true } = {}) => {
     };
     isQuotaReady.value = true;
     
-    // 更新 authStore 的额度信息
     if (Number.isFinite(remaining) && remaining >= 0) {
       const currentTotal = authStore.creditUsage.total;
       
       if (currentTotal === 0) {
-        // 如果还没有设置 total，用 limit 或 remaining 设置（首次加载）
         const initialTotal = Math.max(limit, remaining);
         authStore.setCredits({ total: initialTotal, remaining });
       } else {
-        // 已有 total，只更新 remaining
         authStore.setCredits({ remaining, onlyRemaining: true });
       }
     }
@@ -2086,7 +1912,6 @@ const historyPreviewHtml = computed(() => {
 
 const historyCharacterUsage = computed(() => {
   const record = activeHistoryRecord.value;
-  // 优先使用后端返回的 wordCount，如果没有则计算 inputText 长度
   const length = record?.analysis?.wordCount ?? (record?.inputText ? record.inputText.length : 0);
   return `${length} ${t('scan.editor.chars') || 'chars'}`;
 });
@@ -2100,9 +1925,6 @@ const clearActiveSentence = () => {
 };
 
 const syncPreviewHoverState = async () => {
-  // 右侧检测块和左侧预览区靠 data-sentence-id 联动。
-  // 如果以后改结果卡片结构或高亮 HTML，记得一起改这里。
-  await nextTick();
   const containers = [previewContentRef.value, historyPreviewRef.value].filter(Boolean);
   containers.forEach((container) => {
     const nodes = Array.from(container.querySelectorAll('[data-sentence-id]'));
@@ -2138,11 +1960,11 @@ const syncPanelToRoute = (panel) => {
 
 const setActivePanel = (panel) => {
   const next = parsePanel(panel);
-  if (activePanel.value === next) return;
   if (isComingSoonPanel(next)) {
     triggerComingSoon(next === 'qa' ? t('scan.nav.qa') : t('scan.nav.pricing'));
     return;
   }
+  if (activePanel.value === next) return;
   activePanel.value = next;
 };
 
@@ -2174,7 +1996,7 @@ const buildHistoryTitle = () => {
   if (!raw) {
     return '';
   }
-  return raw.length > 24 ? `${raw.slice(0, 24)}…` : raw;
+  return raw.length > 24 ? `${raw.slice(0, 24)}...` : raw;
 };
 
 const formatHistorySummary = (record) => {
@@ -2182,7 +2004,7 @@ const formatHistorySummary = (record) => {
     return t('scan.functions.scan');
   }
   const { ai, human } = collapseSummaryForDisplay(record.analysis.summary);
-  return `${t('scan.results.summary.aiLabel')} ${ai}% · ${t('scan.results.summary.humanShort')} ${human}%`;
+  return `${t('scan.results.summary.aiLabel')} ${ai}% / ${t('scan.results.summary.humanShort')} ${human}%`;
 };
 
 const syncEditorFromStore = () => {
@@ -2203,6 +2025,7 @@ onMounted(async () => {
   }
   const initialPanel = parsePanel(route.query.panel);
   activePanel.value = initialPanel;
+  syncPanelToRoute(initialPanel);
   if (initialPanel === 'home') {
     pickRandomQuote();
   }
@@ -2289,6 +2112,10 @@ watch(
   () => route.query.panel,
   (value) => {
     const next = parsePanel(value);
+    if (typeof value === 'string' && !panelOptions.includes(value)) {
+      syncPanelToRoute(next);
+      return;
+    }
     if (activePanel.value !== next) {
       activePanel.value = next;
     }
@@ -2296,10 +2123,9 @@ watch(
 );
 
 watch(activePanel, async (panel) => {
-  clearActiveSentence();
   syncPanelToRoute(panel);
+  clearActiveSentence();
   if (panel === 'history') {
-    // 切换到历史记录面板时，自动刷新历史记录
     if (authStore.isAuthenticated) {
       await scanStore.syncHistoryFromBackend();
     }
@@ -2319,7 +2145,6 @@ watch(activePanel, async (panel) => {
 watch(activeHistoryId, async (newId) => {
   clearActiveSentence();
   if (newId && authStore.isAuthenticated) {
-    // 选中历史记录时，获取详情（包含完整 text 和 wordCount）
     await scanStore.fetchHistoryRecordDetail(newId);
   }
 });
@@ -2341,7 +2166,6 @@ watch(
       return;
     }
     
-    // 如果是新增记录且用户在历史页面，自动选中最新记录
     if (activePanel.value === 'history' && oldRecords && records.length > oldRecords.length) {
       const latestRecord = records[0];
       if (latestRecord) {
@@ -2502,10 +2326,33 @@ const toggleFunction = (key) => {
 
 const onEditorInput = (event) => {
   scanStore.setEditorHtml(event.target.innerHTML);
+  if (event.target.innerHTML !== scanStore.editorHtml) {
+    event.target.innerHTML = scanStore.editorHtml;
+  }
   localText.value = scanStore.inputText;
   scanStore.resetResult();
   highlightedPreviewHtml.value = '';
   editorMode.value = 'edit';
+};
+
+const onEditorPaste = (event) => {
+  const clipboard = event.clipboardData;
+  if (!clipboard) return;
+  const html = clipboard.getData('text/html');
+  const text = clipboard.getData('text/plain');
+  if (!html && !text) return;
+
+  event.preventDefault();
+  const safeHtml = sanitizeHtmlForEditor(html || plainTextToHtml(text), text);
+  document.execCommand('insertHTML', false, safeHtml);
+  if (editorRef.value) {
+    scanStore.setEditorHtml(editorRef.value.innerHTML);
+    editorRef.value.innerHTML = scanStore.editorHtml;
+    localText.value = scanStore.inputText;
+    scanStore.resetResult();
+    highlightedPreviewHtml.value = '';
+    editorMode.value = 'edit';
+  }
 };
 
 const applyCommand = (command) => {
@@ -2533,13 +2380,24 @@ const handleScan = async () => {
   }
 
   if (!scanStore.inputText.trim()) {
-    showToast({ title: '提示', message: t('scan.loginPrompt.inputFirst') });
+    showToast({ title: '\u63D0\u793A', message: t('scan.loginPrompt.inputFirst') });
+    return;
+  }
+
+  if (isOverCharacterLimit.value) {
+    showToast({
+      title: '\u63D0\u793A',
+      message: t('scan.editor.tooLongToast', {
+        current: characterCount.value,
+        limit: scanStore.characterLimit,
+      }),
+    });
     return;
   }
 
   if (!canStartScan.value) {
     showToast({
-      title: '提示',
+      title: '\u63D0\u793A',
       message: t('scan.editor.minDetectRemaining', { remaining: remainingToMinDetect.value }),
     });
     return;
@@ -2568,9 +2426,21 @@ const handleScan = async () => {
     showQuotaUpsellOnce();
   } catch (error) {
     const errorCode = extractApiErrorCode(error);
-    if (error?.status === 429 && errorCode === 'QUOTA_EXCEEDED') {
+    if (errorCode === 'TEXT_TOO_LONG') {
+      showToast({
+        title: '\u63D0\u793A',
+        message:
+          error?.message ||
+          t('scan.editor.tooLongToast', {
+            current: characterCount.value,
+            limit: scanStore.characterLimit,
+          }),
+      });
+    } else if (error?.status === 429 && errorCode === 'QUOTA_EXCEEDED') {
       await refreshQuota({ retryOnGuestError: false });
       promptGuestQuotaUpgrade({ exhausted: true });
+    } else {
+      showScanFailureToast(error);
     }
   } finally {
     isScanning.value = false;
@@ -2661,8 +2531,8 @@ const onFileChange = async (event) => {
       syncEditorFromStore();
     });
     markOnboardingStep('upload');
-  } catch {
-    // Reader errors are already handled inside the file parsing flow.
+  } catch (error) {
+    showUploadFailureToast(error);
   } finally {
     event.target.value = '';
     scanStore.commitDraftToStorage();
@@ -2699,8 +2569,8 @@ const onDrop = async (event) => {
       syncEditorFromStore();
     });
     markOnboardingStep('upload');
-  } catch {
-    // Reader errors are already handled inside the file parsing flow.
+  } catch (error) {
+    showUploadFailureToast(error);
   } finally {
     scanStore.commitDraftToStorage();
   }

@@ -21,7 +21,7 @@ export default {
   },
   languages: {
     en: 'English',
-    zh: '中文（简体）',
+    zh: 'Chinese',
   },
   header: {
     nav: {
@@ -39,7 +39,7 @@ export default {
       logout: 'Log Out',
     },
     user: {
-      plan: 'Current Plan · Free',
+      plan: 'Current Plan - Free',
     },
     quotaNotice: {
       title: 'Quota info',
@@ -83,7 +83,7 @@ export default {
   },
   contactPageLegacy: {
     badge: 'Contact Us',
-    title: 'Tell us what you’re thinking',
+    title: 'Tell us what you are thinking',
     subtitle: 'Whether it is product ideas, feedback, or partnerships, we will reply within 2 business days. You can also reach us at',
     subtitleSuffix: 'to contact us directly.',
     faq: {
@@ -93,7 +93,7 @@ export default {
         'How should I read AI / Human results?',
         'What can I export in the current version?',
       ],
-      cta: 'Go to Q&A Center →',
+      cta: 'Go to Q&A Center ->',
     },
     form: {
       name: 'Name',
@@ -140,7 +140,7 @@ export default {
   multiUpload: {
     flow: {
       badge: 'Batch upload flow',
-      sequence: 'UPLOAD → QUEUE → REVIEW → DOWNLOAD',
+      sequence: 'UPLOAD -> QUEUE -> REVIEW -> DOWNLOAD',
       steps: {
         upload: {
           label: 'Upload',
@@ -192,7 +192,7 @@ export default {
     badge: 'Knowledge Base',
     title: 'Q&A Center',
     subtitle: 'Common questions about the AI text-detection workflow that is actually available in the current release.',
-    searchPlaceholder: 'Search keywords, e.g. “file format” or “detection result”',
+    searchPlaceholder: 'Search keywords, e.g. file format or detection result',
     faqs: [
       {
         id: 'current-scope',
@@ -253,7 +253,7 @@ export default {
     title: 'New user guide',
     subtitle: 'Follow the steps to upload, scan, review results, and export reports.',
     skip: 'Maybe later',
-    complete: 'I’ve got it',
+    complete: "I've got it",
     status: {
       done: 'Done',
       current: 'In progress',
@@ -319,7 +319,7 @@ export default {
       placeholder: 'Enter your email for product news',
       cta: 'Subscribe',
     },
-    copyright: '© {year} RepreGuard. All rights reserved.',
+    copyright: '(c) {year} RepreGuard. All rights reserved.',
     columns: {
       product: {
         title: 'Product',
@@ -351,12 +351,12 @@ export default {
     },
   },
   hero: {
-    badge: '🏆 #1 AI Detector · New V1.0 is live',
+    badge: '#1 AI Detector - New V2.0 is live',
     titlePrefix: 'Detect and resolve',
     titleHighlight: 'AI-generated text',
     subtitle: 'RepreGuard is currently focused on AI text detection. Paste or upload text to get sentence- and passage-level risk signals you can review directly.',
     primaryCta: 'Explore the workspace',
-    secondaryCta: 'View the detection workflow →',
+    secondaryCta: 'View the detection workflow ->',
     trust: 'Focused on AI text detection',
     highlights: [
       'Paragraph-level AI probability heatmaps',
@@ -457,7 +457,7 @@ export default {
   showcaseSection: {
     title: 'These are the best-fit use cases right now',
     subtitle: 'The current version is built for AI-generated content detection in workflows that need quick triage, manual review, and exportable records.',
-    metricLabel: 'Best for · {value}',
+    metricLabel: 'Best for - {value}',
     more: 'Learn more',
     cases: {
       social: {
@@ -575,15 +575,108 @@ export default {
       examplesCta: 'Usage examples',
       examplesHint: 'Review example documents and snapshots to get familiar quickly.',
     },
+    dashboard: {
+      commandCenterEyebrow: 'Workspace overview',
+      commandCenterTitle: 'Put scans, quota state, and review priorities on one screen.',
+      commandCenterSubtitle:
+        'The home view should do more than greet the user. It should show remaining quota, the records that need review first, and the next panel worth opening.',
+      commandReadyEmpty: 'Awaiting draft',
+      commandReadyDraft: 'Draft ready',
+      commandReadyResult: 'Results ready',
+      primaryCta: 'Start a new scan',
+      secondaryCta: 'View examples',
+      signalTitle: 'Priority signals',
+      snapshotEyebrow: 'Activity snapshot',
+      snapshotTitle: 'Recent records and manual review queue',
+      snapshotBadge: 'Live',
+      snapshotCta: 'Open full history',
+      actionsTitle: 'Next actions',
+      stats: {
+        remaining: 'Remaining today',
+        remainingDescription: 'Characters still available for processing today',
+        used: 'Used today',
+        usedDescription: 'Allowance already consumed today',
+        records: 'Saved records',
+        recordsDescription: 'Records stored for this account or local guest session',
+        flagged: 'Flagged records',
+        flaggedDescription: 'Higher-risk items that likely need manual review',
+      },
+      signals: {
+        topRisk: 'Top-risk record',
+        topRiskFallback: 'No records yet',
+        topRiskDescription: 'Open the record with the strongest AI tendency first',
+        draft: 'Current draft',
+        draftReady: 'Loaded',
+        draftEmpty: 'Empty',
+        draftDescriptionReady: 'There is content ready to scan in the document panel',
+        draftDescriptionEmpty: 'No text or uploaded file has been prepared yet',
+        actor: 'Current mode',
+        actorDescription: 'Shows whether you are in guest mode or using an account',
+        guest: 'Guest mode',
+      },
+      activity: {
+        reviewBadge: 'Review',
+        savedBadge: 'Saved',
+        fallback: [
+          {
+            title: 'Load a sample passage',
+            summary: 'Run the full path of paste -> scan -> sentence-level review before anything else.',
+            meta: 'Best first check',
+            badge: 'Start',
+            badgeClass: 'bg-primary-50 text-primary-700 ring-1 ring-primary-700/10',
+          },
+          {
+            title: 'Open the document panel',
+            summary: 'Drop in a real draft and judge whether the results area supports a real manual decision.',
+            meta: 'Validate the main workflow',
+            badge: 'Flow',
+            badgeClass: 'bg-slate-100 text-slate-700 ring-1 ring-slate-200',
+          },
+          {
+            title: 'Sign in only if you need continuity',
+            summary: 'Keep the guest path intact until saved history and quota sync become necessary.',
+            meta: 'Optional',
+            badge: 'Account',
+            badgeClass: 'bg-emerald-50 text-emerald-700 ring-1 ring-emerald-700/10',
+          },
+        ],
+      },
+      actions: [
+        {
+          key: 'new-scan',
+          title: 'New scan',
+          description: 'Clear the current context and begin a fresh detection pass.',
+        },
+        {
+          key: 'document',
+          title: 'Open document panel',
+          description: 'Continue editing the current draft or prepare a real file upload.',
+        },
+        {
+          key: 'history',
+          title: 'Inspect history',
+          description: 'Return to recent results and confirm what still needs manual rewriting.',
+        },
+        {
+          key: 'examples',
+          title: 'Open the example library',
+          description: 'Compare the built-in examples and judge whether the scan presentation is convincing enough.',
+        },
+      ],
+      integrations: {
+        live: 'Live',
+        preview: 'Preview',
+      },
+    },
     welcome: {
       title: 'Welcome, {name}',
     },
     quotes: [
-      '“To survive, you must tell stories.” — Umberto Eco.',
-      '“Writing is thinking. To write well is to think clearly.” — David McCullough.',
-      '“The secret of getting ahead is getting started.” — Mark Twain.',
-      '“Clarity precedes mastery.” — Robin Sharma.',
-      '“Precision builds trust in every insight.” — RepreGuard Research.',
+      '"To survive, you must tell stories." - Umberto Eco.',
+      '"Writing is thinking. To write well is to think clearly." - David McCullough.',
+      '"The secret of getting ahead is getting started." - Mark Twain.',
+      '"Clarity precedes mastery." - Robin Sharma.',
+      '"Precision builds trust in every insight." - RepreGuard Research.',
     ],
     quickLaunch: {
       badge: 'Quick launch',
@@ -672,7 +765,12 @@ export default {
       wordCount: 'Words: {current}/{limit}',
       minDetectHint: 'At least {minimum} non-whitespace characters are required for reliable detection.',
       minDetectRemaining: '{remaining} more non-whitespace characters needed before scanning.',
+      tooLongHint: 'This text exceeds the {limit}-character limit by {overflow} characters.',
+      tooLongToast: 'This text exceeds the {limit}-character limit. Please shorten it before scanning.',
       uploaded: 'Uploaded: {name}',
+      scanErrorTitle: 'Scan failed',
+      scanErrorMessage: 'Detection service is unavailable. Please try again later.',
+      uploadErrorTitle: 'Upload failed',
       modes: {
         edit: 'Edit mode',
         preview: 'Highlight preview',
@@ -685,7 +783,8 @@ export default {
       enhancement: 'Enhancement',
       summary: {
         title: 'Detection Analysis',
-        badge: 'Model v1.0',
+        badge: 'Model v2.0',
+        modelBadge: 'Model {version}',
         label: 'AI Probability',
         ai: 'AI Generated',
         mixed: 'Review',
@@ -712,7 +811,7 @@ export default {
       startScan: 'Start scan',
     },
     toolbar: {
-      bulleted: '• List',
+      bulleted: '* List',
       numbered: '1. List',
       alignLeft: 'Align left',
       alignCenter: 'Center',
@@ -733,6 +832,16 @@ export default {
       title: 'History',
       subtitle: 'Review recent detection tasks',
       back: 'Back to editor',
+      authPrompt: {
+        title: 'Sign in to view scan history',
+        subtitle: 'Sign in to sync recent scan records and continue reviewing on any device.',
+        items: [
+          'Save up to 100 scan records',
+          'Review previous detection results over time',
+          'Unlock PDF export and higher daily quota',
+        ],
+        cta: 'Sign in now',
+      },
       recentTitle: 'Recent records',
       recentSubtitle: 'Select a record to view detailed analysis',
       recordFallback: 'Scan record',
@@ -745,8 +854,8 @@ export default {
       aiLikelyHint: 'Total detection blocks with AI characteristics',
       emptyRecord: 'No history results available yet. Please try again later.',
       empty: 'No history yet. Complete a scan to review results here.',
-      summaryLine: 'AI {ai}% · Human {human}%',
-      fileLabel: 'File · {name}',
+      summaryLine: 'AI {ai}% / Human {human}%',
+      fileLabel: 'File: {name}',
       download: 'Download report',
     },
     emptyState: 'Select a panel on the left to continue.',
@@ -775,7 +884,7 @@ export default {
       },
       scan: {
         label: 'Start scan',
-        description: 'Select functions and click “Start scan” to get results.',
+        description: 'Select functions and click "Start scan" to get results.',
       },
       review: {
         label: 'Review report',
@@ -799,9 +908,9 @@ export default {
         found: 'Source found',
       },
       fallbacks: {
-        missing: ['Missing citation', '缺失引用'],
-        pending: ['Pending verification', '待验证'],
-        found: ['Source found', '已找到线索'],
+        missing: ['Missing citation', 'Missing citation'],
+        pending: ['Pending verification', 'Pending verification'],
+        found: ['Source found', 'Source found'],
       },
     },
     simulation: {
@@ -812,7 +921,7 @@ export default {
       },
       emptyTranslation: 'No analyzable sentences yet. Please enter text and rescan.',
       emptyContent: 'No content yet. Please enter text.',
-      translationLine: 'Sentence {index}: {text} → {translated} [Sample translation]',
+      translationLine: 'Sentence {index}: {text} -> {translated} [Sample translation]',
       polishSuggestion: '{text}, add more concrete facts and data to strengthen credibility.',
       polishReasonHuman: 'Refine tone to keep style consistent.',
       polishReasonAi: 'Rewrite structure and add detail to reduce AI traces.',
@@ -869,7 +978,7 @@ export default {
   },
   pricingPage: {
     statusBanner: {
-      onPlan: 'You’re on a',
+      onPlan: "You're on a",
       planName: 'Free Plan',
       limit: 'This page is currently a plan preview. Actual activation details will follow the backend and launch notice.',
       close: 'Close banner',

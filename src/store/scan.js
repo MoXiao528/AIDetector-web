@@ -1,7 +1,8 @@
-﻿import { defineStore } from 'pinia';
+import { defineStore } from 'pinia';
 import { computed, ref, watch } from 'vue';
 import { globalT } from '../i18n';
 import { fetchScanExamples } from '../api/modules/examples';
+import { extractApiErrorCode } from '../api/client';
 import { detectText } from '../api/modules/scan';
 import { combineImportedFileContents, readTextFromFile } from '../utils/fileReaders';
 import { clampProbability } from '../utils/detectionStyles';
@@ -10,6 +11,7 @@ import {
   extractTextFromHtml,
   hasParagraphRange,
   plainTextToHtml,
+  sanitizeHtmlForEditor,
 } from '../utils/editorContent';
 import { getFallbackHeroExamples, getFallbackUsageExamples } from '../utils/usageExamples';
 import { useAuthStore } from './auth';
@@ -24,7 +26,7 @@ import {
 } from '../api/modules/history';
 
 const validFunctionKeys = ['scan'];
-const CHARACTER_LIMIT = 10000;
+const CHARACTER_LIMIT = 20000;
 const STORAGE_KEY = 'ai-detector-scan-draft';
 const HISTORY_STORAGE_KEY = 'ai-detector-history-records';
 const EXAMPLES_LOCALE_STORAGE_KEY = 'locale';
@@ -40,6 +42,27 @@ const getInitialExamplesLocale = () => {
   return resolveExamplesLocale(window.localStorage.getItem(EXAMPLES_LOCALE_STORAGE_KEY) || DEFAULT_EXAMPLES_LOCALE);
 };
 
+const buildTextTooLongMessage = ({ current = 0, limit = CHARACTER_LIMIT } = {}) =>
+  globalT('scan.editor.tooLongToast', { current, limit });
+
+const createTextTooLongError = (current) => {
+  const message = buildTextTooLongMessage({ current });
+  const error = new Error(message);
+  error.status = 422;
+  error.code = 'TEXT_TOO_LONG';
+  error.details = {
+    detail: {
+      code: 'TEXT_TOO_LONG',
+      message,
+      detail: {
+        maximum: CHARACTER_LIMIT,
+        current,
+      },
+    },
+  };
+  return error;
+};
+
 const splitParagraphTokens = (text = '') =>
   String(text)
     .replace(/\r\n/g, '\n')
@@ -50,6 +73,14 @@ const labelToTypeMap = {
   AI: 'ai',
   Human: 'human',
   Mixed: 'mixed',
+};
+
+const normalizeLabelType = (value) => {
+  const normalized = String(value || '').trim().toLowerCase();
+  if (['ai', 'fake', 'llm'].includes(normalized)) return 'ai';
+  if (['human', 'real'].includes(normalized)) return 'human';
+  if (['mixed', 'borderline'].includes(normalized)) return 'mixed';
+  return '';
 };
 
 const parseSummaryValue = (value) => {
@@ -108,16 +139,73 @@ const normalizeSummary = ({ summary, sentences, score }) => {
 const pickFirst = (...values) => values.find((value) => value !== undefined && value !== null);
 
 const normalizeScorePercent = (value) => {
-  if (typeof value !== 'number' || !Number.isFinite(value)) return null;
-  if (value >= 0 && value <= 1) {
-    return Math.round(value * 100);
+  const parsed = typeof value === 'number' ? value : Number(value);
+  if (!Number.isFinite(parsed)) return null;
+  if (parsed >= 0 && parsed <= 1) {
+    return Math.round(parsed * 100);
   }
-  return Math.max(0, Math.min(Math.round(value), 100));
+  return Math.max(0, Math.min(Math.round(parsed), 100));
+};
+
+const normalizeRawLogitScorePercent = (rawScore, threshold = 0) => {
+  const parsedRawScore = typeof rawScore === 'number' ? rawScore : Number(rawScore);
+  if (!Number.isFinite(parsedRawScore)) return null;
+  const parsedThreshold = typeof threshold === 'number' ? threshold : Number(threshold);
+  const rawThreshold = Number.isFinite(parsedThreshold) ? parsedThreshold : 0;
+  const probability = 1 / (1 + Math.exp(-(parsedRawScore - rawThreshold)));
+  return normalizeScorePercent(probability);
+};
+
+const toPositiveInteger = (value) => {
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed) || parsed <= 0) return null;
+  return Math.floor(parsed);
+};
+
+const countSentenceParagraphs = (sentence) => {
+  const source = pickFirst(sentence?.raw, sentence?.text, '');
+  const count = String(source || '')
+    .replace(/\r\n/g, '\n')
+    .split('\n')
+    .filter((line) => line.trim())
+    .length;
+  return Math.max(count, 1);
+};
+
+const normalizeSentenceParagraphRanges = (sentences = []) => {
+  let previousEnd = 0;
+  return sentences.map((sentence) => {
+    const paragraphCount = countSentenceParagraphs(sentence);
+    let start = toPositiveInteger(pickFirst(sentence?.startParagraph, sentence?.start_paragraph));
+    let end = toPositiveInteger(pickFirst(sentence?.endParagraph, sentence?.end_paragraph));
+    const hasValidRange = start !== null && end !== null && end >= start;
+    const overlapsPreviousRange = hasValidRange && start <= previousEnd;
+
+    if (!hasValidRange || overlapsPreviousRange) {
+      start = previousEnd + 1;
+      end = start + paragraphCount - 1;
+    } else if (paragraphCount > 1 && end === start) {
+      end = start + paragraphCount - 1;
+    }
+
+    previousEnd = Math.max(previousEnd, end);
+    return {
+      ...sentence,
+      startParagraph: start,
+      endParagraph: end,
+      start_paragraph: start,
+      end_paragraph: end,
+    };
+  });
 };
 
 const resolveSentenceType = (sentence, fallbackType = 'human') => {
   if (['ai', 'mixed', 'human'].includes(sentence?.type)) {
     return sentence.type;
+  }
+  const normalizedLabelType = normalizeLabelType(sentence?.label);
+  if (normalizedLabelType) {
+    return normalizedLabelType;
   }
   if (sentence?.label && labelToTypeMap[sentence.label]) {
     return labelToTypeMap[sentence.label];
@@ -130,7 +218,7 @@ const buildFallbackSentences = ({ text = '', score = null, label = '', idPrefix 
   if (!normalizedText) return [];
 
   const scorePercent = normalizeScorePercent(score) ?? 0;
-  const fallbackType = labelToTypeMap[label] || (scorePercent >= 70 ? 'ai' : scorePercent >= 40 ? 'mixed' : 'human');
+  const fallbackType = normalizeLabelType(label) || labelToTypeMap[label] || (scorePercent >= 70 ? 'ai' : scorePercent >= 40 ? 'mixed' : 'human');
   const probability = clampProbability(scorePercent / 100);
 
   return splitParagraphTokens(normalizedText)
@@ -185,6 +273,8 @@ const normalizeAnalysisPayload = (
     });
   }
 
+  sentences = normalizeSentenceParagraphRanges(sentences);
+
   const summary = normalizeSummary({
     summary: source?.summary,
     sentences,
@@ -193,14 +283,16 @@ const normalizeAnalysisPayload = (
   const paragraphCount = splitParagraphTokens(fallbackText).filter((item) => item.text).length;
   const canRebuildHighlight =
     Boolean(fallbackText) && Boolean(sentences.length) && (sentences.every((item) => hasParagraphRange(item)) || paragraphCount === sentences.length);
+  const fallbackHighlightedHtml = pickFirst(source?.highlightedHtml, source?.highlighted_html);
   const highlightedHtml = canRebuildHighlight
     ? buildHighlightedPreviewHtml({
       fallbackText,
       sentences,
-      fallbackHighlightedHtml: pickFirst(source?.highlightedHtml, source?.highlighted_html),
+      fallbackHighlightedHtml,
     })
-    : pickFirst(source?.highlightedHtml, source?.highlighted_html) ||
-      buildHighlightedPreviewHtml({
+    : fallbackHighlightedHtml
+      ? sanitizeHtmlForEditor(fallbackHighlightedHtml, fallbackText)
+      : buildHighlightedPreviewHtml({
         fallbackText,
         sentences,
       });
@@ -244,7 +336,7 @@ const normalizeHistoryRecordPayload = (record) => {
     createdAt: pickFirst(record.createdAt, record.created_at, new Date().toISOString()),
     functions: normalizeFunctions(pickFirst(record.functions, record.functions_used)),
     inputText: inputTextValue,
-    editorHtml: pickFirst(record.editorHtml, record.editor_html, plainTextToHtml(inputTextValue)),
+    editorHtml: sanitizeHtmlForEditor(pickFirst(record.editorHtml, record.editor_html, plainTextToHtml(inputTextValue)), inputTextValue),
     analysis: normalizeAnalysisPayload(pickFirst(record.analysis, record.result), {
       fallbackText: inputTextValue,
       idPrefix: `history-${recordId || 'record'}`,
@@ -306,6 +398,7 @@ export const useScanStore = defineStore('scan', () => {
   let skipNextHistoryPersist = false;
 
   const characterCount = computed(() => inputText.value.length);
+  const isOverCharacterLimit = computed(() => characterCount.value > CHARACTER_LIMIT);
 
   const isGenericHistoryTitle = (value = '') => {
     const rawValue = String(value || '').trim();
@@ -349,17 +442,27 @@ export const useScanStore = defineStore('scan', () => {
     return String(globalT('scan.history.recordFallback') || fallbackTitle || '').trim();
   };
 
+  const syncUploadErrorForCurrentText = () => {
+    if (inputText.value.length > CHARACTER_LIMIT) {
+      uploadError.value = buildTextTooLongMessage({ current: inputText.value.length });
+      return;
+    }
+    uploadError.value = '';
+  };
+
   const setText = (value) => {
     const normalized = value || '';
     inputText.value = normalized;
     editorHtml.value = plainTextToHtml(normalized);
     selectedExampleKey.value = '';
+    syncUploadErrorForCurrentText();
   };
 
   const setImportedContent = ({ text = '', html = '' } = {}) => {
     inputText.value = text || '';
-    editorHtml.value = html || plainTextToHtml(text || '');
+    editorHtml.value = sanitizeHtmlForEditor(html || plainTextToHtml(text || ''), text || '');
     selectedExampleKey.value = '';
+    syncUploadErrorForCurrentText();
   };
 
   const setInputText = (value) => {
@@ -371,9 +474,10 @@ export const useScanStore = defineStore('scan', () => {
   };
 
   const setEditorHtml = (value = '') => {
-    editorHtml.value = value || '';
+    editorHtml.value = sanitizeHtmlForEditor(value || '');
     inputText.value = extractTextFromHtml(editorHtml.value);
     selectedExampleKey.value = '';
+    syncUploadErrorForCurrentText();
   };
 
   const applyExample = (key) => {
@@ -697,7 +801,7 @@ export const useScanStore = defineStore('scan', () => {
       title: recordTitle,
       functions: normalizedFunctions.length ? normalizedFunctions : ['scan'],
       input_text: text || '',
-      editor_html: html || plainTextToHtml(text || ''),
+      editor_html: sanitizeHtmlForEditor(html || plainTextToHtml(text || ''), text || ''),
       analysis: mapAnalysisToBackend(recordAnalysis),
     };
 
@@ -723,7 +827,7 @@ export const useScanStore = defineStore('scan', () => {
       createdAt: new Date().toISOString(),
       functions: normalizedFunctions.length ? normalizedFunctions : ['scan'],
       inputText: text || '',
-      editorHtml: html || plainTextToHtml(text || ''),
+      editorHtml: sanitizeHtmlForEditor(html || plainTextToHtml(text || ''), text || ''),
       analysis: recordAnalysis,
     };
 
@@ -733,12 +837,21 @@ export const useScanStore = defineStore('scan', () => {
 
   const mapAnalysisResult = (response, originalText) => {
     const inputTextValue = pickFirst(response?.inputText, response?.input_text, originalText, '');
-    return normalizeAnalysisPayload(response?.result, {
+    const analysis = normalizeAnalysisPayload(response?.result, {
       fallbackText: inputTextValue,
       idPrefix: `result-${pickFirst(response?.historyId, response?.history_id, response?.detectionId, response?.detection_id, response?.id, Date.now())}`,
-      fallbackScore: response?.score,
-      fallbackLabel: response?.label,
+      fallbackScore: pickFirst(
+        response?.score,
+        normalizeRawLogitScorePercent(pickFirst(response?.rawScore, response?.raw_score), pickFirst(response?.threshold, 0))
+      ),
+      fallbackLabel: normalizeLabelType(response?.label) || response?.label,
     });
+    const modelName = pickFirst(response?.modelName, response?.model_name, response?.result?.modelName, response?.result?.model_name);
+    if (modelName) {
+      analysis.modelName = modelName;
+      analysis.model_name = modelName;
+    }
+    return analysis;
   };
 
   const analyzeText = async (text, options = {}) => {
@@ -751,6 +864,10 @@ export const useScanStore = defineStore('scan', () => {
     );
     const editorHtmlValue = options.html || plainTextToHtml(text);
     try {
+      if (text.length > CHARACTER_LIMIT) {
+        throw createTextTooLongError(text.length);
+      }
+
       const response = await detectText({
         text,
         functions: functions.length ? functions : ['scan'],
@@ -888,6 +1005,7 @@ export const useScanStore = defineStore('scan', () => {
     lastUploadedFileName,
     selectedFunctions,
     characterCount,
+    isOverCharacterLimit,
     characterLimit: CHARACTER_LIMIT,
     setText,
     setImportedContent,
