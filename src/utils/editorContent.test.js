@@ -138,4 +138,16 @@ describe('editorContent utils', () => {
     expect(output).not.toContain('fixed');
     expect(output).not.toContain('grid');
   });
+
+  it('preserves editor toolbar formatting while stripping unsafe styles', () => {
+    const output = sanitizeHtmlForEditor(
+      '<div style="text-align: center; position: fixed" onclick="bad()"><font size="4" color="red">Large</font></div>'
+    );
+
+    expect(output).toContain('style="text-align: center"');
+    expect(output).toContain('<font size="4">Large</font>');
+    expect(output).not.toContain('position');
+    expect(output).not.toContain('onclick');
+    expect(output).not.toContain('color=');
+  });
 });

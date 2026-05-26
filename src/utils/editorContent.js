@@ -31,6 +31,7 @@ const SAFE_HTML_TAGS = new Set([
   'u',
   's',
   'span',
+  'font',
   'div',
   'ul',
   'ol',
@@ -73,6 +74,10 @@ const SAFE_CLASS_TOKENS = new Set([
   'text-emerald-900',
 ]);
 const SAFE_DATA_SENTENCE_ID_PATTERN = /^[\w:.-]+$/;
+const SAFE_ALIGN_VALUES = new Set(['left', 'right', 'center', 'justify', 'start', 'end']);
+const SAFE_STYLE_PROPERTIES = new Set(['text-align', 'font-size']);
+const SAFE_FONT_SIZE_PATTERN =
+  /^(?:\d{1,2}(?:\.\d+)?(?:px|em|rem|%)|xx-small|x-small|small|medium|large|x-large|xx-large|smaller|larger)$/i;
 
 const isElementNode = (node) => node?.nodeType === Node.ELEMENT_NODE;
 const isTextNode = (node) => node?.nodeType === Node.TEXT_NODE;
@@ -116,6 +121,32 @@ const sanitizeHref = (value = '') => {
   }
 };
 
+const sanitizeStyle = (value = '') => {
+  const declarations = String(value || '')
+    .split(';')
+    .map((item) => item.trim())
+    .filter(Boolean);
+  const safeDeclarations = [];
+
+  declarations.forEach((declaration) => {
+    const [rawProperty, ...rawValueParts] = declaration.split(':');
+    const property = String(rawProperty || '').trim().toLowerCase();
+    const styleValue = rawValueParts.join(':').trim().toLowerCase();
+    if (!SAFE_STYLE_PROPERTIES.has(property) || !styleValue) return;
+
+    if (property === 'text-align' && SAFE_ALIGN_VALUES.has(styleValue)) {
+      safeDeclarations.push(`${property}: ${styleValue}`);
+      return;
+    }
+
+    if (property === 'font-size' && SAFE_FONT_SIZE_PATTERN.test(styleValue)) {
+      safeDeclarations.push(`${property}: ${styleValue}`);
+    }
+  });
+
+  return safeDeclarations.join('; ');
+};
+
 const copySafeAttributes = (source, target, tagName) => {
   if (tagName === 'a') {
     const href = sanitizeHref(source.getAttribute('href'));
@@ -135,6 +166,23 @@ const copySafeAttributes = (source, target, tagName) => {
     if (rowspan && /^\d+$/.test(rowspan)) {
       target.setAttribute('rowspan', rowspan);
     }
+  }
+
+  if (tagName === 'font') {
+    const size = source.getAttribute('size');
+    if (size && /^[1-7]$/.test(size)) {
+      target.setAttribute('size', size);
+    }
+  }
+
+  const align = source.getAttribute('align');
+  if (align && SAFE_ALIGN_VALUES.has(align.trim().toLowerCase())) {
+    target.setAttribute('align', align.trim().toLowerCase());
+  }
+
+  const safeStyle = sanitizeStyle(source.getAttribute('style'));
+  if (safeStyle) {
+    target.setAttribute('style', safeStyle);
   }
 
   const safeClasses = String(source.getAttribute('class') || '')
