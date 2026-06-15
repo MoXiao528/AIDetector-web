@@ -6,33 +6,33 @@
         <nav class="space-y-1">
           <button
             type="button"
-            :class="['nav-item group relative flex w-full items-center gap-3 rounded-xl px-4 py-3 text-sm font-medium transition-all duration-200', isPanelActive('home') ? 'bg-gradient-to-r from-primary-50 to-white text-primary-700 shadow-sm ring-1 ring-primary-100' : 'text-neutral-500 hover:bg-neutral-50 hover:text-neutral-900']"
+            :class="['nav-item group relative flex w-full items-center gap-3 rounded-xl px-4 py-3 text-sm font-medium transition-all duration-200', isPanelActive('home') ? 'bg-gradient-to-r from-primary-100 to-primary-50 text-primary-800 shadow-sm ring-1 ring-primary-200' : 'text-neutral-500 hover:bg-neutral-50 hover:text-neutral-900']"
             @click="setActivePanel('home')"
           >
-            <HomeIcon :class="['h-5 w-5 transition-colors', isPanelActive('home') ? 'text-primary-600' : 'text-neutral-400 group-hover:text-neutral-600']" />
+            <HomeIcon :class="['h-5 w-5 transition-colors', isPanelActive('home') ? 'text-primary-700' : 'text-neutral-400 group-hover:text-neutral-600']" />
             <span class="nav-label">{{ t('scan.nav.home') }}</span>
           </button>
           <button
             type="button"
-            :class="['nav-item group relative flex w-full items-center gap-3 rounded-xl px-4 py-3 text-sm font-medium transition-all duration-200', isPanelActive('document') ? 'bg-gradient-to-r from-primary-50 to-white text-primary-700 shadow-sm ring-1 ring-primary-100' : 'text-neutral-500 hover:bg-neutral-50 hover:text-neutral-900']"
+            :class="['nav-item group relative flex w-full items-center gap-3 rounded-xl px-4 py-3 text-sm font-medium transition-all duration-200', isPanelActive('document') ? 'bg-gradient-to-r from-primary-100 to-primary-50 text-primary-800 shadow-sm ring-1 ring-primary-200' : 'text-neutral-500 hover:bg-neutral-50 hover:text-neutral-900']"
             @click="setActivePanel('document')"
           >
-            <DocumentTextIcon :class="['h-5 w-5 transition-colors', isPanelActive('document') ? 'text-primary-600' : 'text-neutral-400 group-hover:text-neutral-600']" />
+            <DocumentTextIcon :class="['h-5 w-5 transition-colors', isPanelActive('document') ? 'text-primary-700' : 'text-neutral-400 group-hover:text-neutral-600']" />
             <span class="nav-label">{{ t('scan.nav.document') }}</span>
           </button>
           <button
             type="button"
-            :class="['nav-item group relative flex w-full items-center gap-3 rounded-xl px-4 py-3 text-sm font-medium transition-all duration-200', isPanelActive('history') ? 'bg-gradient-to-r from-primary-50 to-white text-primary-700 shadow-sm ring-1 ring-primary-100' : 'text-neutral-500 hover:bg-neutral-50 hover:text-neutral-900']"
+            :class="['nav-item group relative flex w-full items-center gap-3 rounded-xl px-4 py-3 text-sm font-medium transition-all duration-200', isPanelActive('history') ? 'bg-gradient-to-r from-primary-100 to-primary-50 text-primary-800 shadow-sm ring-1 ring-primary-200' : 'text-neutral-500 hover:bg-neutral-50 hover:text-neutral-900']"
             @click="setActivePanel('history')"
           >
-            <ClockIcon :class="['h-5 w-5 transition-colors', isPanelActive('history') ? 'text-primary-600' : 'text-neutral-400 group-hover:text-neutral-600']" />
+            <ClockIcon :class="['h-5 w-5 transition-colors', isPanelActive('history') ? 'text-primary-700' : 'text-neutral-400 group-hover:text-neutral-600']" />
             <span class="nav-label">{{ t('scan.nav.history') }}</span>
           </button>
           <div class="relative pt-4">
             <button
               ref="newMenuButtonRef"
               type="button"
-              class="nav-item group relative flex w-full items-center gap-3 rounded-lg bg-gradient-to-br from-primary-600 to-indigo-600 px-4 py-2.5 text-sm font-medium text-white shadow-md shadow-primary-500/20 transition-all hover:to-indigo-500 hover:shadow-lg hover:shadow-primary-500/30 hover:-translate-y-0.5"
+              class="nav-item group relative flex w-full items-center gap-3 rounded-lg bg-gradient-to-r from-primary-700 via-primary-600 to-primary-500 px-4 py-2.5 text-sm font-medium text-white shadow-sm shadow-primary-900/10 ring-1 ring-primary-400/30 transition-all hover:-translate-y-0.5 hover:from-primary-800 hover:via-primary-700 hover:to-primary-600 hover:shadow-md hover:shadow-primary-900/15"
               @click="toggleNewMenu"
             >
               <PlusIcon class="h-4 w-4 text-white" />
@@ -70,18 +70,18 @@
         <div v-if="authStore.isAuthenticated" class="mt-6 space-y-1 border-t border-neutral-100 pt-6">
           <button
             type="button"
-            :class="['nav-item group relative flex w-full items-center gap-3 rounded-xl px-4 py-3 text-sm font-medium transition-all duration-200', isPanelActive('profile') ? 'bg-gradient-to-r from-primary-50 to-white text-primary-700 shadow-sm ring-1 ring-primary-100' : 'text-neutral-500 hover:bg-neutral-50 hover:text-neutral-900']"
+            :class="['nav-item group relative flex w-full items-center gap-3 rounded-xl px-4 py-3 text-sm font-medium transition-all duration-200', isPanelActive('profile') ? 'bg-gradient-to-r from-primary-100 to-primary-50 text-primary-800 shadow-sm ring-1 ring-primary-200' : 'text-neutral-500 hover:bg-neutral-50 hover:text-neutral-900']"
             @click="goToProfile"
           >
-            <Cog6ToothIcon :class="['h-5 w-5 transition-colors', isPanelActive('profile') ? 'text-primary-600' : 'text-neutral-400 group-hover:text-neutral-600']" />
+            <Cog6ToothIcon :class="['h-5 w-5 transition-colors', isPanelActive('profile') ? 'text-primary-700' : 'text-neutral-400 group-hover:text-neutral-600']" />
             <span class="nav-label">{{ t('scan.nav.settings') }}</span>
           </button>
             <button
               type="button"
-              :class="['nav-item group relative flex w-full items-center gap-3 rounded-xl px-4 py-3 text-sm font-medium transition-all duration-200', isPanelActive('qa') ? 'bg-gradient-to-r from-primary-50 to-white text-primary-700 shadow-sm ring-1 ring-primary-100' : 'text-neutral-500 hover:bg-neutral-50 hover:text-neutral-900']"
+              :class="['nav-item group relative flex w-full items-center gap-3 rounded-xl px-4 py-3 text-sm font-medium transition-all duration-200', isPanelActive('qa') ? 'bg-gradient-to-r from-primary-100 to-primary-50 text-primary-800 shadow-sm ring-1 ring-primary-200' : 'text-neutral-500 hover:bg-neutral-50 hover:text-neutral-900']"
               @click="setActivePanel('qa')"
             >
-              <QuestionMarkCircleIcon :class="['h-5 w-5 transition-colors', isPanelActive('qa') ? 'text-primary-600' : 'text-neutral-400 group-hover:text-neutral-600']" />
+              <QuestionMarkCircleIcon :class="['h-5 w-5 transition-colors', isPanelActive('qa') ? 'text-primary-700' : 'text-neutral-400 group-hover:text-neutral-600']" />
               <span class="nav-label">{{ t('scan.nav.qa') }}</span>
             </button>
         </div>
@@ -113,17 +113,6 @@
                 </div>
                 <p class="max-w-2xl text-lg font-light text-neutral-500 leading-relaxed">{{ activeQuote }}</p>
               </div>
-              <div class="flex flex-wrap items-center gap-4 text-sm">
-                <button
-                  type="button"
-                  class="inline-flex items-center gap-2 rounded-full bg-white px-4 py-2 font-medium text-neutral-700 shadow-sm ring-1 ring-inset ring-neutral-200 transition-all hover:bg-neutral-50 hover:text-primary-600 hover:ring-primary-200"
-                  @click="showUsageExamples = true"
-                >
-                  <SparklesIcon class="h-4 w-4 text-primary-500" />
-                  {{ t('scan.home.examplesCta') }}
-                </button>
-                <span class="text-xs text-neutral-400">{{ t('scan.home.examplesHint') }}</span>
-              </div>
               <OnboardingStepsBar
                 v-if="showOnboarding"
                 :steps="onboardingSteps"
@@ -143,12 +132,9 @@
                       <h2 class="mt-3 text-3xl font-semibold tracking-tight text-white">{{ dashboardHomeCopy.commandCenterTitle }}</h2>
                       <p class="mt-3 text-sm leading-7 text-slate-300">{{ dashboardHomeCopy.commandCenterSubtitle }}</p>
                     </div>
-                    <span class="inline-flex items-center rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs font-semibold text-slate-100">
-                      {{ dashboardReadinessBadge }}
-                    </span>
                   </div>
 
-                  <div class="mt-8 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+                  <div class="mt-8 grid gap-4 sm:grid-cols-3">
                     <div
                       v-for="item in homeStatCards"
                       :key="item.label"
@@ -160,54 +146,25 @@
                     </div>
                   </div>
 
-                  <div class="mt-8 grid gap-6 lg:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)]">
-                    <div class="rounded-[1.75rem] border border-white/10 bg-white/5 p-6 backdrop-blur">
-                      <div class="flex items-start justify-between gap-4">
-                        <div>
-                          <p class="text-xs font-semibold uppercase tracking-[0.24em] text-slate-400">{{ t('scan.quickLaunch.badge') }}</p>
-                          <h3 class="mt-3 text-2xl font-semibold tracking-tight text-white">{{ t('scan.quickLaunch.title') }}</h3>
-                          <p class="mt-3 max-w-md text-sm leading-6 text-slate-300">{{ t('scan.quickLaunch.description') }}</p>
-                        </div>
-                        <div class="flex h-14 w-14 items-center justify-center rounded-2xl bg-white/10 text-sky-100">
-                          <DocumentTextIcon class="h-7 w-7" />
-                        </div>
+                  <div class="mt-8 rounded-[1.75rem] border border-white/10 bg-white/5 p-6 backdrop-blur">
+                    <div class="flex items-start justify-between gap-4">
+                      <div>
+                        <p class="text-xs font-semibold uppercase tracking-[0.24em] text-slate-400">{{ t('scan.quickLaunch.badge') }}</p>
+                        <h3 class="mt-3 text-2xl font-semibold tracking-tight text-white">{{ t('scan.quickLaunch.title') }}</h3>
+                        <p class="mt-3 max-w-2xl text-sm leading-6 text-slate-300">{{ t('scan.quickLaunch.description') }}</p>
                       </div>
-                      <div class="mt-6 flex flex-wrap gap-3">
-                        <button
-                          type="button"
-                          class="inline-flex items-center rounded-full bg-white px-5 py-2.5 text-sm font-semibold text-slate-900 transition hover:-translate-y-0.5 hover:bg-slate-50"
-                          @click="startNewScan"
-                        >
-                          {{ dashboardHomeCopy.primaryCta }}
-                        </button>
-                        <button
-                          type="button"
-                          class="inline-flex items-center rounded-full border border-white/12 bg-white/7 px-5 py-2.5 text-sm font-semibold text-slate-100 transition hover:-translate-y-0.5 hover:border-sky-200/50 hover:bg-white/10"
-                          @click="showUsageExamples = true"
-                        >
-                          {{ dashboardHomeCopy.secondaryCta }}
-                        </button>
+                      <div class="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-white/10 text-sky-100">
+                        <DocumentTextIcon class="h-7 w-7" />
                       </div>
                     </div>
-
-                    <div class="rounded-[1.75rem] border border-white/10 bg-white/5 p-6 backdrop-blur">
-                      <div class="flex items-center justify-between gap-3">
-                        <h3 class="text-sm font-semibold uppercase tracking-[0.24em] text-slate-300">{{ dashboardHomeCopy.signalTitle }}</h3>
-                        <span class="text-xs text-slate-400">{{ userPlanTag }}</span>
-                      </div>
-                      <div class="mt-5 space-y-3">
-                        <div
-                          v-for="item in homeSignalItems"
-                          :key="item.label"
-                          class="rounded-2xl border border-white/10 bg-slate-900/18 px-4 py-3"
-                        >
-                          <div class="flex items-center justify-between gap-3">
-                            <p class="text-sm font-semibold text-white">{{ item.label }}</p>
-                            <span class="text-sm font-semibold text-sky-100">{{ item.value }}</span>
-                          </div>
-                          <p class="mt-1 text-xs leading-5 text-slate-400">{{ item.description }}</p>
-                        </div>
-                      </div>
+                    <div class="mt-6 flex flex-wrap gap-3">
+                      <button
+                        type="button"
+                        class="inline-flex items-center rounded-full bg-white px-5 py-2.5 text-sm font-semibold text-slate-900 transition hover:-translate-y-0.5 hover:bg-slate-50"
+                        @click="startNewScan"
+                      >
+                        {{ dashboardHomeCopy.primaryCta }}
+                      </button>
                     </div>
                   </div>
                 </div>
@@ -223,28 +180,46 @@
                     {{ dashboardHomeCopy.snapshotBadge }}
                   </span>
                 </div>
-                <div class="mt-6 space-y-4">
-                  <div
+                <div v-if="homeActivityItems.length" class="mt-6 space-y-3">
+                  <button
                     v-for="item in homeActivityItems"
-                    :key="`${item.title}-${item.meta}`"
-                    class="rounded-3xl border border-neutral-200/80 bg-[#fdfefd] px-5 py-4 shadow-sm shadow-slate-200/60"
+                    :key="item.recordId"
+                    type="button"
+                    class="group w-full rounded-3xl border border-neutral-200/80 bg-[#fdfefd] px-5 py-4 text-left shadow-sm shadow-slate-200/60 transition hover:-translate-y-0.5 hover:border-primary-200 hover:shadow-md hover:shadow-slate-200/80"
+                    @click="openHistoryRecord(item.recordId)"
                   >
                     <div class="flex items-start justify-between gap-3">
-                      <div>
-                        <p class="text-sm font-semibold text-neutral-900">{{ item.title }}</p>
+                      <div class="min-w-0">
+                        <p class="truncate text-sm font-semibold text-neutral-900">{{ item.title }}</p>
                         <p class="mt-1 text-sm leading-6 text-neutral-500">{{ item.summary }}</p>
                       </div>
-                      <span :class="['inline-flex items-center rounded-full px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.2em]', item.badgeClass]">
+                      <span :class="['inline-flex shrink-0 items-center rounded-full px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.2em]', item.badgeClass]">
                         {{ item.badge }}
                       </span>
                     </div>
-                    <p class="mt-3 text-xs text-neutral-400">{{ item.meta }}</p>
-                  </div>
+                    <div class="mt-3 flex items-center justify-between gap-3">
+                      <p class="text-xs text-neutral-400">{{ item.meta }}</p>
+                      <ArrowRightIcon class="h-4 w-4 text-neutral-300 transition group-hover:text-primary-500" />
+                    </div>
+                  </button>
+                </div>
+                <div v-else class="mt-6 rounded-3xl border border-dashed border-neutral-200 bg-[#fdfefd] px-5 py-6">
+                  <p class="text-sm font-semibold text-neutral-900">{{ dashboardHomeCopy.activity.emptyTitle }}</p>
+                  <p class="mt-2 text-sm leading-6 text-neutral-500">{{ dashboardHomeCopy.activity.emptyDescription }}</p>
+                  <button
+                    type="button"
+                    class="mt-5 inline-flex items-center gap-2 rounded-full bg-primary-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-primary-500"
+                    @click="startNewScan"
+                  >
+                    <span>{{ dashboardHomeCopy.activity.emptyCta }}</span>
+                    <ArrowRightIcon class="h-4 w-4" />
+                  </button>
                 </div>
                 <button
+                  v-if="homeActivityItems.length"
                   type="button"
                   class="mt-6 inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:border-primary-200 hover:text-primary-600"
-                  @click="runHomeAction(historyRecords.length ? 'history' : 'document')"
+                  @click="runHomeAction('history')"
                 >
                   <span>{{ dashboardHomeCopy.snapshotCta }}</span>
                   <ArrowRightIcon class="h-4 w-4" />
@@ -1061,7 +1036,6 @@
       :register-to="loginPromptRegisterTo"
       @close="showLoginModal = false"
     />
-    <UsageExamplesModal :open="showUsageExamples" :examples="usageExampleItems" @close="showUsageExamples = false" />
   </div>
 </template>
 
@@ -1100,7 +1074,6 @@ import BaseListbox from '../components/common/BaseListbox.vue';
 import ProfilePanel from '../components/dashboard/ProfilePanel.vue';
 import QAPanel from '../components/dashboard/QAPanel.vue';
 import OnboardingStepsBar from '../components/dashboard/OnboardingStepsBar.vue';
-import UsageExamplesModal from '../components/common/UsageExamplesModal.vue';
 import { useI18n } from '../i18n';
 import { clearGuestToken, ensureGuestToken } from '../api/modules/auth';
 import { extractApiErrorCode } from '../api/client';
@@ -1126,7 +1099,6 @@ const newMenuRef = ref(null);
 const newMenuButtonRef = ref(null);
 const activeFeatureCard = ref(null);
 const activeQuote = ref('');
-const showUsageExamples = ref(false);
 const showOnboarding = ref(false);
 const onboardingSteps = ref([]);
 const onboardingStorageKey = 'ai-detector-onboarding-v1';
@@ -1150,7 +1122,6 @@ const headerVariant = computed(() => (activePanel.value === 'document' ? 'scan' 
 const quotaInfo = ref({ actor_type: '', limit: 0, used_today: 0, remaining: 0 });
 const isQuotaLoading = ref(false);
 const isQuotaReady = ref(false);
-const usageExampleItems = computed(() => scanStore.usageExamples);
 const showIntegrationHub = false;
 
 const allowedPanelSet = new Set(['home', 'document', 'history', 'profile', 'qa']);
@@ -1621,27 +1592,8 @@ const quotaPercentage = computed(() => {
   return Math.min(100, Math.max(0, (remaining / limit) * 100));
 });
 
-const flaggedHistoryCount = computed(() =>
-  historyRecords.value.filter((record) => Number(record?.analysis?.summary?.ai || 0) >= 60).length
-);
-
-const highRiskRecord = computed(() =>
-  [...historyRecords.value].sort(
-    (left, right) => Number(right?.analysis?.summary?.ai || 0) - Number(left?.analysis?.summary?.ai || 0)
-  )[0] || null
-);
-
-const dashboardReadinessBadge = computed(() => {
-  if (scanStore.result) return dashboardHomeCopy.value.commandReadyResult;
-  if (scanStore.inputText?.trim()) return dashboardHomeCopy.value.commandReadyDraft;
-  return dashboardHomeCopy.value.commandReadyEmpty;
-});
-
 const resolveHistoryTitle = (record) => {
-  if (!record) {
-    return dashboardHomeCopy.value.signals.topRiskFallback;
-  }
-  return scanStore.resolveHistoryRecordTitle(record, dashboardHomeCopy.value.signals.topRiskFallback);
+  return scanStore.resolveHistoryRecordTitle(record, t('scan.history.recordFallback'));
 };
 
 const homeStatCards = computed(() => [
@@ -1660,46 +1612,14 @@ const homeStatCards = computed(() => [
     value: historyRecords.value.length.toLocaleString(),
     description: dashboardHomeCopy.value.stats.recordsDescription,
   },
-  {
-    label: dashboardHomeCopy.value.stats.flagged,
-    value: flaggedHistoryCount.value.toLocaleString(),
-    description: dashboardHomeCopy.value.stats.flaggedDescription,
-  },
-]);
-
-const homeSignalItems = computed(() => [
-  {
-    label: dashboardHomeCopy.value.signals.topRisk,
-    value: highRiskRecord.value ? `${Math.round(Number(highRiskRecord.value.analysis?.summary?.ai || 0))}% AI` : dashboardHomeCopy.value.signals.topRiskFallback,
-    description: highRiskRecord.value
-      ? resolveHistoryTitle(highRiskRecord.value)
-      : dashboardHomeCopy.value.signals.topRiskDescription,
-  },
-  {
-    label: dashboardHomeCopy.value.signals.draft,
-    value: scanStore.inputText?.trim()
-      ? dashboardHomeCopy.value.signals.draftReady
-      : dashboardHomeCopy.value.signals.draftEmpty,
-    description: scanStore.inputText?.trim()
-      ? dashboardHomeCopy.value.signals.draftDescriptionReady
-      : dashboardHomeCopy.value.signals.draftDescriptionEmpty,
-  },
-  {
-    label: dashboardHomeCopy.value.signals.actor,
-    value: authStore.isAuthenticated ? userPlanTag.value : dashboardHomeCopy.value.signals.guest,
-    description: dashboardHomeCopy.value.signals.actorDescription,
-  },
 ]);
 
 const homeActivityItems = computed(() => {
-  if (!historyRecords.value.length) {
-    return dashboardHomeCopy.value.activity.fallback;
-  }
-
-  return historyRecords.value.slice(0, 4).map((record) => {
+  return historyRecords.value.slice(0, 5).map((record) => {
     const aiScore = Math.round(Number(record?.analysis?.summary?.ai || 0));
     const needsReview = aiScore >= 60;
     return {
+      recordId: record.id,
       title: resolveHistoryTitle(record),
       summary: formatHistorySummary(record),
       meta: formatHistoryTimestamp(record.createdAt) || dashboardHomeCopy.value.stats.recordsDescription,
@@ -1982,9 +1902,16 @@ const setActivePanel = (panel) => {
 const isPanelActive = (panel) => activePanel.value === panel;
 
 const selectHistoryRecord = (id) => {
-  if (activeHistoryId.value === id) return;
-  activeHistoryId.value = id;
+  if (activeHistoryId.value !== id) {
+    activeHistoryId.value = id;
+  }
   activeHistoryTab.value = 'scan';
+};
+
+const openHistoryRecord = (id) => {
+  if (id === null || id === undefined || id === '') return;
+  selectHistoryRecord(id);
+  setActivePanel('history');
 };
 
 const formatHistoryTimestamp = (value) => {
@@ -2306,10 +2233,6 @@ const runHomeAction = (action) => {
       return;
     }
     setActivePanel('document');
-    return;
-  }
-  if (action === 'examples') {
-    showUsageExamples.value = true;
   }
 };
 
