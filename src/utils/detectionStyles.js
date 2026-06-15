@@ -39,10 +39,17 @@ const toneMap = {
     card: 'border-emerald-200 bg-emerald-50',
     text: 'text-emerald-700',
   },
+  tooShort: {
+    chip: 'bg-slate-100 text-slate-600 ring-1 ring-slate-200',
+    card: 'border-slate-200 bg-slate-50',
+    text: 'text-slate-500',
+  },
 };
 
-export const getProbabilityChipClasses = (value) => toneMap[getProbabilityTone(value)].chip;
+const resolveTone = (value, type = '') => (type === 'too_short' ? 'tooShort' : getProbabilityTone(value));
 
-export const getProbabilityCardClasses = (value) => toneMap[getProbabilityTone(value)].card;
+export const getProbabilityChipClasses = (value, type = '') => toneMap[resolveTone(value, type)].chip;
 
-export const getProbabilityTextClasses = (value) => toneMap[getProbabilityTone(value)].text;
+export const getProbabilityCardClasses = (value, type = '') => toneMap[resolveTone(value, type)].card;
+
+export const getProbabilityTextClasses = (value, type = '') => toneMap[resolveTone(value, type)].text;

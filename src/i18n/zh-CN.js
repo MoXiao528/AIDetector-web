@@ -801,6 +801,7 @@ export default {
       citation: '引用检查',
       citationHint: '引用检查目前仍是占位逻辑，后续可以接入真实数据库。',
       startScan: '开始检测',
+      tooShort: '文本过短',
     },
     toolbar: {
       bulleted: '* 列表',

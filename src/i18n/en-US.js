@@ -809,6 +809,7 @@ export default {
       citation: 'Citation check',
       citationHint: 'Citation checking is placeholder logic and can connect to real databases later.',
       startScan: 'Start scan',
+      tooShort: 'Too short to analyze',
     },
     toolbar: {
       bulleted: '* List',

@@ -10,7 +10,7 @@ export interface AnalysisSentence {
   end_paragraph?: number;
   score?: number;
   probability?: number;
-  type?: 'ai' | 'mixed' | 'human';
+  type?: 'ai' | 'mixed' | 'human' | 'too_short';
   label?: 'Human' | 'AI' | 'Mixed';
   reason?: string;
   suggestion?: string;

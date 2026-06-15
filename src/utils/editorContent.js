@@ -72,6 +72,10 @@ const SAFE_CLASS_TOKENS = new Set([
   'text-lime-900',
   'bg-emerald-100',
   'text-emerald-900',
+  'bg-slate-100',
+  'text-slate-600',
+  'ring-1',
+  'ring-slate-200',
 ]);
 const SAFE_DATA_SENTENCE_ID_PATTERN = /^[\w:.-]+$/;
 const SAFE_ALIGN_VALUES = new Set(['left', 'right', 'center', 'justify', 'start', 'end']);
@@ -516,7 +520,7 @@ const buildPlainHighlightedHtml = (text = '', sentences = []) => {
       if (!item) {
         return `<p>${escapeHtml(paragraph.raw)}</p>`;
       }
-      const classes = getProbabilityChipClasses(item.probability);
+      const classes = getProbabilityChipClasses(item.probability, item.type);
       return `<p><span class="highlight-chip ${classes}" data-sentence-id="${item.id}">${escapeHtml(paragraph.raw)}</span></p>`;
     })
     .join('');
@@ -538,7 +542,7 @@ const applyStructuredHighlight = (block, sentence, index) => {
   if (!doc || !block) return;
 
   const sentenceId = sentence?.id || `block-${index + 1}`;
-  const classes = getProbabilityChipClasses(clampProbability(sentence?.probability));
+  const classes = getProbabilityChipClasses(clampProbability(sentence?.probability), sentence?.type);
   const childNodes = Array.from(block.childNodes || []);
   let currentWrapper = null;
   let hasWrappedContent = false;
