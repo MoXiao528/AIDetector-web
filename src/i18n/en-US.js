@@ -354,7 +354,7 @@ export default {
     badge: '#1 AI Detector - New V2.0 is live',
     titlePrefix: 'Detect and resolve',
     titleHighlight: 'AI-generated text',
-    subtitle: 'RepreGuard is currently focused on AI text detection. Paste or upload text to get sentence- and passage-level risk signals you can review directly.',
+    subtitle: 'Paste text or upload a file to start detection in one step.',
     primaryCta: 'Explore the workspace',
     secondaryCta: 'View the detection workflow ->',
     trust: 'Focused on AI text detection',
@@ -368,7 +368,7 @@ export default {
     form: {
       label: 'Paste or enter text',
       reset: 'Reset',
-      placeholder: 'Paste text or click an example below to preview the RepreGuard AI detection experience.',
+      placeholder: 'Paste text, or upload a TXT / DOCX / PDF file to start detection.',
     },
     examples: {
       title: 'Try these examples:',

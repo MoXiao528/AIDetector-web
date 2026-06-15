@@ -13,16 +13,13 @@
       </div>
       <div class="mt-16 grid gap-6 lg:grid-cols-3">
         <article
-          v-for="(capability, index) in capabilities"
+          v-for="capability in capabilities"
           :key="capability.title"
           class="group flex h-full flex-col rounded-2xl border border-slate-100 bg-white p-6 shadow-sm transition-all hover:-translate-y-1 hover:shadow-md"
         >
           <div class="flex items-center justify-between">
             <div
-              :class="[
-                'flex h-12 w-12 items-center justify-center rounded-2xl',
-                index === 0 ? 'bg-primary-100 text-primary-600' : index === 1 ? 'bg-sky-100 text-sky-600' : 'bg-emerald-100 text-emerald-600',
-              ]"
+              class="flex h-12 w-12 items-center justify-center rounded-2xl bg-primary-100 text-primary-600"
             >
               <component :is="capability.icon" class="h-6 w-6" />
             </div>

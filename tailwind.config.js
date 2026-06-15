@@ -5,17 +5,17 @@ export default {
     extend: {
       colors: {
         primary: {
-          50: '#eff6ff',
-          100: '#dbeafe',
-          200: '#bfdbfe',
-          300: '#93c5fd',
-          400: '#60a5fa',
-          500: '#3b82f6',
-          600: '#2563eb',
-          700: '#1d4ed8',
-          800: '#1e40af',
-          900: '#1e3a8a',
-          950: '#172554',
+          50: '#f6f8f6',
+          100: '#eef2ef',
+          200: '#dfe7e2',
+          300: '#c7d4cc',
+          400: '#9caf9f',
+          500: '#718579',
+          600: '#5b6b62',
+          700: '#4a5851',
+          800: '#38443e',
+          900: '#27302c',
+          950: '#151c19',
         },
         neutral: {
           50: '#fafafa',
@@ -72,12 +72,12 @@ export default {
         serif: ['"Playfair Display"', 'Georgia', 'serif'], // Added for premium feel headers
       },
       backgroundImage: {
-        'gradient-radial': 'radial-gradient(circle at top, rgba(37, 99, 235, 0.08), rgba(255, 255, 255, 0))',
+        'gradient-radial': 'radial-gradient(circle at top, rgba(91, 107, 98, 0.08), rgba(255, 255, 255, 0))',
         'gradient-surface': 'linear-gradient(180deg, #ffffff, #fafafa)',
-        'gradient-accent': 'linear-gradient(135deg, rgba(37, 99, 235, 0.1), rgba(147, 197, 253, 0.1))'
+        'gradient-accent': 'linear-gradient(135deg, rgba(91, 107, 98, 0.1), rgba(223, 231, 226, 0.3))'
       },
       boxShadow: {
-        glow: '0 0 20px -5px rgba(37, 99, 235, 0.3)',
+        glow: '0 0 20px -5px rgba(91, 107, 98, 0.24)',
         'premium': '0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 10px 15px -3px rgba(0, 0, 0, 0.05)',
         'card': '0 0 0 1px rgba(0,0,0,0.03), 0 2px 8px rgba(0,0,0,0.04)',
         'card-hover': '0 0 0 1px rgba(0,0,0,0.03), 0 8px 16px rgba(0,0,0,0.06)',

@@ -26,7 +26,7 @@
                 :placeholder="t('appFooter.subscribe.placeholder')"
                 class="h-11 w-full flex-1 rounded-full border border-white/10 bg-white/10 px-4 text-sm text-white placeholder:text-slate-400 focus:border-primary-400 focus:outline-none"
               />
-              <button type="button" class="h-11 rounded-full bg-primary-600 px-5 text-sm font-semibold text-white shadow-glow transition hover:bg-primary-500">
+              <button type="button" class="h-11 rounded-xl bg-primary-600 px-5 text-sm font-semibold text-white shadow-sm transition hover:bg-primary-700">
                 {{ t('appFooter.subscribe.cta') }}
               </button>
             </div>

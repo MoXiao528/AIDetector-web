@@ -1,5 +1,5 @@
 <template>
-  <div class="min-h-screen bg-slate-50">
+  <div class="min-h-screen bg-[#fafaf9]">
     <AppHeader mode="marketing" />
     <main>
       <HeroSection v-model="localInput" @scan="handleScan" />
@@ -15,7 +15,7 @@
           <div class="flex flex-wrap gap-3">
             <button
               type="button"
-              class="inline-flex items-center gap-2 rounded-full bg-primary-600 px-5 py-2 text-sm font-semibold text-white shadow-sm shadow-primary-200/50 transition hover:-translate-y-0.5 hover:bg-primary-500"
+              class="inline-flex items-center gap-2 rounded-xl bg-primary-600 px-5 py-2 text-sm font-semibold text-white shadow-sm shadow-primary-200/50 transition hover:-translate-y-0.5 hover:bg-primary-700"
               @click="showUsageExamples = true"
             >
               <span class="text-lg">★</span>
@@ -23,7 +23,7 @@
             </button>
             <button
               type="button"
-              class="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-5 py-2 text-sm font-semibold text-slate-700 transition hover:-translate-y-0.5 hover:border-primary-200 hover:text-primary-700"
+              class="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-5 py-2 text-sm font-semibold text-slate-700 transition hover:-translate-y-0.5 hover:border-slate-300 hover:bg-slate-50 hover:text-slate-900"
               @click="$router.push({ name: 'dashboard', query: { panel: 'home' } })"
             >
               {{ t('homePage.examples.tryNow') }}

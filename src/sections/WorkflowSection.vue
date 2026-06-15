@@ -55,7 +55,7 @@
           </dl>
           <button
             type="button"
-            class="mt-10 inline-flex items-center justify-center rounded-full bg-primary-600 px-4 py-3 text-sm font-semibold text-white shadow-sm shadow-primary-200/60 transition hover:-translate-y-0.5 hover:bg-primary-500"
+            class="mt-10 inline-flex items-center justify-center rounded-xl bg-primary-600 px-4 py-3 text-sm font-semibold text-white shadow-sm shadow-primary-200/60 transition hover:-translate-y-0.5 hover:bg-primary-700"
             @click="openDashboard"
           >
             {{ t('workflowSection.snapshot.cta') }}

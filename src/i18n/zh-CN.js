@@ -346,7 +346,7 @@ export default {
     badge: '#1 AI Detector - 新版 V2.0 已上线',
     titlePrefix: '检测并处理',
     titleHighlight: 'AI 生成文本',
-    subtitle: 'RepreGuard 当前专注于 AI 文本检测。粘贴或上传文本后，你可以直接查看句子级和段落级风险信号。',
+    subtitle: '粘贴文本或上传文件，一键开始检测。',
     primaryCta: '进入工作台',
     secondaryCta: '查看检测流程 ->',
     trust: '专注 AI 文本检测',
@@ -360,7 +360,7 @@ export default {
     form: {
       label: '粘贴或输入文本',
       reset: '重置',
-      placeholder: '粘贴文本，或点击下方示例，预览 RepreGuard 的 AI 检测体验。',
+      placeholder: '粘贴文本，或上传 TXT / DOCX / PDF 文件开始检测。',
     },
     examples: {
       title: '试试这些示例：',
