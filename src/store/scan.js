@@ -80,6 +80,7 @@ const normalizeLabelType = (value) => {
   if (['ai', 'fake', 'llm'].includes(normalized)) return 'ai';
   if (['human', 'real'].includes(normalized)) return 'human';
   if (['mixed', 'borderline'].includes(normalized)) return 'mixed';
+  if (['too_short', 'too-short', 'too short', 'undetectable'].includes(normalized)) return 'too_short';
   return '';
 };
 
@@ -101,6 +102,9 @@ const normalizeSummary = ({ summary, sentences, score }) => {
   const hasParsed = Object.values(parsed).every((value) => typeof value === 'number' && Number.isFinite(value));
   if (hasParsed) {
     const total = parsed.ai + parsed.mixed + parsed.human;
+    if (total === 0) {
+      return parsed;
+    }
     if (total !== 100) {
       parsed.human = Math.max(0, parsed.human - (total - 100));
     }
@@ -108,14 +112,20 @@ const normalizeSummary = ({ summary, sentences, score }) => {
   }
 
   if (sentences.length) {
+    const detectableSentences = sentences.filter((sentence) => sentence.type !== 'too_short');
+    if (!detectableSentences.length) {
+      return { ai: 0, mixed: 0, human: 0 };
+    }
     const counts = sentences.reduce(
       (acc, sentence) => {
-        acc[sentence.type] += 1;
+        if (sentence.type !== 'too_short') {
+          acc[sentence.type] += 1;
+        }
         return acc;
       },
       { ai: 0, mixed: 0, human: 0 }
     );
-    const total = sentences.length;
+    const total = detectableSentences.length;
     const computed = {
       ai: Math.round((counts.ai / total) * 100),
       mixed: Math.round((counts.mixed / total) * 100),
@@ -200,7 +210,7 @@ const normalizeSentenceParagraphRanges = (sentences = []) => {
 };
 
 const resolveSentenceType = (sentence, fallbackType = 'human') => {
-  if (['ai', 'mixed', 'human'].includes(sentence?.type)) {
+  if (['ai', 'mixed', 'human', 'too_short'].includes(sentence?.type)) {
     return sentence.type;
   }
   const normalizedLabelType = normalizeLabelType(sentence?.label);
@@ -260,6 +270,9 @@ const normalizeAnalysisPayload = (
         score,
         reason: pickFirst(sentence?.reason, sentence?.suggestion, ''),
         suggestion: pickFirst(sentence?.suggestion, sentence?.reason, ''),
+        tokenCount: pickFirst(sentence?.tokenCount, sentence?.token_count, null),
+        visibleChars: pickFirst(sentence?.visibleChars, sentence?.visible_chars, null),
+        isTruncated: Boolean(pickFirst(sentence?.isTruncated, sentence?.is_truncated, false)),
       };
     })
     : [];
@@ -728,7 +741,10 @@ export const useScanStore = defineStore('scan', () => {
         probability: s.probability,
         score: s.score,
         reason: s.reason,
-        suggestion: s.suggestion
+        suggestion: s.suggestion,
+        token_count: pickFirst(s.tokenCount, s.token_count, null),
+        visible_chars: pickFirst(s.visibleChars, s.visible_chars, null),
+        is_truncated: Boolean(pickFirst(s.isTruncated, s.is_truncated, false)),
       })),
       translation: analysis.translation || '',
       polish: Array.isArray(analysis.polish) ? analysis.polish.join('\n\n') : (analysis.polish || ''),
@@ -761,7 +777,7 @@ export const useScanStore = defineStore('scan', () => {
           raw: sentence.raw || sentence.text || '',
           startParagraph: pickFirst(sentence.startParagraph, sentence.start_paragraph, index + 1),
           endParagraph: pickFirst(sentence.endParagraph, sentence.end_paragraph, index + 1),
-          type: ['ai', 'mixed', 'human'].includes(sentence.type)
+          type: ['ai', 'mixed', 'human', 'too_short'].includes(sentence.type)
             ? sentence.type
             : labelToTypeMap[sentence.label] || 'human',
           probability: clampProbability(
@@ -770,6 +786,9 @@ export const useScanStore = defineStore('scan', () => {
           score: typeof sentence.score === 'number' ? sentence.score : Number(sentence.score || 0),
           reason: sentence.reason || sentence.suggestion || '',
           suggestion: sentence.suggestion || sentence.reason || '',
+          tokenCount: pickFirst(sentence.tokenCount, sentence.token_count, null),
+          visibleChars: pickFirst(sentence.visibleChars, sentence.visible_chars, null),
+          isTruncated: Boolean(pickFirst(sentence.isTruncated, sentence.is_truncated, false)),
         })),
         translation: analysis.translation || '',
         polish: Array.isArray(analysis.polish)

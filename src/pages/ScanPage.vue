@@ -687,7 +687,7 @@
                             :key="sentence.id"
                             :class="[
                               'rounded-2xl border p-4 text-sm transition-all duration-150',
-                              highlightBorderClass(sentence.probability),
+                              highlightBorderClass(sentence),
                               activeSentenceId === sentence.id ? 'ring-2 ring-slate-300/80 shadow-sm' : '',
                             ]"
                             @mouseenter="setActiveSentence(sentence.id)"
@@ -698,7 +698,7 @@
                                 {{ formatSentenceBlockLabel(sentence, index) }}
                               </span>
                               <span class="text-xs font-semibold text-slate-500">
-                                {{ t('scan.results.probability', { value: Math.round((sentence.probability || 0) * 100) }) }}
+                                {{ formatSentenceProbabilityLabel(sentence) }}
                               </span>
                             </div>
                             <div class="space-y-3" v-html="formatHighlightedSentence(sentence)"></div>
@@ -975,7 +975,7 @@
                       :key="sentence.id"
                       :class="[
                         'rounded-2xl border p-4 text-sm transition-all duration-150',
-                        highlightBorderClass(sentence.probability),
+                        highlightBorderClass(sentence),
                         activeSentenceId === sentence.id ? 'ring-2 ring-slate-300/80 shadow-sm' : '',
                       ]"
                       @mouseenter="setActiveSentence(sentence.id)"
@@ -986,7 +986,7 @@
                           {{ formatSentenceBlockLabel(sentence, index) }}
                         </span>
                         <span class="text-xs font-semibold text-slate-500">
-                          {{ t('scan.results.probability', { value: Math.round(sentence.probability * 100) }) }}
+                          {{ formatSentenceProbabilityLabel(sentence) }}
                         </span>
                       </div>
                       <div class="space-y-3" v-html="formatHighlightedSentence(sentence)"></div>
@@ -1546,6 +1546,11 @@ const countVisibleCharacters = (value = '') => String(value || '').replace(/\s/g
 const clampPercent = (value) => Math.max(0, Math.min(100, Math.round(Number(value) || 0)));
 const collapseSummaryForDisplay = (summary) => {
   const ai = clampPercent(summary?.ai);
+  const mixed = clampPercent(summary?.mixed);
+  const human = clampPercent(summary?.human);
+  if (summary && ai === 0 && mixed === 0 && human === 0) {
+    return { ai: 0, human: 0 };
+  }
   return {
     ai,
     human: Math.max(0, 100 - ai),
@@ -1916,7 +1921,13 @@ const historyCharacterUsage = computed(() => {
   return `${length} ${t('scan.editor.chars') || 'chars'}`;
 });
 
-const highlightBorderClass = (probability) => getProbabilityCardClasses(clampProbability(probability));
+const isTooShortSentence = (sentence) => sentence?.type === 'too_short';
+const highlightBorderClass = (sentence) =>
+  getProbabilityCardClasses(clampProbability(sentence?.probability), sentence?.type);
+const formatSentenceProbabilityLabel = (sentence) =>
+  isTooShortSentence(sentence)
+    ? t('scan.results.tooShort')
+    : t('scan.results.probability', { value: Math.round((sentence?.probability || 0) * 100) });
 const setActiveSentence = (sentenceId = '') => {
   activeSentenceId.value = sentenceId || '';
 };
@@ -2222,7 +2233,7 @@ const parseFeatures = (value) => {
 };
 
 const formatHighlightedSentence = (sentence) => {
-  const classes = getProbabilityTextClasses(clampProbability(sentence.probability));
+  const classes = getProbabilityTextClasses(clampProbability(sentence.probability), sentence?.type);
   return String(sentence?.text || '')
     .split('\n')
     .filter((item) => item.trim())
