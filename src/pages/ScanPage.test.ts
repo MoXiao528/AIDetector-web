@@ -107,7 +107,7 @@ describe('ScanPage panel switching', () => {
     await flushPromises();
 
     const navButtons = wrapper.findAll('aside nav > button');
-    expect(navButtons).toHaveLength(3);
+    expect(navButtons).toHaveLength(2);
 
     await navButtons[1].trigger('click');
     await nextTick();

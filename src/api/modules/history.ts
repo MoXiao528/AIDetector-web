@@ -43,6 +43,8 @@ export interface HistoryRecord {
     functions: string[];
     input_text: string;
     editor_html: string;
+    is_pinned?: boolean;
+    isPinned?: boolean;
     analysis: Analysis | null;
 }
 
@@ -59,6 +61,8 @@ export interface HistoryListParams {
     per_page?: number;
     sort?: string;
     order?: 'asc' | 'desc';
+    q?: string;
+    pinned?: boolean | null;
 }
 
 export interface CreateHistoryData {
@@ -67,10 +71,12 @@ export interface CreateHistoryData {
     input_text: string;
     editor_html: string;
     analysis: Analysis | null;
+    is_pinned?: boolean;
 }
 
 export interface UpdateHistoryData {
-    title: string;
+    title?: string;
+    is_pinned?: boolean;
 }
 
 export interface BatchDeleteResponse {
@@ -98,6 +104,8 @@ export const getHistoryList = async (params?: HistoryListParams): Promise<Histor
     if (params?.per_page) queryParams.set('per_page', String(params.per_page));
     if (params?.sort) queryParams.set('sort', params.sort);
     if (params?.order) queryParams.set('order', params.order);
+    if (params?.q) queryParams.set('q', params.q);
+    if (typeof params?.pinned === 'boolean') queryParams.set('pinned', String(params.pinned));
 
     const query = queryParams.toString();
     const path = query ? `/api/v1/history?${query}` : '/api/v1/history';

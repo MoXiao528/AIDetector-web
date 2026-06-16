@@ -42,8 +42,8 @@ export default defineConfig(({ mode }) => {
       clearMocks: true,
     },
     server: {
-      host: true,
-      port: 5173,
+      host: 'localhost',
+      port: 5300,
       proxy: {
         '/api': {
           target: env.VITE_DEV_PROXY_TARGET || 'http://localhost:8000',

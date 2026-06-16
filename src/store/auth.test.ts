@@ -6,6 +6,7 @@ const mockState = vi.hoisted(() => ({
   routerPush: vi.fn(),
   scanSyncHistoryFromBackend: vi.fn(),
   scanClearHistoryRecords: vi.fn(),
+  scanMigrateLocalStorageToBackend: vi.fn(),
 }));
 
 vi.mock('../router', () => ({
@@ -19,6 +20,7 @@ vi.mock('./scan', () => ({
   useScanStore: () => ({
     syncHistoryFromBackend: mockState.scanSyncHistoryFromBackend,
     clearHistoryRecords: mockState.scanClearHistoryRecords,
+    migrateLocalStorageToBackend: mockState.scanMigrateLocalStorageToBackend,
   }),
 }));
 
@@ -37,12 +39,15 @@ vi.mock('../api/modules/auth', () => ({
 }));
 
 import * as authApi from '../api/modules/auth';
+import * as historyApi from '../api/modules/history';
 import { useAuthStore } from './auth';
 
 describe('auth store session flow', () => {
   beforeEach(() => {
     setActivePinia(createPinia());
     vi.clearAllMocks();
+    mockState.scanSyncHistoryFromBackend.mockResolvedValue([]);
+    mockState.scanMigrateLocalStorageToBackend.mockResolvedValue({ migrated: [], skipped: [], failed: [] });
     window.localStorage.clear();
   });
 
@@ -59,7 +64,26 @@ describe('auth store session flow', () => {
     expect(window.localStorage.getItem('auth_token')).toBeNull();
     expect(store.isAuthenticated).toBe(true);
     expect(store.user?.name).toBe('alice');
-    expect(mockState.scanSyncHistoryFromBackend).toHaveBeenCalledTimes(1);
+    expect(mockState.scanMigrateLocalStorageToBackend).toHaveBeenCalledTimes(1);
+    expect(mockState.scanMigrateLocalStorageToBackend).toHaveBeenCalledWith({ existingRecords: [] });
+    expect(mockState.scanSyncHistoryFromBackend).toHaveBeenCalledTimes(2);
+  });
+
+  it('login 会自动 claim guest token 并导入游客本地历史', async () => {
+    vi.mocked(authApi.getStoredGuestToken).mockReturnValue('guest-token-1');
+    vi.mocked(authApi.login).mockResolvedValue({ access_token: 'server-body-token' });
+    vi.mocked(authApi.fetchMe).mockResolvedValue({ id: 8, name: 'guest-owner', credits: 20 });
+    mockState.scanSyncHistoryFromBackend.mockResolvedValueOnce([{ id: 101, inputText: 'claimed record' }]);
+
+    const store = useAuthStore();
+    await store.login({ identifier: 'guest-owner', password: 'StrongPass!23' });
+
+    expect(historyApi.claimGuestHistory).toHaveBeenCalledWith('guest-token-1');
+    expect(authApi.clearGuestToken).toHaveBeenCalledTimes(1);
+    expect(mockState.scanMigrateLocalStorageToBackend).toHaveBeenCalledWith({
+      existingRecords: [{ id: 101, inputText: 'claimed record' }],
+    });
+    expect(mockState.scanSyncHistoryFromBackend).toHaveBeenCalledTimes(2);
   });
 
   it('restoreSession 会用 cookie 会话恢复用户，并清理遗留 token', async () => {
@@ -83,6 +107,7 @@ describe('auth store session flow', () => {
 
     const store = useAuthStore();
     await store.login({ identifier: 'logout-user', password: 'StrongPass!23' });
+    mockState.scanClearHistoryRecords.mockClear();
     await store.logout();
 
     expect(window.localStorage.getItem('auth_session')).toBeNull();

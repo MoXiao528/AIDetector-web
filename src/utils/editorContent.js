@@ -202,6 +202,11 @@ const copySafeAttributes = (source, target, tagName) => {
     target.setAttribute('data-sentence-id', sentenceId);
   }
 
+  const sentenceBlockId = source.getAttribute('data-sentence-block-id');
+  if (sentenceBlockId && SAFE_DATA_SENTENCE_ID_PATTERN.test(sentenceBlockId)) {
+    target.setAttribute('data-sentence-block-id', sentenceBlockId);
+  }
+
   const pdfPage = source.getAttribute('data-pdf-page');
   if (tagName === 'section' && pdfPage && /^\d+$/.test(pdfPage)) {
     target.setAttribute('data-pdf-page', pdfPage);
@@ -493,6 +498,18 @@ export const resolveSentenceRange = (sentence, fallbackIndex = 0) => {
   return { start: index, end: index };
 };
 
+export const buildSentenceParagraphLinkId = (sentence, paragraphIndex = 0) => {
+  const fallbackIndex = Math.max(Number(paragraphIndex) || 1, 1) - 1;
+  const range = resolveSentenceRange(sentence, fallbackIndex);
+  const baseId = String(sentence?.id || `paragraph-${Math.max(Number(paragraphIndex) || range.start, 1)}`);
+  const paragraphCount = countPlainTextParagraphs(sentence?.raw ?? sentence?.text ?? '');
+  if (range.start === range.end && paragraphCount <= 1) {
+    return baseId;
+  }
+  const normalizedParagraphIndex = Math.max(Number(paragraphIndex) || range.start, range.start);
+  return `${baseId}:p-${normalizedParagraphIndex}`;
+};
+
 const resolveSentenceForParagraph = (paragraphIndex, sentences = []) =>
   sentences.find((sentence, index) => {
     const range = resolveSentenceRange(sentence, index);
@@ -521,12 +538,41 @@ const buildPlainHighlightedHtml = (text = '', sentences = []) => {
         return `<p>${escapeHtml(paragraph.raw)}</p>`;
       }
       const classes = getProbabilityChipClasses(item.probability, item.type);
-      return `<p><span class="highlight-chip ${classes}" data-sentence-id="${item.id}">${escapeHtml(paragraph.raw)}</span></p>`;
+      const sentenceId = buildSentenceParagraphLinkId(item, visibleParagraphIndex);
+      const blockId = String(item?.id || '');
+      const blockAttribute = blockId && blockId !== sentenceId ? ` data-sentence-block-id="${escapeHtml(blockId)}"` : '';
+      return `<p><span class="highlight-chip ${classes}" data-sentence-id="${escapeHtml(sentenceId)}"${blockAttribute}>${escapeHtml(paragraph.raw)}</span></p>`;
     })
     .join('');
 };
 
-const createStructuredHighlightWrapper = (doc, sentenceId, classes) => {
+const countPlainTextParagraphs = (text = '') =>
+  String(text)
+    .replace(/\r\n/g, '\n')
+    .split('\n')
+    .filter((line) => line.trim())
+    .length;
+
+const buildPlainTextFromSentences = (sentences = []) =>
+  sentences
+    .map((sentence) => String(sentence?.raw ?? sentence?.text ?? '').replace(/\r\n/g, '\n').trim())
+    .filter(Boolean)
+    .join('\n');
+
+const pickMostSegmentedText = (...candidates) =>
+  candidates.reduce((best, candidate) => {
+    const next = String(candidate || '');
+    return countPlainTextParagraphs(next) > countPlainTextParagraphs(best) ? next : best;
+  }, '');
+
+const getMaxSentenceParagraphIndex = (sentences = []) =>
+  sentences.reduce((maxParagraphIndex, sentence, index) => {
+    const range = resolveSentenceRange(sentence, index);
+    const paragraphCount = Math.max(countPlainTextParagraphs(sentence?.raw ?? sentence?.text ?? ''), 1);
+    return Math.max(maxParagraphIndex, range.end, range.start + paragraphCount - 1);
+  }, 0);
+
+const createStructuredHighlightWrapper = (doc, sentenceId, classes, blockId = '') => {
   const wrapper = doc.createElement('span');
   wrapper.classList.add('highlight-chip', 'highlight-chip--structured');
   classes
@@ -534,6 +580,9 @@ const createStructuredHighlightWrapper = (doc, sentenceId, classes) => {
     .filter(Boolean)
     .forEach((className) => wrapper.classList.add(className));
   wrapper.setAttribute('data-sentence-id', sentenceId);
+  if (blockId && blockId !== sentenceId) {
+    wrapper.setAttribute('data-sentence-block-id', blockId);
+  }
   return wrapper;
 };
 
@@ -541,7 +590,9 @@ const applyStructuredHighlight = (block, sentence, index) => {
   const doc = block?.ownerDocument;
   if (!doc || !block) return;
 
-  const sentenceId = sentence?.id || `block-${index + 1}`;
+  const paragraphIndex = index + 1;
+  const blockId = String(sentence?.id || `block-${paragraphIndex}`);
+  const sentenceId = buildSentenceParagraphLinkId(sentence, paragraphIndex);
   const classes = getProbabilityChipClasses(clampProbability(sentence?.probability), sentence?.type);
   const childNodes = Array.from(block.childNodes || []);
   let currentWrapper = null;
@@ -557,7 +608,7 @@ const applyStructuredHighlight = (block, sentence, index) => {
     }
 
     if (!currentWrapper) {
-      currentWrapper = createStructuredHighlightWrapper(doc, sentenceId, classes);
+      currentWrapper = createStructuredHighlightWrapper(doc, sentenceId, classes, blockId);
       block.insertBefore(currentWrapper, child);
     }
     currentWrapper.appendChild(child);
@@ -565,7 +616,7 @@ const applyStructuredHighlight = (block, sentence, index) => {
   });
 
   if (!hasWrappedContent) {
-    const fallbackWrapper = createStructuredHighlightWrapper(doc, sentenceId, classes);
+    const fallbackWrapper = createStructuredHighlightWrapper(doc, sentenceId, classes, blockId);
     while (block.firstChild) {
       fallbackWrapper.appendChild(block.firstChild);
     }
@@ -596,6 +647,16 @@ export const buildHighlightedPreviewHtml = ({
       fallbackHighlightedHtml || buildPlainHighlightedHtml(fallbackText || extractTextFromHtml(editorHtml), normalizedSentences),
       fallbackText
     );
+  }
+
+  const maxSentenceParagraphIndex = getMaxSentenceParagraphIndex(normalizedSentences);
+  let plainHighlightText = pickMostSegmentedText(fallbackText, buildPlainTextFromSentences(normalizedSentences));
+  if (countPlainTextParagraphs(plainHighlightText) < maxSentenceParagraphIndex) {
+    plainHighlightText = pickMostSegmentedText(plainHighlightText, extractTextFromHtml(editorHtml));
+  }
+  const expectedParagraphCount = Math.max(countPlainTextParagraphs(plainHighlightText), maxSentenceParagraphIndex);
+  if (expectedParagraphCount > blocks.length) {
+    return sanitizeHtmlForEditor(buildPlainHighlightedHtml(plainHighlightText, normalizedSentences), plainHighlightText);
   }
 
   blocks.forEach((block, index) => {

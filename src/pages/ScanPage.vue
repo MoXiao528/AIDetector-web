@@ -20,14 +20,6 @@
             <DocumentTextIcon :class="['h-5 w-5 transition-colors', isPanelActive('document') ? 'text-primary-700' : 'text-neutral-400 group-hover:text-neutral-600']" />
             <span class="nav-label">{{ t('scan.nav.document') }}</span>
           </button>
-          <button
-            type="button"
-            :class="['nav-item group relative flex w-full items-center gap-3 rounded-xl px-4 py-3 text-sm font-medium transition-all duration-200', isPanelActive('history') ? 'bg-gradient-to-r from-primary-100 to-primary-50 text-primary-800 shadow-sm ring-1 ring-primary-200' : 'text-neutral-500 hover:bg-neutral-50 hover:text-neutral-900']"
-            @click="setActivePanel('history')"
-          >
-            <ClockIcon :class="['h-5 w-5 transition-colors', isPanelActive('history') ? 'text-primary-700' : 'text-neutral-400 group-hover:text-neutral-600']" />
-            <span class="nav-label">{{ t('scan.nav.history') }}</span>
-          </button>
           <div class="relative pt-4">
             <button
               ref="newMenuButtonRef"
@@ -381,7 +373,7 @@
 
         <div v-if="isPanelActive('document')" class="relative z-0 flex min-h-[calc(100vh-4rem)] flex-col">
           <div class="sticky top-0 z-10 border-b border-neutral-100 bg-white/80 px-6 py-4 backdrop-blur-md transition-all">
-            <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+            <div class="grid grid-cols-1 gap-4 lg:grid-cols-[18rem_minmax(0,1fr)_24rem] lg:items-center xl:grid-cols-[20rem_minmax(0,1fr)_28rem]">
               <div class="flex flex-wrap items-center gap-3">
                 <div class="inline-flex items-center overflow-hidden rounded-lg bg-neutral-100/80 p-1 text-xs font-semibold text-neutral-600 ring-1 ring-black/5">
                   <button
@@ -406,7 +398,17 @@
                   {{ t('scan.editor.reset') }}
                 </button>
               </div>
-              <div class="flex flex-wrap items-center gap-4 text-xs font-medium text-neutral-400">
+              <div class="flex justify-end">
+                <button
+                  v-if="hasResults"
+                  type="button"
+                  class="inline-flex items-center rounded-full border border-primary-200 bg-white px-4 py-2 text-xs font-semibold text-primary-700 shadow-sm transition hover:border-primary-300 hover:bg-primary-50"
+                  @click="openResultDetail"
+                >
+                  {{ t('scan.results.openDetail') }}
+                </button>
+              </div>
+              <div class="flex flex-wrap items-center gap-4 text-xs font-medium text-neutral-400 lg:justify-end">
                 <span :class="{ 'text-primary-600': characterCount > 0 && !isOverCharacterLimit, 'text-rose-600': isOverCharacterLimit }">{{ characterUsage }}</span>
                 <span class="h-4 w-px bg-neutral-200"></span>
                 <span>{{ t('scan.editor.selectedFunctions', { value: selectedFunctionSummary }) }}</span>
@@ -427,6 +429,199 @@
           </div>
 
           <div class="flex flex-1 flex-col lg:min-h-[calc(100vh-10rem)] lg:flex-row">
+            <aside class="flex w-full flex-col border-b border-neutral-100 bg-white/75 px-4 py-5 lg:w-72 lg:border-b-0 lg:border-r xl:w-80">
+              <div class="flex items-start justify-between gap-3">
+                <div>
+                  <h2 class="text-sm font-bold text-neutral-900">{{ t('scan.history.conversationTitle') }}</h2>
+                  <p class="mt-1 text-xs leading-5 text-neutral-500">{{ t('scan.history.conversationSubtitle') }}</p>
+                </div>
+                <button
+                  type="button"
+                  class="rounded-full border border-neutral-200 bg-white px-3 py-1.5 text-xs font-semibold text-neutral-600 transition hover:border-primary-200 hover:text-primary-700"
+                  @click="toggleHistoryManageMode"
+                >
+                  {{ isHistoryManaging ? t('scan.history.doneManage') : t('scan.history.manage') }}
+                </button>
+              </div>
+
+              <label class="mt-4 flex items-center gap-2 rounded-2xl border border-neutral-200 bg-white px-3 py-2 text-sm text-neutral-500 shadow-sm">
+                <MagnifyingGlassCircleIcon class="h-4 w-4 flex-shrink-0 text-neutral-400" />
+                <input
+                  v-model="historySearchQuery"
+                  type="search"
+                  class="min-w-0 flex-1 bg-transparent text-sm font-medium text-neutral-700 outline-none placeholder:text-neutral-400"
+                  :placeholder="t('scan.history.searchPlaceholder')"
+                />
+                <button
+                  v-if="historySearchQuery"
+                  type="button"
+                  class="rounded-full p-1 text-neutral-400 transition hover:bg-neutral-100 hover:text-neutral-700"
+                  :title="t('scan.history.clearSearch')"
+                  @click="clearHistorySearch"
+                >
+                  <XMarkIcon class="h-4 w-4" />
+                </button>
+              </label>
+
+              <button
+                type="button"
+                :class="[
+                  'mt-5 flex w-full items-center gap-3 rounded-2xl border px-3 py-3 text-left text-sm font-semibold transition',
+                  activeHistoryId
+                    ? 'border-neutral-200 bg-white text-neutral-600 hover:border-primary-200 hover:text-primary-700'
+                    : 'border-primary-200 bg-primary-50 text-primary-800 shadow-sm ring-1 ring-primary-100',
+                ]"
+                @click="startNewScan"
+              >
+                <span class="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-white text-primary-600 ring-1 ring-primary-100">
+                  <PlusIcon class="h-4 w-4" />
+                </span>
+                <span class="min-w-0">
+                  <span class="block">{{ t('scan.history.newConversation') }}</span>
+                  <span class="mt-0.5 block text-xs font-medium text-neutral-500">{{ t('scan.history.newConversationHint') }}</span>
+                </span>
+              </button>
+
+              <div
+                v-if="isHistoryManaging"
+                class="mt-4 rounded-2xl border border-neutral-200 bg-neutral-50/90 p-3 text-xs text-neutral-600"
+              >
+                <div class="flex items-center justify-between gap-2">
+                  <span>{{ t('scan.history.selectedCount', { value: selectedHistoryIds.length }) }}</span>
+                  <button
+                    type="button"
+                    class="font-semibold text-neutral-700 transition hover:text-primary-700"
+                    @click="clearHistorySelection"
+                  >
+                    {{ t('scan.history.clearSelection') }}
+                  </button>
+                </div>
+                <div class="mt-3 flex gap-2">
+                  <button
+                    type="button"
+                    class="flex-1 rounded-full bg-white px-3 py-2 font-semibold text-neutral-700 ring-1 ring-neutral-200 transition hover:text-rose-700 hover:ring-rose-200 disabled:cursor-not-allowed disabled:opacity-50"
+                    :disabled="!selectedHistoryIds.length || isHistoryActionPending"
+                    @click="deleteSelectedHistoryRecords"
+                  >
+                    {{ t('scan.history.deleteSelected') }}
+                  </button>
+                  <button
+                    type="button"
+                    class="flex-1 rounded-full bg-white px-3 py-2 font-semibold text-rose-700 ring-1 ring-rose-100 transition hover:bg-rose-50 disabled:cursor-not-allowed disabled:opacity-50"
+                    :disabled="!historyRecords.length || isHistoryActionPending"
+                    @click="clearAllHistoryRecords"
+                  >
+                    {{ t('scan.history.clearAll') }}
+                  </button>
+                </div>
+              </div>
+
+              <div class="mt-5 min-h-0 flex-1 overflow-y-auto pr-1">
+                <div v-if="historyRecords.length > 0" class="space-y-2">
+                  <div
+                    v-for="record in historyRecords"
+                    :key="record.id"
+                    :class="[
+                      'group w-full cursor-pointer rounded-2xl border px-3 py-3 text-left transition',
+                      String(record.id) === String(activeHistoryId)
+                        ? 'border-primary-200 bg-primary-50 text-neutral-900 shadow-sm ring-1 ring-primary-100'
+                        : 'border-neutral-200 bg-white text-neutral-600 hover:border-primary-200 hover:bg-primary-50/40 hover:text-primary-700',
+                    ]"
+                    @click="loadHistoryRecord(record.id)"
+                  >
+                    <div class="flex items-start justify-between gap-3">
+                      <div class="flex min-w-0 flex-1 items-start gap-2">
+                        <input
+                          v-if="isHistoryManaging"
+                          type="checkbox"
+                          class="mt-1 h-4 w-4 rounded border-neutral-300 text-primary-600 focus:ring-primary-500"
+                          :checked="isHistorySelected(record.id)"
+                          @click.stop
+                          @change="toggleHistorySelection(record.id)"
+                        />
+                        <button
+                          type="button"
+                          :class="[
+                            'mt-0.5 rounded-full p-1 transition',
+                            record.isPinned
+                              ? 'bg-amber-50 text-amber-500 ring-1 ring-amber-100'
+                              : 'text-neutral-300 hover:bg-neutral-100 hover:text-amber-500',
+                          ]"
+                          :title="record.isPinned ? t('scan.history.unpin') : t('scan.history.pin')"
+                          @click.stop="togglePinnedHistory(record)"
+                        >
+                          <StarIcon class="h-4 w-4" :class="{ 'fill-current': record.isPinned }" />
+                        </button>
+                        <div class="min-w-0 flex-1">
+                          <div v-if="String(record.id) === String(renamingHistoryId)" class="flex items-center gap-1" @click.stop>
+                            <input
+                              v-model="renameHistoryDraft"
+                              class="min-w-0 flex-1 rounded-lg border border-primary-200 bg-white px-2 py-1 text-sm font-semibold text-neutral-800 outline-none focus:ring-2 focus:ring-primary-100"
+                              @keydown.enter.prevent="confirmRenameHistory"
+                              @keydown.esc.prevent="cancelRenameHistory"
+                            />
+                            <button
+                              type="button"
+                              class="rounded-full p-1 text-emerald-600 transition hover:bg-emerald-50"
+                              :title="t('scan.history.saveRename')"
+                              @click.stop="confirmRenameHistory"
+                            >
+                              <CheckIcon class="h-4 w-4" />
+                            </button>
+                            <button
+                              type="button"
+                              class="rounded-full p-1 text-neutral-400 transition hover:bg-neutral-100 hover:text-neutral-700"
+                              :title="t('scan.history.cancelRename')"
+                              @click.stop="cancelRenameHistory"
+                            >
+                              <XMarkIcon class="h-4 w-4" />
+                            </button>
+                          </div>
+                          <p v-else class="line-clamp-2 text-sm font-semibold leading-5">{{ resolveHistoryTitle(record) }}</p>
+                        </div>
+                      </div>
+                      <span
+                        v-if="record.analysis?.summary"
+                        class="mt-0.5 flex-shrink-0 rounded-full bg-white px-2 py-0.5 text-[11px] font-bold text-primary-700 ring-1 ring-primary-100"
+                      >
+                        {{ collapseSummaryForDisplay(record.analysis.summary).ai }}%
+                      </span>
+                    </div>
+                    <p class="mt-1 text-xs leading-5 text-neutral-500">{{ formatHistorySummary(record) }}</p>
+                    <div class="mt-2 flex items-center justify-between gap-2">
+                      <p class="text-[11px] text-neutral-400">{{ formatHistoryTimestamp(record.createdAt) }}</p>
+                      <div class="flex items-center gap-1 opacity-0 transition group-hover:opacity-100 group-focus-within:opacity-100">
+                        <button
+                          type="button"
+                          class="rounded-full p-1.5 text-neutral-400 transition hover:bg-white hover:text-primary-700"
+                          :title="t('scan.history.rename')"
+                          @click.stop="startRenameHistory(record)"
+                        >
+                          <PencilSquareIcon class="h-4 w-4" />
+                        </button>
+                        <button
+                          type="button"
+                          class="rounded-full p-1.5 text-neutral-400 transition hover:bg-white hover:text-rose-600"
+                          :title="t('scan.history.delete')"
+                          @click.stop="deleteSingleHistoryRecord(record)"
+                        >
+                          <TrashIcon class="h-4 w-4" />
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                <div v-else class="rounded-2xl border border-dashed border-neutral-200 bg-neutral-50/80 p-5 text-center">
+                  <p class="text-sm font-semibold text-neutral-600">{{ t('scan.history.emptyTitle') }}</p>
+                  <p class="mt-2 text-xs leading-5 text-neutral-500">{{ historySearchQuery ? t('scan.history.emptySearch') : t('scan.history.empty') }}</p>
+                </div>
+              </div>
+
+              <p class="mt-4 rounded-2xl border border-neutral-100 bg-neutral-50/80 px-3 py-3 text-xs leading-5 text-neutral-500">
+                {{ authStore.isAuthenticated ? t('scan.history.cloudHint') : t('scan.history.localHint') }}
+              </p>
+            </aside>
+
             <section class="relative flex-1 px-6 py-8">
               <div class="flex min-h-[30rem] flex-col overflow-hidden rounded-2xl bg-white shadow-premium ring-1 ring-neutral-200/50 transition-all lg:min-h-[calc(100vh-14rem)]">
                 <div class="relative flex-1 overflow-hidden">
@@ -652,7 +847,7 @@
                         </button>
                       </div>
                       
-                      <div class="p-4 max-h-[400px] overflow-y-auto custom-scrollbar">
+                      <div class="custom-scrollbar max-h-[400px] overflow-y-auto break-words p-4">
                         <div v-if="activeResultTab === 'scan'" class="space-y-4">
                           <p v-if="resultHasMergedBlocks" class="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
                             {{ t('scan.results.mergeNotice') }}
@@ -663,9 +858,9 @@
                             :class="[
                               'rounded-2xl border p-4 text-sm transition-all duration-150',
                               highlightBorderClass(sentence),
-                              activeSentenceId === sentence.id ? 'ring-2 ring-slate-300/80 shadow-sm' : '',
+                              isSentenceResultActive(sentence) ? 'ring-2 ring-slate-300/80 shadow-sm' : '',
                             ]"
-                            @mouseenter="setActiveSentence(sentence.id)"
+                            @mouseenter="setActiveSentence(getSentenceDefaultActiveId(sentence))"
                             @mouseleave="clearActiveSentence"
                           >
                             <div class="mb-3 flex items-center justify-between gap-3">
@@ -676,19 +871,24 @@
                                 {{ formatSentenceProbabilityLabel(sentence) }}
                               </span>
                             </div>
-                            <div class="space-y-3" v-html="formatHighlightedSentence(sentence)"></div>
+                            <div
+                              class="result-sentence-text min-w-0 space-y-3"
+                              @mouseover="setActiveSentenceFromResultParagraph($event, sentence)"
+                              @mouseleave="setActiveSentence(getSentenceDefaultActiveId(sentence))"
+                              v-html="formatHighlightedSentence(sentence)"
+                            ></div>
                             <p v-if="sentence.reason" class="mt-2 text-xs text-slate-500">{{ sentence.reason }}</p>
                           </div>
                         </div>
                         <div v-else-if="activeResultTab === 'translate'" class="space-y-3">
                           <p class="text-xs font-semibold text-slate-500">{{ t('scan.results.translation') }}</p>
-                          <div class="rounded-2xl bg-slate-50 p-4 text-sm leading-relaxed text-slate-700 whitespace-pre-line">
+                          <div class="rounded-2xl bg-slate-50 p-4 text-sm leading-relaxed text-slate-700 whitespace-pre-line break-words">
                             {{ scanStore.result.translation }}
                           </div>
                         </div>
                         <div v-else-if="activeResultTab === 'polish'" class="space-y-4">
                           <p class="text-xs font-semibold text-slate-500">{{ t('scan.results.polish') }}</p>
-                          <div class="rounded-2xl border border-slate-200 bg-white p-4 text-sm whitespace-pre-line text-slate-700">
+                          <div class="rounded-2xl border border-slate-200 bg-white p-4 text-sm whitespace-pre-line break-words text-slate-700">
                             {{ scanStore.result.polish }}
                           </div>
                           <button
@@ -704,7 +904,7 @@
                           <div
                             v-for="item in scanStore.result.citations"
                             :key="item.id"
-                            class="rounded-2xl border border-slate-200 bg-white p-4 text-sm"
+                            class="rounded-2xl border border-slate-200 bg-white p-4 text-sm break-words"
                           >
                             <p class="text-slate-700">{{ item.text }}</p>
                             <p v-if="item.source" class="mt-2 text-xs text-slate-500">{{ item.source }}</p>
@@ -752,7 +952,7 @@
                     'inline-flex items-center gap-2 rounded-full pl-4 pr-5 py-2.5 text-sm font-semibold text-white transition-all',
                     isScanning || !canStartScan
                       ? 'cursor-not-allowed bg-slate-300 shadow-none'
-                      : 'bg-gradient-to-r from-primary-600 to-indigo-600 shadow-lg shadow-primary-500/30 hover:from-primary-500 hover:to-indigo-500 hover:scale-105 active:scale-95',
+                      : 'bg-gradient-to-r from-primary-700 via-primary-600 to-primary-500 shadow-lg shadow-primary-700/20 hover:from-primary-600 hover:via-primary-500 hover:to-primary-400 hover:scale-105 active:scale-95',
                   ]"
                   @click="handleScan"
                 >
@@ -774,246 +974,6 @@
           </div>
         </div>
 
-        <div v-else-if="isPanelActive('history')" class="flex h-full flex-col">
-          <div class="border-b border-slate-200 bg-white/80 px-4 py-3 backdrop-blur">
-            <div class="flex flex-wrap items-center justify-between gap-3">
-              <div>
-                <h2 class="text-base font-semibold text-slate-900">{{ t('scan.history.title') }}</h2>
-                <p class="text-xs text-slate-500">{{ t('scan.history.subtitle') }}</p>
-              </div>
-              <button
-                type="button"
-                class="inline-flex items-center rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-semibold text-slate-600 transition hover:border-primary-200 hover:text-primary-600"
-                @click="setActivePanel('document')"
-              >
-                {{ t('scan.history.back') }}
-              </button>
-            </div>
-          </div>
-
-          <div v-if="!authStore.isAuthenticated" class="flex flex-1 items-center justify-center px-4 py-6">
-            <div class="max-w-md space-y-6 rounded-3xl border border-slate-200 bg-white p-8 text-center shadow-sm">
-              <div class="mx-auto flex h-20 w-20 items-center justify-center rounded-full bg-primary-100">
-                <ClockIcon class="h-10 w-10 text-primary-600" />
-              </div>
-              <div class="space-y-2">
-                <h3 class="text-xl font-semibold text-slate-900">{{ t('scan.history.authPrompt.title') }}</h3>
-                <p class="text-sm text-slate-600">{{ t('scan.history.authPrompt.subtitle') }}</p>
-                <ul class="mt-4 space-y-2 text-left text-sm text-slate-600">
-                  <li
-                    v-for="item in historyAuthPromptItems"
-                    :key="item"
-                    class="flex items-start gap-2"
-                  >
-                    <svg class="mt-0.5 h-5 w-5 flex-shrink-0 text-emerald-500" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
-                    </svg>
-                    <span>{{ item }}</span>
-                  </li>
-                </ul>
-              </div>
-              <button
-                type="button"
-                class="inline-flex items-center rounded-full bg-primary-600 px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-primary-200/70 transition hover:-translate-y-0.5 hover:bg-primary-500"
-                @click="router.push({ name: 'login' })"
-              >
-                {{ t('scan.history.authPrompt.cta') }}
-              </button>
-            </div>
-          </div>
-
-          <div v-else class="flex flex-1 flex-col lg:flex-row">
-            <section class="w-full border-b border-slate-200 bg-white/70 px-4 py-6 lg:w-80 lg:border-b-0 lg:border-r">
-              <div class="space-y-4">
-                <div>
-                  <h3 class="text-sm font-semibold text-slate-900">{{ t('scan.history.recentTitle') }}</h3>
-                  <p class="mt-1 text-xs text-slate-500">{{ t('scan.history.recentSubtitle') }}</p>
-                </div>
-                <div v-if="historyRecords.length > 0" class="space-y-2">
-                  <button
-                    v-for="record in historyRecords"
-                    :key="record.id"
-                    type="button"
-                    :class="[
-                      'w-full rounded-2xl border px-3 py-3 text-left text-sm transition',
-                      record.id === activeHistoryId
-                        ? 'border-primary-200 bg-primary-50 text-slate-900 shadow-sm'
-                        : 'border-slate-200 bg-white text-slate-600 hover:border-primary-200 hover:text-primary-600',
-                    ]"
-                    @click="selectHistoryRecord(record.id)"
-                  >
-                    <p class="font-semibold">{{ resolveHistoryTitle(record) }}</p>
-                    <p class="mt-1 text-xs" :class="record.id === activeHistoryId ? 'text-slate-600' : 'text-slate-400'">
-                      {{ formatHistorySummary(record) }}
-                    </p>
-                    <p class="mt-1 text-[11px]" :class="record.id === activeHistoryId ? 'text-slate-500' : 'text-slate-400'">
-                      {{ formatHistoryTimestamp(record.createdAt) }}
-                    </p>
-                  </button>
-                </div>
-                <div v-else class="rounded-2xl border border-dashed border-slate-200 bg-slate-50 p-6 text-center text-sm text-slate-500">
-                  {{ t('scan.history.empty') }}
-                </div>
-              </div>
-            </section>
-            <section class="flex-1 px-4 py-6">
-              <div v-if="activeHistoryRecord" class="space-y-6">
-                <header class="flex flex-col gap-3 rounded-3xl border border-slate-200 bg-white/90 p-6 shadow-sm">
-                  <div class="flex flex-wrap items-start justify-between gap-3">
-                    <div>
-                      <p class="text-xs uppercase tracking-[0.3em] text-primary-500">{{ t('scan.history.savedBadge') }}</p>
-                      <h2 class="text-xl font-semibold text-slate-900">{{ resolveHistoryTitle(activeHistoryRecord) }}</h2>
-                      <div class="mt-2 flex flex-wrap gap-3 text-xs text-slate-500">
-                        <span>{{ formatHistoryTimestamp(activeHistoryRecord.createdAt) }}</span>
-                        <span>{{ historyCharacterUsage }}</span>
-                        <span>{{ t('scan.history.functions', { value: historyFunctionSummary }) }}</span>
-                      </div>
-                    </div>
-                    <div class="flex flex-wrap items-center gap-2">
-                      <button
-                        type="button"
-                        class="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-4 py-2 text-xs font-semibold text-slate-700 transition hover:border-primary-200 hover:text-primary-600 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:border-slate-200 disabled:hover:text-slate-700"
-                        :disabled="!activeHistoryRecord.analysis"
-                        @click="exportHistoryReport"
-                      >
-                        <DocumentArrowDownIcon class="h-4 w-4" />
-                        <span>{{ t('scan.history.download') }}</span>
-                      </button>
-                      <span class="inline-flex items-center rounded-full bg-emerald-100 px-3 py-1 text-[11px] font-semibold text-emerald-700">
-                        {{ t('scan.history.saved') }}
-                      </span>
-                    </div>
-                  </div>
-                  <div class="rounded-2xl bg-slate-50 p-4 text-sm text-slate-600">
-                    <p class="font-semibold text-slate-700">{{ t('scan.history.previewTitle') }}</p>
-                    <div ref="historyPreviewRef" class="history-preview mt-3 max-h-72 overflow-y-auto rounded-xl border border-slate-200 bg-white/90 p-4 text-sm leading-relaxed text-slate-700" v-html="historyPreviewHtml"></div>
-                  </div>
-                </header>
-
-                <div v-if="activeHistoryRecord.analysis" class="space-y-6">
-                  <div class="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
-                    <p class="text-xs uppercase tracking-[0.3em] text-slate-400">{{ t('scan.history.summaryTitle') }}</p>
-                    <div class="mt-4 flex flex-wrap items-center gap-5">
-                      <div
-                        class="h-24 w-24 rounded-full p-1"
-                        :style="{
-                          background: `conic-gradient(#ef4444 0 ${activeHistoryDisplaySummary.ai}%, #10b981 ${activeHistoryDisplaySummary.ai}% 100%)`,
-                        }"
-                      >
-                        <div class="flex h-full w-full items-center justify-center rounded-full bg-white shadow-sm">
-                          <div class="text-center">
-                            <p class="text-[11px] font-semibold text-slate-400">{{ t('scan.results.summary.aiLabel') }}</p>
-                            <p class="text-lg font-semibold text-slate-900">{{ activeHistoryDisplaySummary.ai }}%</p>
-                          </div>
-                        </div>
-                      </div>
-                      <div class="flex-1 space-y-2">
-                        <p class="text-lg font-semibold text-slate-900">{{ t('scan.history.aiLikely', { value: activeHistoryRecord.analysis.aiLikelyCount }) }}</p>
-                        <p class="text-xs text-slate-500">{{ aiLikelyHintText }}</p>
-                        <div class="grid grid-cols-2 gap-2 text-xs">
-                          <div class="rounded-xl border border-rose-100 bg-rose-50 p-3">
-                            <p class="text-[10px] uppercase tracking-widest text-rose-500">{{ t('scan.results.summary.ai') }}</p>
-                            <p class="mt-2 text-lg font-semibold text-rose-600">{{ activeHistoryDisplaySummary.ai }}%</p>
-                          </div>
-                          <div class="rounded-xl border border-emerald-100 bg-emerald-50 p-3">
-                            <p class="text-[10px] uppercase tracking-widest text-emerald-500">{{ t('scan.results.summary.humanShort') }}</p>
-                            <p class="mt-2 text-lg font-semibold text-emerald-600">{{ activeHistoryDisplaySummary.human }}%</p>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div class="inline-flex flex-wrap items-center gap-2 rounded-full bg-slate-100 p-1 text-xs font-semibold text-slate-600 shadow-inner">
-                    <button
-                      v-for="tab in availableHistoryTabs"
-                      :key="tab.key"
-                      type="button"
-                      :class="[
-                        'rounded-full px-3 py-1 transition',
-                        activeHistoryTab === tab.key
-                          ? 'bg-white text-slate-900 shadow-sm'
-                          : 'text-slate-500 hover:text-slate-700',
-                      ]"
-                      @click="activeHistoryTab = tab.key"
-                    >
-                      {{ tab.label }}
-                    </button>
-                  </div>
-
-                  <div v-if="activeHistoryTab === 'scan'" class="space-y-4">
-                    <p v-if="historyHasMergedBlocks" class="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
-                      {{ mergedDetectionNotice }}
-                    </p>
-                    <div
-                      v-for="(sentence, index) in activeHistoryRecord.analysis.sentences"
-                      :key="sentence.id"
-                      :class="[
-                        'rounded-2xl border p-4 text-sm transition-all duration-150',
-                        highlightBorderClass(sentence),
-                        activeSentenceId === sentence.id ? 'ring-2 ring-slate-300/80 shadow-sm' : '',
-                      ]"
-                      @mouseenter="setActiveSentence(sentence.id)"
-                      @mouseleave="clearActiveSentence"
-                    >
-                      <div class="mb-3 flex items-center justify-between gap-3">
-                        <span class="inline-flex items-center rounded-full bg-white/80 px-2.5 py-1 text-[11px] font-semibold text-slate-600 ring-1 ring-slate-200">
-                          {{ formatSentenceBlockLabel(sentence, index) }}
-                        </span>
-                        <span class="text-xs font-semibold text-slate-500">
-                          {{ formatSentenceProbabilityLabel(sentence) }}
-                        </span>
-                      </div>
-                      <div class="space-y-3" v-html="formatHighlightedSentence(sentence)"></div>
-                      <p class="mt-2 text-xs text-slate-500">{{ sentence.reason }}</p>
-                    </div>
-                  </div>
-
-                  <div v-else-if="activeHistoryTab === 'translate'" class="space-y-3">
-                    <p class="text-xs font-semibold text-slate-500">{{ t('scan.results.translation') }}</p>
-                    <div class="rounded-2xl bg-slate-50 p-4 text-sm leading-relaxed text-slate-700 whitespace-pre-line">
-                      {{ activeHistoryRecord.analysis.translation }}
-                    </div>
-                  </div>
-
-                  <div v-else-if="activeHistoryTab === 'polish'" class="space-y-4">
-                    <p class="text-xs font-semibold text-slate-500">{{ t('scan.results.polish') }}</p>
-                    <div class="rounded-2xl border border-slate-200 bg-white p-4 text-sm whitespace-pre-line text-slate-700">
-                      {{ activeHistoryRecord.analysis.polish }}
-                    </div>
-                    <button
-                      type="button"
-                      class="inline-flex items-center rounded-full bg-primary-600 px-3 py-1 text-xs font-semibold text-white hover:bg-primary-500"
-                      @click="applyPolishSuggestion(activeHistoryRecord.analysis.polish)"
-                    >
-                      {{ t('scan.results.apply') }}
-                    </button>
-                  </div>
-
-                  <div v-else-if="activeHistoryTab === 'citation'" class="space-y-4">
-                    <p class="text-xs font-semibold text-slate-500">{{ t('scan.results.citation') }}</p>
-                    <div
-                      v-for="item in activeHistoryRecord.analysis.citations"
-                      :key="item.id"
-                      class="rounded-2xl border border-slate-200 bg-white p-4 text-sm"
-                    >
-                      <p class="text-slate-700">{{ item.text }}</p>
-                      <p v-if="item.source" class="mt-2 text-xs text-slate-500">{{ item.source }}</p>
-                    </div>
-                    <p class="text-[11px] text-slate-400">{{ t('scan.results.citationHint') }}</p>
-                  </div>
-                </div>
-                <div v-else class="rounded-3xl border border-dashed border-slate-200 bg-white/70 p-10 text-center text-sm text-slate-500">
-                  {{ t('scan.history.emptyRecord') }}
-                </div>
-              </div>
-              <div v-else class="flex h-full items-center justify-center rounded-3xl border border-dashed border-slate-200 bg-white/60 text-sm text-slate-500">
-                {{ t('scan.history.empty') }}
-              </div>
-            </section>
-          </div>
-        </div>
-
         <div v-else-if="isPanelActive('profile')" class="flex-1 px-4 py-6">
           <div class="mx-auto w-full max-w-4xl">
             <ProfilePanel />
@@ -1029,6 +989,170 @@
 
       </main>
     </div>
+    <transition
+      enter-active-class="transition duration-200 ease-out"
+      enter-from-class="opacity-0"
+      enter-to-class="opacity-100"
+      leave-active-class="transition duration-150 ease-in"
+      leave-from-class="opacity-100"
+      leave-to-class="opacity-0"
+    >
+      <div
+        v-if="isResultDetailOpen && hasResults"
+        class="fixed inset-0 z-50 bg-slate-950/35 backdrop-blur-sm"
+        @click.self="closeResultDetail"
+      >
+        <section class="ml-auto flex h-full w-full max-w-6xl flex-col overflow-hidden bg-white shadow-2xl ring-1 ring-black/10 lg:w-[72vw]">
+          <header class="flex flex-wrap items-start justify-between gap-4 border-b border-neutral-100 px-6 py-5">
+            <div>
+              <p class="text-xs font-semibold uppercase tracking-[0.24em] text-primary-600">{{ t('scan.results.detailEyebrow') }}</p>
+              <h2 class="mt-1 text-2xl font-semibold tracking-tight text-neutral-950">{{ resultDetailTitle }}</h2>
+              <div class="mt-2 flex flex-wrap gap-3 text-xs text-neutral-500">
+                <span v-if="activeHistoryRecord">{{ formatHistoryTimestamp(activeHistoryRecord.createdAt) }}</span>
+                <span>{{ characterUsage }}</span>
+                <span>{{ t('scan.editor.selectedFunctions', { value: selectedFunctionSummary }) }}</span>
+              </div>
+            </div>
+            <div class="flex flex-wrap items-center gap-2">
+              <button
+                type="button"
+                class="inline-flex items-center gap-2 rounded-full border border-neutral-200 bg-white px-4 py-2 text-xs font-semibold text-neutral-700 transition hover:border-primary-200 hover:text-primary-700"
+                @click="exportReport"
+              >
+                <DocumentArrowDownIcon class="h-4 w-4" />
+                {{ t('scan.results.export') }}
+              </button>
+              <button
+                type="button"
+                class="rounded-full bg-neutral-900 px-4 py-2 text-xs font-semibold text-white transition hover:bg-neutral-700"
+                @click="closeResultDetail"
+              >
+                {{ t('scan.results.closeDetail') }}
+              </button>
+            </div>
+          </header>
+
+          <div class="grid min-h-0 flex-1 grid-cols-1 overflow-y-auto lg:grid-cols-[18rem,1fr]">
+            <aside class="border-b border-neutral-100 bg-neutral-50/70 px-6 py-6 lg:border-b-0 lg:border-r">
+              <div class="rounded-3xl border border-neutral-100 bg-white p-5 shadow-sm">
+                <p class="text-xs font-bold uppercase tracking-widest text-neutral-400">{{ t('scan.results.summary.title') }}</p>
+                <div class="mt-6 flex items-end gap-2">
+                  <span class="text-5xl font-bold tracking-tight text-neutral-950">{{ resultDisplaySummary.ai }}%</span>
+                  <span class="pb-1 text-sm font-semibold text-neutral-500">{{ t('scan.results.summary.label') }}</span>
+                </div>
+                <div class="mt-6 space-y-4">
+                  <div>
+                    <div class="mb-1 flex justify-between text-xs font-semibold text-neutral-600">
+                      <span>{{ t('scan.results.summary.ai') }}</span>
+                      <span>{{ resultDisplaySummary.ai }}%</span>
+                    </div>
+                    <div class="h-2 overflow-hidden rounded-full bg-neutral-100">
+                      <div class="h-full bg-primary-500" :style="{ width: resultDisplaySummary.ai + '%' }"></div>
+                    </div>
+                  </div>
+                  <div>
+                    <div class="mb-1 flex justify-between text-xs font-semibold text-neutral-600">
+                      <span>{{ t('scan.results.summary.human') }}</span>
+                      <span>{{ resultDisplaySummary.human }}%</span>
+                    </div>
+                    <div class="h-2 overflow-hidden rounded-full bg-neutral-100">
+                      <div class="h-full bg-emerald-500" :style="{ width: resultDisplaySummary.human + '%' }"></div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="mt-4 rounded-3xl border border-neutral-100 bg-white p-2 shadow-sm">
+                <button
+                  v-for="tab in availableResultTabs"
+                  :key="tab.key"
+                  type="button"
+                  :class="[
+                    'flex w-full items-center justify-between rounded-2xl px-4 py-3 text-sm font-semibold transition',
+                    activeResultTab === tab.key
+                      ? 'bg-primary-50 text-primary-800 ring-1 ring-primary-100'
+                      : 'text-neutral-500 hover:bg-neutral-50 hover:text-neutral-900',
+                  ]"
+                  @click="activeResultTab = tab.key"
+                >
+                  <span>{{ tab.label }}</span>
+                  <ArrowRightIcon v-if="activeResultTab === tab.key" class="h-4 w-4" />
+                </button>
+              </div>
+            </aside>
+
+            <main class="min-h-0 px-6 py-6">
+              <div v-if="activeResultTab === 'scan'" class="space-y-4">
+                <p v-if="resultHasMergedBlocks" class="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+                  {{ t('scan.results.mergeNotice') }}
+                </p>
+                <div
+                  v-for="(sentence, index) in scanStore.result.sentences"
+                  :key="sentence.id"
+                  :class="[
+                    'rounded-3xl border p-5 text-sm transition-all duration-150',
+                    highlightBorderClass(sentence),
+                    isSentenceResultActive(sentence) ? 'ring-2 ring-slate-300/80 shadow-sm' : '',
+                  ]"
+                  @mouseenter="setActiveSentence(getSentenceDefaultActiveId(sentence))"
+                  @mouseleave="clearActiveSentence"
+                >
+                  <div class="mb-4 flex items-center justify-between gap-3">
+                    <span class="inline-flex items-center rounded-full bg-white/80 px-3 py-1 text-xs font-semibold text-slate-600 ring-1 ring-slate-200">
+                      {{ formatSentenceBlockLabel(sentence, index) }}
+                    </span>
+                    <span class="text-xs font-semibold text-slate-500">
+                      {{ formatSentenceProbabilityLabel(sentence) }}
+                    </span>
+                  </div>
+                  <div
+                    class="result-sentence-text min-w-0 space-y-3 text-base"
+                    @mouseover="setActiveSentenceFromResultParagraph($event, sentence)"
+                    @mouseleave="setActiveSentence(getSentenceDefaultActiveId(sentence))"
+                    v-html="formatHighlightedSentence(sentence)"
+                  ></div>
+                  <p v-if="sentence.reason" class="mt-3 text-xs leading-5 text-slate-500">{{ sentence.reason }}</p>
+                </div>
+              </div>
+
+              <div v-else-if="activeResultTab === 'translate'" class="space-y-3">
+                <p class="text-xs font-semibold text-slate-500">{{ t('scan.results.translation') }}</p>
+                <div class="rounded-3xl bg-slate-50 p-5 text-sm leading-relaxed text-slate-700 whitespace-pre-line break-words">
+                  {{ scanStore.result.translation }}
+                </div>
+              </div>
+
+              <div v-else-if="activeResultTab === 'polish'" class="space-y-4">
+                <p class="text-xs font-semibold text-slate-500">{{ t('scan.results.polish') }}</p>
+                <div class="rounded-3xl border border-slate-200 bg-white p-5 text-sm whitespace-pre-line break-words text-slate-700">
+                  {{ scanStore.result.polish }}
+                </div>
+                <button
+                  type="button"
+                  class="inline-flex items-center rounded-full bg-primary-600 px-4 py-2 text-xs font-semibold text-white hover:bg-primary-500"
+                  @click="applyPolishSuggestion(scanStore.result.polish)"
+                >
+                  {{ t('scan.results.apply') }}
+                </button>
+              </div>
+
+              <div v-else-if="activeResultTab === 'citation'" class="space-y-4">
+                <p class="text-xs font-semibold text-slate-500">{{ t('scan.results.citation') }}</p>
+                <div
+                  v-for="item in scanStore.result.citations"
+                  :key="item.id"
+                  class="rounded-3xl border border-slate-200 bg-white p-5 text-sm break-words"
+                >
+                  <p class="text-slate-700">{{ item.text }}</p>
+                  <p v-if="item.source" class="mt-2 text-xs text-slate-500">{{ item.source }}</p>
+                </div>
+                <p class="text-[11px] text-slate-400">{{ t('scan.results.citationHint') }}</p>
+              </div>
+            </main>
+          </div>
+        </section>
+      </div>
+    </transition>
     <LoginPromptModal
       :open="showLoginModal"
       :message="loginMessage"
@@ -1048,7 +1172,6 @@ import {
   BookOpenIcon,
   BookmarkSquareIcon,
   CommandLineIcon,
-  ClockIcon,
   DocumentMagnifyingGlassIcon,
   DocumentTextIcon,
   DocumentArrowDownIcon,
@@ -1060,6 +1183,10 @@ import {
   Cog6ToothIcon,
   QuestionMarkCircleIcon,
   PlusIcon,
+  StarIcon,
+  TrashIcon,
+  CheckIcon,
+  XMarkIcon,
   SparklesIcon,
   Squares2X2Icon,
   ShieldCheckIcon,
@@ -1082,7 +1209,13 @@ import { exportPdfReport as requestPdfReport } from '../api/modules/reports';
 import { useAuthStore } from '../store/auth';
 import { useScanStore } from '../store/scan';
 import { clampProbability, getProbabilityCardClasses, getProbabilityTextClasses } from '../utils/detectionStyles';
-import { buildHighlightedPreviewHtml, escapeHtml, plainTextToHtml, sanitizeHtmlForEditor } from '../utils/editorContent';
+import {
+  buildHighlightedPreviewHtml,
+  buildSentenceParagraphLinkId,
+  escapeHtml,
+  plainTextToHtml,
+  sanitizeHtmlForEditor,
+} from '../utils/editorContent';
 import { showComingSoon, showToast } from '../utils/toast';
 
 const authStore = useAuthStore();
@@ -1093,7 +1226,6 @@ const { t, locale } = useI18n();
 
 const editorRef = ref(null);
 const previewContentRef = ref(null);
-const historyPreviewRef = ref(null);
 const fileInput = ref(null);
 const newMenuRef = ref(null);
 const newMenuButtonRef = ref(null);
@@ -1116,17 +1248,24 @@ const activeResultTab = ref('scan');
 const newMenuOpen = ref(false);
 const activePanel = ref('home');
 const activeHistoryId = ref('');
-const activeHistoryTab = ref('scan');
+const historySearchQuery = ref('');
+const isHistoryManaging = ref(false);
+const selectedHistoryIds = ref([]);
+const renamingHistoryId = ref('');
+const renameHistoryDraft = ref('');
+const isHistoryActionPending = ref(false);
 const activeSentenceId = ref('');
+const isResultDetailOpen = ref(false);
 const headerVariant = computed(() => (activePanel.value === 'document' ? 'scan' : 'standard'));
 const quotaInfo = ref({ actor_type: '', limit: 0, used_today: 0, remaining: 0 });
 const isQuotaLoading = ref(false);
 const isQuotaReady = ref(false);
 const showIntegrationHub = false;
 
-const allowedPanelSet = new Set(['home', 'document', 'history', 'profile', 'qa']);
+const allowedPanelSet = new Set(['home', 'document', 'profile', 'qa']);
 const allowedFunctionKeys = new Set(['scan']);
 let lastComingSoonAt = 0;
+let historySearchTimer = null;
 
 const triggerComingSoon = (label) => {
   const now = Date.now();
@@ -1167,7 +1306,7 @@ const functionOptions = computed(() => [
   },
 ]);
 
-const panelOptions = ['home', 'document', 'history', 'profile', 'qa'];
+const panelOptions = ['home', 'document', 'profile', 'qa'];
 
 const motivationalQuotes = computed(() => t('scan.quotes'));
 
@@ -1281,7 +1420,6 @@ const userPlanTag = computed(() => {
 });
 
 const dashboardHomeCopy = computed(() => t('scan.dashboard'));
-const historyAuthPromptItems = computed(() => t('scan.history.authPrompt.items'));
 
 const pickRandomQuote = () => {
   if (!motivationalQuotes.value.length) {
@@ -1558,11 +1696,7 @@ const scanReadinessMessage = computed(() => {
 const resultHasMergedBlocks = computed(() =>
   Boolean(scanStore.result?.sentences?.some((item) => String(item.text || '').includes('\n')))
 );
-const historyHasMergedBlocks = computed(() =>
-  Boolean(activeHistoryRecord.value?.analysis?.sentences?.some((item) => String(item.text || '').includes('\n')))
-);
 const resultDisplaySummary = computed(() => collapseSummaryForDisplay(scanStore.result?.summary));
-const activeHistoryDisplaySummary = computed(() => collapseSummaryForDisplay(activeHistoryRecord.value?.analysis?.summary));
 const normalizeModelVersionLabel = (modelName) => {
   const normalized = String(modelName || '').trim();
   if (!normalized) return '';
@@ -1573,7 +1707,6 @@ const modelVersionLabel = computed(() =>
   normalizeModelVersionLabel(scanStore.result?.modelName || scanStore.result?.model_name) || t('scan.results.summary.badge')
 );
 const mergedDetectionNotice = computed(() => t('scan.results.mergeNotice'));
-const aiLikelyHintText = computed(() => t('scan.history.aiLikelyHint'));
 
 const formatQuotaValue = (value) => {
   const numeric = Number(value ?? 0);
@@ -1783,62 +1916,15 @@ const availableResultTabs = computed(() => {
 
 const historyRecords = computed(() => scanStore.historyRecords);
 
-const activeHistoryRecord = computed(() => historyRecords.value.find((item) => item.id === activeHistoryId.value));
+const activeHistoryRecord = computed(() =>
+  historyRecords.value.find((item) => String(item.id) === String(activeHistoryId.value))
+);
 
-const historyFunctionSummary = computed(() => {
-  if (!activeHistoryRecord.value) {
-    return t('scan.functions.scan');
+const resultDetailTitle = computed(() => {
+  if (activeHistoryRecord.value) {
+    return resolveHistoryTitle(activeHistoryRecord.value);
   }
-  if (!Array.isArray(activeHistoryRecord.value.functions) || !activeHistoryRecord.value.functions.length) {
-    return t('scan.functions.scan');
-  }
-  return activeHistoryRecord.value.functions
-    .map((key) => functionLabelMap.value[key] || key)
-    .join(t('scan.separator'));
-});
-
-const availableHistoryTabs = computed(() => {
-  const record = activeHistoryRecord.value;
-  const analysis = record?.analysis;
-  if (!record || !analysis) {
-    return [];
-  }
-  const tabs = [{ key: 'scan', label: t('scan.functions.scan') }];
-  if (analysis.polish) {
-    tabs.push({ key: 'polish', label: t('scan.results.polish') });
-  }
-  if (analysis.translation) {
-    tabs.push({ key: 'translate', label: t('scan.results.translation') });
-  }
-  if (analysis.citations?.length) {
-    tabs.push({ key: 'citation', label: t('scan.results.citation') });
-  }
-  return tabs;
-});
-
-const historyPreviewHtml = computed(() => {
-  const record = activeHistoryRecord.value;
-  if (!record) return '';
-  if (record.analysis) {
-    return buildPreviewHtmlForAnalysis({
-      analysis: record.analysis,
-      editorHtml: record.editorHtml || '',
-      inputText: record.inputText || '',
-    });
-  }
-  if (record.editorHtml) {
-    return record.editorHtml;
-  }
-  if (record.inputText) {
-    return plainTextToHtml(record.inputText);
-  }
-  return '';
-});
-
-const historyCharacterUsage = computed(() => {
-  const record = activeHistoryRecord.value;
-  const length = record?.analysis?.wordCount ?? (record?.inputText ? record.inputText.length : 0);
-  return `${length} ${t('scan.editor.chars') || 'chars'}`;
+  return buildHistoryTitle() || t('scan.results.detailTitle');
 });
 
 const isTooShortSentence = (sentence) => sentence?.type === 'too_short';
@@ -1854,15 +1940,36 @@ const setActiveSentence = (sentenceId = '') => {
 const clearActiveSentence = () => {
   activeSentenceId.value = '';
 };
+const getSentenceBlockId = (sentence) => String(sentence?.id || '');
+const getSentenceDefaultActiveId = (sentence) => {
+  const startParagraph = Number(sentence?.startParagraph ?? sentence?.start_paragraph);
+  const paragraphIndex = Number.isFinite(startParagraph) && startParagraph > 0 ? startParagraph : 1;
+  return buildSentenceParagraphLinkId(sentence, paragraphIndex);
+};
+const isSentenceResultActive = (sentence) => {
+  const blockId = getSentenceBlockId(sentence);
+  const activeId = String(activeSentenceId.value || '');
+  return Boolean(blockId) && (activeId === blockId || activeId.startsWith(`${blockId}:p-`));
+};
+const setActiveSentenceFromResultParagraph = (event, sentence) => {
+  const target = event?.target;
+  const targetElement = target?.nodeType === 3 ? target.parentElement : target;
+  const paragraphNode = targetElement?.closest?.('[data-sentence-id]');
+  const paragraphId = paragraphNode?.getAttribute?.('data-sentence-id');
+  if (paragraphId) {
+    setActiveSentence(paragraphId);
+  }
+};
 
 const syncPreviewHoverState = async () => {
-  const containers = [previewContentRef.value, historyPreviewRef.value].filter(Boolean);
+  const containers = [previewContentRef.value].filter(Boolean);
   containers.forEach((container) => {
     const nodes = Array.from(container.querySelectorAll('[data-sentence-id]'));
     nodes.forEach((node) => {
+      const nodeSentenceId = node.getAttribute('data-sentence-id');
       node.classList.toggle(
         'is-linked-active',
-        Boolean(activeSentenceId.value) && node.getAttribute('data-sentence-id') === activeSentenceId.value
+        Boolean(activeSentenceId.value) && nodeSentenceId === activeSentenceId.value
       );
     });
   });
@@ -1870,6 +1977,7 @@ const syncPreviewHoverState = async () => {
 
 const parsePanel = (value) => {
   if (typeof value !== 'string') return 'home';
+  if (value === 'history') return 'document';
   return panelOptions.includes(value) ? value : 'home';
 };
 
@@ -1901,17 +2009,192 @@ const setActivePanel = (panel) => {
 
 const isPanelActive = (panel) => activePanel.value === panel;
 
-const selectHistoryRecord = (id) => {
-  if (activeHistoryId.value !== id) {
-    activeHistoryId.value = id;
+const clearCurrentHistorySelection = () => {
+  activeHistoryId.value = '';
+  isResultDetailOpen.value = false;
+  if ('detail' in route.query) {
+    syncDetailRoute('');
   }
-  activeHistoryTab.value = 'scan';
 };
 
-const openHistoryRecord = (id) => {
+const clearHistorySelection = () => {
+  selectedHistoryIds.value = [];
+};
+
+const isHistorySelected = (id) => selectedHistoryIds.value.some((item) => String(item) === String(id));
+
+const toggleHistorySelection = (id) => {
+  const normalizedId = String(id);
+  if (!normalizedId) return;
+  if (isHistorySelected(normalizedId)) {
+    selectedHistoryIds.value = selectedHistoryIds.value.filter((item) => String(item) !== normalizedId);
+  } else {
+    selectedHistoryIds.value = [...selectedHistoryIds.value, id];
+  }
+};
+
+const toggleHistoryManageMode = () => {
+  isHistoryManaging.value = !isHistoryManaging.value;
+  clearHistorySelection();
+  cancelRenameHistory();
+};
+
+const clearHistorySearch = () => {
+  historySearchQuery.value = '';
+};
+
+const runHistoryAction = async (action) => {
+  if (isHistoryActionPending.value) return null;
+  isHistoryActionPending.value = true;
+  try {
+    return await action();
+  } catch (error) {
+    showToast({
+      title: t('scan.history.actionErrorTitle'),
+      message: error?.message || t('scan.history.actionErrorMessage'),
+    });
+    return null;
+  } finally {
+    isHistoryActionPending.value = false;
+  }
+};
+
+const startRenameHistory = (record) => {
+  renamingHistoryId.value = record?.id || '';
+  renameHistoryDraft.value = resolveHistoryTitle(record);
+};
+
+const cancelRenameHistory = () => {
+  renamingHistoryId.value = '';
+  renameHistoryDraft.value = '';
+};
+
+const confirmRenameHistory = async () => {
+  const id = renamingHistoryId.value;
+  const title = renameHistoryDraft.value.trim();
+  if (!id || !title) return;
+  await runHistoryAction(async () => {
+    await scanStore.renameHistoryRecord(id, title);
+    cancelRenameHistory();
+  });
+};
+
+const togglePinnedHistory = async (record) => {
+  if (!record?.id) return;
+  await runHistoryAction(() => scanStore.togglePinnedHistoryRecord(record.id));
+};
+
+const deleteSingleHistoryRecord = async (record) => {
+  if (!record?.id) return;
+  if (typeof window !== 'undefined' && !window.confirm(t('scan.history.deleteConfirm'))) return;
+  const deletedActiveRecord = String(record.id) === String(activeHistoryId.value);
+  await runHistoryAction(async () => {
+    await scanStore.deleteHistoryRecord(record.id);
+    selectedHistoryIds.value = selectedHistoryIds.value.filter((item) => String(item) !== String(record.id));
+    if (deletedActiveRecord) {
+      await resetEditor();
+    }
+  });
+};
+
+const deleteSelectedHistoryRecords = async () => {
+  const ids = [...selectedHistoryIds.value];
+  if (!ids.length) return;
+  if (typeof window !== 'undefined' && !window.confirm(t('scan.history.deleteSelectedConfirm', { value: ids.length }))) return;
+  const shouldResetEditor = ids.some((id) => String(id) === String(activeHistoryId.value));
+  await runHistoryAction(async () => {
+    await scanStore.batchDeleteHistoryRecords(ids);
+    clearHistorySelection();
+    if (shouldResetEditor) {
+      await resetEditor();
+    }
+  });
+};
+
+const clearAllHistoryRecords = async () => {
+  if (!historyRecords.value.length) return;
+  if (typeof window !== 'undefined' && !window.confirm(t('scan.history.clearAllConfirm'))) return;
+  await runHistoryAction(async () => {
+    await scanStore.clearAllHistoryRecords();
+    clearHistorySelection();
+    await resetEditor();
+  });
+};
+
+const searchHistoryRecords = async () => {
+  await scanStore.searchHistoryRecords({ q: historySearchQuery.value });
+  selectedHistoryIds.value = selectedHistoryIds.value.filter((id) =>
+    historyRecords.value.some((record) => String(record.id) === String(id))
+  );
+};
+
+const loadHistoryRecord = async (id) => {
   if (id === null || id === undefined || id === '') return;
-  selectHistoryRecord(id);
-  setActivePanel('history');
+  if (isHistoryManaging.value) {
+    toggleHistorySelection(id);
+    return;
+  }
+  let record = historyRecords.value.find((item) => String(item.id) === String(id));
+  if (authStore.isAuthenticated && (!record || !record.analysis)) {
+    record = (await scanStore.fetchHistoryRecordDetail(id)) || record;
+  }
+  if (!record) return;
+
+  activeHistoryId.value = record.id;
+  setActivePanel('document');
+  scanStore.loadHistoryRecord(record);
+  if (record.analysis) {
+    syncHighlightedPreviewHtml(record.analysis);
+    editorMode.value = 'preview';
+  } else {
+    highlightedPreviewHtml.value = '';
+    editorMode.value = 'edit';
+  }
+  activeResultTab.value = 'scan';
+  await nextTick();
+  syncEditorFromStore();
+};
+
+const openHistoryRecord = async (id) => {
+  await loadHistoryRecord(id);
+};
+
+const syncDetailRoute = (detailId = '') => {
+  const query = { ...route.query };
+  if (detailId) {
+    query.panel = 'document';
+    query.detail = String(detailId);
+    router.push({ name: 'dashboard', query });
+    return;
+  }
+  if (!('detail' in query)) return;
+  delete query.detail;
+  router.replace({ name: 'dashboard', query });
+};
+
+const openResultDetail = () => {
+  if (!hasResults.value) return;
+  isResultDetailOpen.value = true;
+  const detailId = scanStore.currentResultHistoryId || activeHistoryId.value || 'current';
+  syncDetailRoute(detailId);
+};
+
+const closeResultDetail = () => {
+  isResultDetailOpen.value = false;
+  syncDetailRoute('');
+};
+
+const syncResultDetailFromRoute = async (value) => {
+  const detailId = Array.isArray(value) ? value[0] : value;
+  if (!detailId) {
+    isResultDetailOpen.value = false;
+    return;
+  }
+  setActivePanel('document');
+  if (detailId !== 'current' && String(scanStore.currentResultHistoryId || activeHistoryId.value) !== String(detailId)) {
+    await loadHistoryRecord(detailId);
+  }
+  isResultDetailOpen.value = hasResults.value;
 };
 
 const formatHistoryTimestamp = (value) => {
@@ -1967,9 +2250,6 @@ onMounted(async () => {
   if (initialPanel === 'home') {
     pickRandomQuote();
   }
-  if (historyRecords.value.length && !activeHistoryId.value) {
-    activeHistoryId.value = historyRecords.value[0].id;
-  }
   const features = parseFeatures(route.query.features);
   if (features.length) {
     scanStore.setFunctions(features);
@@ -1983,11 +2263,17 @@ onMounted(async () => {
   await refreshQuota();
   showQuotaNoticeOnce();
   document.addEventListener('click', onGlobalClick);
+  document.addEventListener('keydown', onDetailKeydown);
+  await syncResultDetailFromRoute(route.query.detail);
 });
 
 onBeforeUnmount(() => {
   document.removeEventListener('click', onGlobalClick);
   document.removeEventListener('keydown', featureModalKeyHandler);
+  document.removeEventListener('keydown', onDetailKeydown);
+  if (historySearchTimer) {
+    clearTimeout(historySearchTimer);
+  }
 });
 
 watch(
@@ -2050,7 +2336,7 @@ watch(
   () => route.query.panel,
   (value) => {
     const next = parsePanel(value);
-    if (typeof value === 'string' && !panelOptions.includes(value)) {
+    if (typeof value === 'string' && (value === 'history' || !panelOptions.includes(value))) {
       syncPanelToRoute(next);
       return;
     }
@@ -2063,15 +2349,8 @@ watch(
 watch(activePanel, async (panel) => {
   syncPanelToRoute(panel);
   clearActiveSentence();
-  if (panel === 'history') {
-    if (authStore.isAuthenticated) {
-      await scanStore.syncHistoryFromBackend();
-    }
-    if (!activeHistoryId.value && historyRecords.value.length) {
-      activeHistoryId.value = historyRecords.value[0].id;
-    }
-  } else {
-    activeHistoryTab.value = 'scan';
+  if (panel === 'document') {
+    await scanStore.searchHistoryRecords({ q: historySearchQuery.value });
   }
   if (panel === 'home') {
     pickRandomQuote();
@@ -2080,12 +2359,28 @@ watch(activePanel, async (panel) => {
   }
 });
 
+watch(historySearchQuery, () => {
+  if (historySearchTimer) {
+    clearTimeout(historySearchTimer);
+  }
+  historySearchTimer = setTimeout(() => {
+    searchHistoryRecords();
+  }, 250);
+});
+
 watch(activeHistoryId, async (newId) => {
   clearActiveSentence();
   if (newId && authStore.isAuthenticated) {
     await scanStore.fetchHistoryRecordDetail(newId);
   }
 });
+
+watch(
+  () => route.query.detail,
+  (value) => {
+    syncResultDetailFromRoute(value);
+  }
+);
 
 watch(isFeatureModalOpen, (open) => {
   if (typeof window === 'undefined') return;
@@ -2098,43 +2393,21 @@ watch(isFeatureModalOpen, (open) => {
 
 watch(
   historyRecords,
-  (records, oldRecords) => {
+  (records) => {
     if (!records.length) {
       activeHistoryId.value = '';
       return;
     }
-    
-    if (activePanel.value === 'history' && oldRecords && records.length > oldRecords.length) {
-      const latestRecord = records[0];
-      if (latestRecord) {
-        activeHistoryId.value = latestRecord.id;
-        activeHistoryTab.value = 'scan';
-      }
-    }
-    if (!records.find((item) => item.id === activeHistoryId.value)) {
-      activeHistoryId.value = records[0].id;
+
+    if (activeHistoryId.value && !records.find((item) => String(item.id) === String(activeHistoryId.value))) {
+      activeHistoryId.value = '';
     }
   },
   { deep: true }
 );
 
-watch(availableHistoryTabs, (tabs) => {
-  clearActiveSentence();
-  if (!tabs.length) {
-    activeHistoryTab.value = 'scan';
-    return;
-  }
-  if (!tabs.find((tab) => tab.key === activeHistoryTab.value)) {
-    activeHistoryTab.value = tabs[0].key;
-  }
-});
-
-watch(activeHistoryTab, () => {
-  clearActiveSentence();
-});
-
 watch(
-  [activeSentenceId, highlightedPreviewHtml, historyPreviewHtml, activePanel, activeHistoryId, editorMode],
+  [activeSentenceId, highlightedPreviewHtml, activePanel, activeHistoryId, editorMode],
   () => {
     syncPreviewHoverState();
   },
@@ -2161,10 +2434,18 @@ const parseFeatures = (value) => {
 
 const formatHighlightedSentence = (sentence) => {
   const classes = getProbabilityTextClasses(clampProbability(sentence.probability), sentence?.type);
+  const startParagraph = Number(sentence?.startParagraph ?? sentence?.start_paragraph);
+  const firstParagraphIndex = Number.isFinite(startParagraph) && startParagraph > 0 ? startParagraph : 1;
+  const blockId = getSentenceBlockId(sentence);
   return String(sentence?.text || '')
     .split('\n')
     .filter((item) => item.trim())
-    .map((item) => `<p class="font-semibold leading-relaxed ${classes}">${escapeHtml(item)}</p>`)
+    .map((item, index) => {
+      const paragraphIndex = firstParagraphIndex + index;
+      const sentenceId = buildSentenceParagraphLinkId(sentence, paragraphIndex);
+      const blockAttribute = blockId && blockId !== sentenceId ? ` data-sentence-block-id="${escapeHtml(blockId)}"` : '';
+      return `<p class="font-semibold leading-relaxed ${classes}" data-sentence-id="${escapeHtml(sentenceId)}"${blockAttribute}>${escapeHtml(item)}</p>`;
+    })
     .join('');
 };
 
@@ -2209,6 +2490,12 @@ const featureModalKeyHandler = (event) => {
   }
 };
 
+const onDetailKeydown = (event) => {
+  if (event.key === 'Escape' && isResultDetailOpen.value) {
+    closeResultDetail();
+  }
+};
+
 const handleIntegrationAction = (integration) => {
   if (!integration) return;
   if (integration.action === 'multi-upload') {
@@ -2228,15 +2515,12 @@ const runHomeAction = (action) => {
     return;
   }
   if (action === 'history') {
-    if (historyRecords.value.length) {
-      setActivePanel('history');
-      return;
-    }
     setActivePanel('document');
   }
 };
 
 const applyExample = async (key) => {
+  clearCurrentHistorySelection();
   scanStore.applyExample(key);
   scanStore.resetResult();
   highlightedPreviewHtml.value = '';
@@ -2253,12 +2537,14 @@ const toggleFunction = (key) => {
     return;
   }
   scanStore.toggleFunction(key);
+  clearCurrentHistorySelection();
   scanStore.resetResult();
   highlightedPreviewHtml.value = '';
   editorMode.value = 'edit';
 };
 
 const onEditorInput = (event) => {
+  clearCurrentHistorySelection();
   scanStore.setEditorHtml(event.target.innerHTML);
   if (event.target.innerHTML !== scanStore.editorHtml) {
     event.target.innerHTML = scanStore.editorHtml;
@@ -2280,6 +2566,7 @@ const onEditorPaste = (event) => {
   const safeHtml = sanitizeHtmlForEditor(html || plainTextToHtml(text), text);
   document.execCommand('insertHTML', false, safeHtml);
   if (editorRef.value) {
+    clearCurrentHistorySelection();
     scanStore.setEditorHtml(editorRef.value.innerHTML);
     editorRef.value.innerHTML = scanStore.editorHtml;
     localText.value = scanStore.inputText;
@@ -2354,6 +2641,7 @@ const handleScan = async () => {
     syncHighlightedPreviewHtml(analysis);
     editorMode.value = 'preview';
     activeResultTab.value = 'scan';
+    activeHistoryId.value = scanStore.currentResultHistoryId || historyRecords.value[0]?.id || '';
     markOnboardingStep('scan');
     markOnboardingStep('review');
     await refreshQuota({ retryOnGuestError: false });
@@ -2410,30 +2698,8 @@ const exportReport = async () => {
   }
 };
 
-const exportHistoryReport = async () => {
-  const record = activeHistoryRecord.value;
-  if (!record?.analysis) return;
-  if (!authStore.isAuthenticated) {
-    showExportLockedToast();
-    return;
-  }
-
-  try {
-    const payload = buildReportPayload({
-      reportType: 'history',
-      historyId: record.id,
-    });
-    if (!payload) return;
-    await downloadReport(payload, `aidetector-report-history-${record.id}.pdf`);
-  } catch {
-    showToast({
-      title: t('scan.results.exportErrorTitle'),
-      message: t('scan.results.exportErrorMessage'),
-    });
-  }
-};
-
 const resetEditor = async () => {
+  clearCurrentHistorySelection();
   scanStore.resetText();
   scanStore.resetResult();
   highlightedPreviewHtml.value = '';
@@ -2458,6 +2724,7 @@ const onFileChange = async (event) => {
   if (!file) return;
   try {
     await scanStore.readFile(file);
+    clearCurrentHistorySelection();
     scanStore.resetResult();
     highlightedPreviewHtml.value = '';
     editorMode.value = 'edit';
@@ -2496,6 +2763,7 @@ const onDrop = async (event) => {
   if (!files?.length) return;
   try {
     await scanStore.readFiles(files);
+    clearCurrentHistorySelection();
     scanStore.resetResult();
     highlightedPreviewHtml.value = '';
     editorMode.value = 'edit';
@@ -2514,13 +2782,10 @@ const goToProfile = () => {
   setActivePanel('profile');
 };
 
-const goToQA = () => {
-  triggerComingSoon(t('scan.nav.qa'));
-};
-
 const startNewScan = () => {
   newMenuOpen.value = false;
   setActivePanel('document');
+  clearCurrentHistorySelection();
   scanStore.resetAll();
   scanStore.resetResult();
   highlightedPreviewHtml.value = '';
@@ -2591,6 +2856,14 @@ const onGlobalClick = (event) => {
 .editor-surface {
   @apply h-full overflow-y-auto px-8 pt-8 pb-48 text-base leading-7 text-slate-700 focus:outline-none;
   font-family: 'Plus Jakarta Sans', 'Inter', system-ui, sans-serif;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.editor-surface :deep(*) {
+  max-width: 100%;
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 .editor-surface:empty::before {
@@ -2600,11 +2873,36 @@ const onGlobalClick = (event) => {
 
 .preview-surface {
   @apply h-full overflow-y-auto px-8 pt-8 pb-48 text-base leading-7 text-slate-700;
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
+.preview-surface :deep(*) {
+  max-width: 100%;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.result-sentence-text {
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.result-sentence-text :deep(*) {
+  max-width: 100%;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
 
 .highlight-chip {
   @apply rounded-xl px-1.5 py-0.5;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+:deep(.highlight-chip) {
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 :deep(.highlight-chip--structured) {
@@ -2613,6 +2911,8 @@ const onGlobalClick = (event) => {
   border-radius: 0.75rem;
   padding: 0.08rem 0.32rem;
   line-height: inherit;
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 :deep(.highlight-chip.is-linked-active) {

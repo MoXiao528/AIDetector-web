@@ -199,6 +199,8 @@ export const useAuthStore = defineStore('auth', () => {
         await claimGuestHistory(guestToken);
         clearGuestToken();
       }
+      const existingRecords = await scanStore.syncHistoryFromBackend();
+      await scanStore.migrateLocalStorageToBackend({ existingRecords });
       await scanStore.syncHistoryFromBackend();
     } catch {
       // Preserve the reset state when guest-history claim fails.

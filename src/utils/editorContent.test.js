@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { buildHighlightedPreviewHtml, extractTextFromHtml, sanitizeHtmlForEditor } from './editorContent';
+import { buildHighlightedPreviewHtml, buildSentenceParagraphLinkId, extractTextFromHtml, sanitizeHtmlForEditor } from './editorContent';
 
 describe('editorContent utils', () => {
   it('extractTextFromHtml 保留块级结构顺序', () => {
@@ -41,7 +41,9 @@ describe('editorContent utils', () => {
     expect(output).toContain('<li');
     expect(output).toContain('<strong>First</strong>');
     expect(output).toContain('data-sentence-id="sent-1"');
-    expect(output).toContain('data-sentence-id="sent-2"');
+    expect(output).toContain('data-sentence-id="sent-2:p-2"');
+    expect(output).toContain('data-sentence-id="sent-2:p-3"');
+    expect(output).toContain('data-sentence-block-id="sent-2"');
     expect(output).toContain('data-sentence-id="sent-3"');
     expect(output).toContain('highlight-chip');
     expect(output).not.toContain('highlight-block');
@@ -73,6 +75,55 @@ describe('editorContent utils', () => {
     expect(output).toContain('<ul>');
     expect(output).toContain('Parent item');
     expect(output).toContain('Child item');
+  });
+
+  it('splits collapsed editor blocks by fallback paragraphs for linked hover', () => {
+    const output = buildHighlightedPreviewHtml({
+      editorHtml: '<div>Line one<br>Line two<br>Line three</div>',
+      fallbackText: 'Line one\nLine two\nLine three',
+      sentences: [{ id: 'merged-1', startParagraph: 1, endParagraph: 3, probability: 0.8 }],
+    });
+
+    expect(output).toContain('data-sentence-id="merged-1:p-1"');
+    expect(output).toContain('data-sentence-id="merged-1:p-2"');
+    expect(output).toContain('data-sentence-id="merged-1:p-3"');
+    expect(output).toContain('data-sentence-block-id="merged-1"');
+    expect(output.match(/<p>/g)?.length).toBe(3);
+  });
+
+  it('splits collapsed editor blocks even when fallback text lost paragraph breaks', () => {
+    const output = buildHighlightedPreviewHtml({
+      editorHtml: '<div>Line one<br>Line two<br>Line three</div>',
+      fallbackText: 'Line one Line two Line three',
+      sentences: [
+        {
+          id: 'merged-soft-breaks',
+          text: 'Line one\nLine two\nLine three',
+          raw: 'Line one\nLine two\nLine three',
+          startParagraph: 1,
+          endParagraph: 3,
+          probability: 0.8,
+        },
+      ],
+    });
+
+    expect(output).toContain('data-sentence-id="merged-soft-breaks:p-1"');
+    expect(output).toContain('data-sentence-id="merged-soft-breaks:p-2"');
+    expect(output).toContain('data-sentence-id="merged-soft-breaks:p-3"');
+    expect(output.match(/data-sentence-id=/g)?.length).toBe(3);
+  });
+
+  it('uses paragraph link ids for multiline text even when range is collapsed', () => {
+    const sentence = {
+      id: 'merged-collapsed',
+      text: 'Line one\nLine two\nLine three',
+      startParagraph: 1,
+      endParagraph: 1,
+    };
+
+    expect(buildSentenceParagraphLinkId(sentence, 1)).toBe('merged-collapsed:p-1');
+    expect(buildSentenceParagraphLinkId(sentence, 2)).toBe('merged-collapsed:p-2');
+    expect(buildSentenceParagraphLinkId(sentence, 3)).toBe('merged-collapsed:p-3');
   });
 
   it('sanitizeHtmlForEditor 移除事件处理器和危险链接，但保留高亮属性', () => {
@@ -114,8 +165,12 @@ describe('editorContent utils', () => {
       ],
     });
 
-    expect(output).toContain('data-sentence-id="sent-download"');
-    expect(output).toContain('data-sentence-id="sent-response"');
+    expect(output).toContain('data-sentence-id="sent-download:p-1"');
+    expect(output).toContain('data-sentence-id="sent-download:p-2"');
+    expect(output).toContain('data-sentence-id="sent-response:p-3"');
+    expect(output).toContain('data-sentence-id="sent-response:p-4"');
+    expect(output).toContain('data-sentence-block-id="sent-download"');
+    expect(output).toContain('data-sentence-block-id="sent-response"');
     expect(output).toContain('<span class="highlight-chip highlight-chip--structured');
     expect(output).toContain('<code>D:\\huggingface\\WUJUNCHAO\\DetectRL-X-XLM-RoBERTa-Detector-All</code>');
     expect(output).toContain('<code>{ "score": 0.09459231793880463, "threshold": 0.0028 }</code>');
