@@ -5,6 +5,8 @@ import { mount, flushPromises } from '@vue/test-utils';
 import ScanPage from './ScanPage.vue';
 import { createI18n } from '../i18n';
 import { useScanStore } from '../store/scan';
+import * as authApi from '../api/modules/auth';
+import * as quotaApi from '../api/modules/quota';
 
 const route = reactive({
   name: 'dashboard',
@@ -81,6 +83,12 @@ describe('ScanPage panel switching', () => {
   beforeEach(() => {
     setActivePinia(createPinia());
     vi.clearAllMocks();
+    vi.mocked(authApi.ensureGuestToken).mockResolvedValue('guest-token');
+    vi.mocked(quotaApi.fetchQuota).mockResolvedValue({
+      limit: 5000,
+      remaining: 5000,
+      used_today: 0,
+    });
     route.name = 'dashboard';
     route.query = { panel: 'home' };
     route.fullPath = '/dashboard?panel=home';
@@ -151,5 +159,31 @@ describe('ScanPage panel switching', () => {
     await editor.trigger('input');
 
     expect(scanStore.uploadError).toBe('');
+  });
+
+  it('quota 返回无错误码 401 时不清 token，也不自动创建新游客主体', async () => {
+    vi.mocked(quotaApi.fetchQuota).mockRejectedValue({ status: 401 });
+
+    mount(ScanPage, {
+      global: {
+        plugins: [createI18n()],
+        stubs: {
+          AppHeader: { template: '<div />' },
+          LoginPromptModal: { template: '<div />' },
+          BaseListbox: { template: '<div />' },
+          ProfilePanel: { template: '<div />' },
+          QAPanel: { template: '<div />' },
+          OnboardingStepsBar: { template: '<div />' },
+          UsageExamplesModal: { template: '<div />' },
+          PricingPage: { template: '<div />' },
+        },
+      },
+    });
+
+    await flushPromises();
+
+    expect(authApi.ensureGuestToken).toHaveBeenCalledTimes(1);
+    expect(authApi.clearGuestToken).not.toHaveBeenCalled();
+    expect(quotaApi.fetchQuota).toHaveBeenCalledTimes(1);
   });
 });

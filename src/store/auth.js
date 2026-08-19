@@ -3,6 +3,7 @@ import { computed, ref } from 'vue';
 import router from '../router';
 import {
   clearGuestToken,
+  ensureGuestToken,
   fetchMe,
   getStoredGuestToken,
   login as loginRequest,
@@ -208,8 +209,19 @@ export const useAuthStore = defineStore('auth', () => {
     }
   };
 
+  const prepareGuestTokenForClaim = async () => {
+    if (!getStoredGuestToken()) return '';
+
+    try {
+      return await ensureGuestToken();
+    } catch {
+      clearGuestToken();
+      return '';
+    }
+  };
+
   const login = async ({ identifier, password }) => {
-    const guestToken = getStoredGuestToken();
+    const guestToken = await prepareGuestTokenForClaim();
     await loginRequest({ identifier, password });
     clearLegacyUserToken();
     persistUserSession(true);
@@ -221,7 +233,7 @@ export const useAuthStore = defineStore('auth', () => {
   };
 
   const register = async ({ name, email, password }) => {
-    const guestToken = getStoredGuestToken();
+    const guestToken = await prepareGuestTokenForClaim();
     const payload = { email, password };
     if (name?.trim()) {
       payload.name = name.trim();

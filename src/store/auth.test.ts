@@ -30,6 +30,7 @@ vi.mock('../api/modules/history', () => ({
 
 vi.mock('../api/modules/auth', () => ({
   clearGuestToken: vi.fn(),
+  ensureGuestToken: vi.fn(),
   fetchMe: vi.fn(),
   getStoredGuestToken: vi.fn(() => ''),
   login: vi.fn(),
@@ -48,6 +49,8 @@ describe('auth store session flow', () => {
     vi.clearAllMocks();
     mockState.scanSyncHistoryFromBackend.mockResolvedValue([]);
     mockState.scanMigrateLocalStorageToBackend.mockResolvedValue({ migrated: [], skipped: [], failed: [] });
+    vi.mocked(authApi.getStoredGuestToken).mockReturnValue('');
+    vi.mocked(authApi.ensureGuestToken).mockResolvedValue('');
     window.localStorage.clear();
   });
 
@@ -71,6 +74,7 @@ describe('auth store session flow', () => {
 
   it('login 会自动 claim guest token 并导入游客本地历史', async () => {
     vi.mocked(authApi.getStoredGuestToken).mockReturnValue('guest-token-1');
+    vi.mocked(authApi.ensureGuestToken).mockResolvedValue('guest-session-token-1');
     vi.mocked(authApi.login).mockResolvedValue({ access_token: 'server-body-token' });
     vi.mocked(authApi.fetchMe).mockResolvedValue({ id: 8, name: 'guest-owner', credits: 20 });
     mockState.scanSyncHistoryFromBackend.mockResolvedValueOnce([{ id: 101, inputText: 'claimed record' }]);
@@ -78,12 +82,48 @@ describe('auth store session flow', () => {
     const store = useAuthStore();
     await store.login({ identifier: 'guest-owner', password: 'StrongPass!23' });
 
-    expect(historyApi.claimGuestHistory).toHaveBeenCalledWith('guest-token-1');
+    expect(authApi.ensureGuestToken).toHaveBeenCalledTimes(1);
+    expect(historyApi.claimGuestHistory).toHaveBeenCalledWith('guest-session-token-1');
     expect(authApi.clearGuestToken).toHaveBeenCalledTimes(1);
     expect(mockState.scanMigrateLocalStorageToBackend).toHaveBeenCalledWith({
       existingRecords: [{ id: 101, inputText: 'claimed record' }],
     });
     expect(mockState.scanSyncHistoryFromBackend).toHaveBeenCalledTimes(2);
+  });
+
+  it('guest 凭据恢复失败时放弃迁移，但不阻止用户登录', async () => {
+    vi.mocked(authApi.getStoredGuestToken).mockReturnValue('invalid-guest-token');
+    vi.mocked(authApi.ensureGuestToken).mockRejectedValue(new Error('invalid guest session'));
+    vi.mocked(authApi.login).mockResolvedValue({ access_token: 'server-body-token' });
+    vi.mocked(authApi.fetchMe).mockResolvedValue({ id: 12, name: 'safe-login', credits: 20 });
+
+    const store = useAuthStore();
+    await store.login({ identifier: 'safe-login', password: 'StrongPass!23' });
+
+    expect(authApi.clearGuestToken).toHaveBeenCalledTimes(1);
+    expect(historyApi.claimGuestHistory).not.toHaveBeenCalled();
+    expect(window.localStorage.getItem('auth_session')).toBe('1');
+    expect(store.isAuthenticated).toBe(true);
+    expect(store.user?.name).toBe('safe-login');
+    expect(mockState.routerReplace).not.toHaveBeenCalled();
+  });
+
+  it('guest 凭据恢复失败时放弃迁移，但不阻止注册后的登录', async () => {
+    vi.mocked(authApi.getStoredGuestToken).mockReturnValue('invalid-guest-token');
+    vi.mocked(authApi.ensureGuestToken).mockRejectedValue(new Error('invalid guest session'));
+    vi.mocked(authApi.register).mockResolvedValue({ access_token: 'registration-response' });
+    vi.mocked(authApi.login).mockResolvedValue({ access_token: 'server-body-token' });
+    vi.mocked(authApi.fetchMe).mockResolvedValue({ id: 13, name: 'safe-register', credits: 20 });
+
+    const store = useAuthStore();
+    await store.register({ name: 'safe-register', email: 'safe@example.com', password: 'StrongPass!23' });
+
+    expect(authApi.clearGuestToken).toHaveBeenCalledTimes(1);
+    expect(historyApi.claimGuestHistory).not.toHaveBeenCalled();
+    expect(window.localStorage.getItem('auth_session')).toBe('1');
+    expect(store.isAuthenticated).toBe(true);
+    expect(store.user?.name).toBe('safe-register');
+    expect(mockState.routerReplace).not.toHaveBeenCalled();
   });
 
   it('restoreSession 会用 cookie 会话恢复用户，并清理遗留 token', async () => {

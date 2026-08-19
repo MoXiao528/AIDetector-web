@@ -191,8 +191,6 @@ const requestInternal = async <T>(
           } else {
             window.location.reload();
           }
-        } else if (guestAuth) {
-          window.localStorage.removeItem(GUEST_TOKEN_STORAGE_KEY);
         }
       } else if (response.status === 402) {
         console.warn('余额不足，请检查账户点数。');

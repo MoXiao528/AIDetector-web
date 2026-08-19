@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { apiClient } from './client';
 
 const createJsonResponse = (payload: unknown, init: ResponseInit = {}) =>
@@ -9,6 +9,10 @@ const createJsonResponse = (payload: unknown, init: ResponseInit = {}) =>
   });
 
 describe('apiClient guest auth routing', () => {
+  beforeEach(() => {
+    window.localStorage.clear();
+  });
+
   it('游客请求会携带 guest token', async () => {
     const fetchMock = vi.fn().mockResolvedValue(createJsonResponse({ ok: true }));
     vi.stubGlobal('fetch', fetchMock);
@@ -34,5 +38,20 @@ describe('apiClient guest auth routing', () => {
     const headers = new Headers(requestOptions?.headers);
     expect(headers.has('Authorization')).toBe(false);
     expect(requestOptions?.credentials).toBe('include');
+  });
+
+  it('游客请求返回 401 时保留 guest token，避免下一次请求静默换主体', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      createJsonResponse(
+        { code: 'GUEST_SESSION_INVALID', message: 'invalid guest session' },
+        { status: 401 }
+      )
+    );
+    vi.stubGlobal('fetch', fetchMock);
+    window.localStorage.setItem('guest_token', 'guest-token-123');
+
+    await expect(apiClient.get('/api/v1/quota', { guestAuth: true })).rejects.toMatchObject({ status: 401 });
+
+    expect(window.localStorage.getItem('guest_token')).toBe('guest-token-123');
   });
 });

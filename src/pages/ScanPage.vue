@@ -1800,7 +1800,7 @@ const refreshQuota = async ({ retryOnGuestError = true } = {}) => {
       error?.status === 401 &&
       !authStore.isAuthenticated &&
       retryOnGuestError &&
-      (errorCode === 'GUEST_TOKEN_REQUIRED' || !errorCode)
+      errorCode === 'GUEST_TOKEN_REQUIRED'
     ) {
       clearGuestToken();
       await ensureGuestToken();
