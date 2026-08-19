@@ -54,4 +54,19 @@ describe('apiClient guest auth routing', () => {
 
     expect(window.localStorage.getItem('guest_token')).toBe('guest-token-123');
   });
+
+  it('auth:false 的游客会话请求返回 401 时不会误清已登录用户 session', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      createJsonResponse(
+        { code: 'GUEST_SESSION_INVALID', message: 'invalid guest session' },
+        { status: 401 }
+      )
+    );
+    vi.stubGlobal('fetch', fetchMock);
+    window.localStorage.setItem('auth_session', '1');
+
+    await expect(apiClient.get('/api/v1/auth/guest', { auth: false })).rejects.toMatchObject({ status: 401 });
+
+    expect(window.localStorage.getItem('auth_session')).toBe('1');
+  });
 });

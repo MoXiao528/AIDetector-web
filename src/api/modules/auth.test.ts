@@ -2,6 +2,8 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 vi.mock('../client', () => ({
   apiClient: {
+    delete: vi.fn(),
+    get: vi.fn(),
     post: vi.fn(),
   },
 }));
@@ -11,7 +13,7 @@ vi.mock('../../utils/toast', () => ({
 }));
 
 import { apiClient } from '../client';
-import { ensureGuestToken } from './auth';
+import { discardGuestSession, ensureGuestToken, previewGuestSession } from './auth';
 
 const NOW_SECONDS = 1_800_000_000;
 const GUEST_ID = '08b57ec3-e1db-4f3b-ad41-ad5c443707c8';
@@ -140,5 +142,69 @@ describe('ensureGuestToken session recovery', () => {
     expect(apiClient.post).toHaveBeenCalledTimes(1);
     resolveRequest({ access_token: nextToken });
     await expect(Promise.all([firstRecovery, secondRecovery])).resolves.toEqual([nextToken, nextToken]);
+  });
+});
+
+describe('guest history migration API', () => {
+  beforeEach(() => {
+    window.localStorage.clear();
+    vi.mocked(apiClient.delete).mockReset();
+    vi.mocked(apiClient.get).mockReset();
+  });
+
+  it('用显式 guest Bearer 预览当前游客会话和远端记录数量', async () => {
+    vi.mocked(apiClient.get).mockResolvedValue({ active: true, historyCount: 3 });
+
+    await expect(previewGuestSession('guest-session-token')).resolves.toEqual({ active: true, historyCount: 3 });
+
+    expect(apiClient.get).toHaveBeenCalledTimes(1);
+    const [path, options] = vi.mocked(apiClient.get).mock.calls[0];
+    const headers = new Headers(options?.headers);
+    expect(path).toBe('/api/v1/auth/guest');
+    expect(options?.auth).toBe(false);
+    expect(options?.credentials).toBe('include');
+    expect(headers.get('Authorization')).toBe('Bearer guest-session-token');
+  });
+
+  it('cookie-only preview 不发送 Authorization，并显式携带 recovery cookie', async () => {
+    vi.mocked(apiClient.get).mockResolvedValue({ active: true, historyCount: 2 });
+
+    await expect(previewGuestSession()).resolves.toEqual({ active: true, historyCount: 2 });
+
+    const [path, options] = vi.mocked(apiClient.get).mock.calls[0];
+    const headers = new Headers(options?.headers);
+    expect(path).toBe('/api/v1/auth/guest');
+    expect(options?.auth).toBe(false);
+    expect(options?.credentials).toBe('include');
+    expect(headers.has('Authorization')).toBe(false);
+  });
+
+  it('discard 使用 DELETE 和显式 guest Bearer，但不擅自清理 localStorage', async () => {
+    window.localStorage.setItem('guest_token', 'guest-session-token');
+    vi.mocked(apiClient.delete).mockResolvedValue(undefined);
+
+    await discardGuestSession('guest-session-token');
+
+    expect(apiClient.delete).toHaveBeenCalledTimes(1);
+    const [path, options] = vi.mocked(apiClient.delete).mock.calls[0];
+    const headers = new Headers(options?.headers);
+    expect(path).toBe('/api/v1/auth/guest');
+    expect(options?.auth).toBe(false);
+    expect(options?.credentials).toBe('include');
+    expect(headers.get('Authorization')).toBe('Bearer guest-session-token');
+    expect(window.localStorage.getItem('guest_token')).toBe('guest-session-token');
+  });
+
+  it('cookie-only discard 不伪造 Authorization，供 local-only 迁移先清恢复 cookie', async () => {
+    vi.mocked(apiClient.delete).mockResolvedValue(undefined);
+
+    await discardGuestSession();
+
+    const [path, options] = vi.mocked(apiClient.delete).mock.calls[0];
+    const headers = new Headers(options?.headers);
+    expect(path).toBe('/api/v1/auth/guest');
+    expect(options?.auth).toBe(false);
+    expect(options?.credentials).toBe('include');
+    expect(headers.has('Authorization')).toBe(false);
   });
 });

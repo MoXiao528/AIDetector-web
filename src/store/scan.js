@@ -665,6 +665,8 @@ export const useScanStore = defineStore('scan', () => {
     }
   };
 
+  const getPersistedLocalHistoryCount = () => readPersistedLocalHistory().length;
+
   const writePersistedLocalHistory = (records = []) => {
     if (typeof window === 'undefined') return;
     try {
@@ -735,7 +737,7 @@ export const useScanStore = defineStore('scan', () => {
     historyRecords.value = readPersistedLocalHistory();
   };
 
-  const syncHistoryFromBackend = async ({ q = '', pinned = null } = {}) => {
+  const syncHistoryFromBackend = async ({ q = '', pinned = null, strict = false } = {}) => {
     if (!authStore.isAuthenticated) {
       const localRecords = readPersistedLocalHistory()
         .filter((record) => matchesHistorySearch(record, q))
@@ -771,7 +773,8 @@ export const useScanStore = defineStore('scan', () => {
 
       historyRecords.value = sortHistoryRecords(backendRecords);
       return historyRecords.value;
-    } catch {
+    } catch (error) {
+      if (strict) throw error;
       return [];
     }
   };
@@ -1364,6 +1367,7 @@ export const useScanStore = defineStore('scan', () => {
     addHistoryRecord,
     loadHistoryRecord,
     clearHistoryRecords,
+    getPersistedLocalHistoryCount,
     syncHistoryFromBackend,
     fetchHistoryRecordDetail,
     migrateLocalStorageToBackend,

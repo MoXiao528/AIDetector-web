@@ -1,13 +1,17 @@
 import { defineStore } from 'pinia';
 import { computed, ref } from 'vue';
 import router from '../router';
+import { globalT } from '../i18n';
+import { showToast } from '../utils/toast';
 import {
   clearGuestToken,
+  discardGuestSession,
   ensureGuestToken,
   fetchMe,
   getStoredGuestToken,
   login as loginRequest,
   logout as logoutRequest,
+  previewGuestSession,
   register as registerRequest,
   updateProfile as updateProfileRequest,
 } from '../api/modules/auth';
@@ -22,6 +26,7 @@ export const useAuthStore = defineStore('auth', () => {
   const creditSnapshot = ref({ total: 0, remaining: 0, used: 0 });
   const hasRestoredSession = ref(false);
   let restoreSessionPromise = null;
+  let authenticationPromise = null;
 
   const hasStoredUserSession = () => {
     if (typeof window === 'undefined') return false;
@@ -189,77 +194,228 @@ export const useAuthStore = defineStore('auth', () => {
     return restoreSessionPromise;
   };
 
-  const syncHistoryAfterAuthentication = async (guestToken) => {
-    if (typeof window === 'undefined') return;
+  const showGuestMigrationError = (messageKey) => {
+    showToast({
+      title: globalT('auth.guestMigration.errorTitle'),
+      message: globalT(`auth.guestMigration.${messageKey}`),
+    });
+  };
+
+  const prepareGuestMigration = async () => {
+    if (typeof window === 'undefined') return null;
 
     const { useScanStore } = await import('./scan');
     const scanStore = useScanStore();
+    const localCount = scanStore.getPersistedLocalHistoryCount();
+    const storedGuestToken = getStoredGuestToken();
 
-    try {
-      if (guestToken) {
-        await claimGuestHistory(guestToken);
+    if (storedGuestToken) {
+      let guestToken = '';
+      try {
+        guestToken = await ensureGuestToken();
+        if (!guestToken) throw new Error('Guest session token is unavailable');
+      } catch {
         clearGuestToken();
+        return { available: false, guestToken: '', remoteCount: 0, localCount, scanStore };
       }
-      const existingRecords = await scanStore.syncHistoryFromBackend();
-      await scanStore.migrateLocalStorageToBackend({ existingRecords });
-      await scanStore.syncHistoryFromBackend();
+
+      try {
+        const preview = await previewGuestSession(guestToken);
+        if (!preview.active) {
+          clearGuestToken();
+          return { available: true, guestToken: '', remoteCount: 0, localCount, scanStore };
+        }
+        return {
+          available: true,
+          guestToken,
+          remoteCount: preview.historyCount,
+          localCount,
+          scanStore,
+        };
+      } catch {
+        return { available: false, guestToken, remoteCount: 0, localCount, scanStore };
+      }
+    }
+
+    try {
+      const preview = await previewGuestSession();
+      if (!preview.active) {
+        return { available: true, guestToken: '', remoteCount: 0, localCount, scanStore };
+      }
+      try {
+        const guestToken = await ensureGuestToken();
+        if (!guestToken) throw new Error('Guest session token is unavailable');
+        return {
+          available: true,
+          guestToken,
+          remoteCount: preview.historyCount,
+          localCount,
+          scanStore,
+        };
+      } catch {
+        return { available: false, guestToken: '', remoteCount: preview.historyCount, localCount, scanStore };
+      }
     } catch {
-      // Preserve the reset state when guest-history claim fails.
+      return { available: false, guestToken: '', remoteCount: 0, localCount, scanStore };
+    }
+  };
+
+  const migrateConfirmedLocalHistory = async (scanStore) => {
+    let existingRecords;
+    try {
+      existingRecords = await scanStore.syncHistoryFromBackend({ strict: true });
+    } catch {
       scanStore.clearHistoryRecords({ preserveLocalCache: true });
+      showGuestMigrationError('syncFailed');
+      return;
+    }
+
+    const migration = await scanStore.migrateLocalStorageToBackend({ existingRecords });
+    await scanStore.syncHistoryFromBackend();
+    if (migration?.failed?.length) {
+      showGuestMigrationError('partialFailed');
     }
   };
 
-  const prepareGuestTokenForClaim = async () => {
-    if (!getStoredGuestToken()) return '';
+  const settleGuestMigration = async (migration) => {
+    if (!migration) return;
+    const { available, guestToken, remoteCount, localCount, scanStore } = migration;
+    if (!available) {
+      scanStore.clearHistoryRecords({ preserveLocalCache: true });
+      showGuestMigrationError('previewFailed');
+      return;
+    }
 
+    if (remoteCount === 0 && localCount === 0) {
+      try {
+        await discardGuestSession(guestToken);
+        clearGuestToken();
+        scanStore.clearHistoryRecords();
+      } catch {
+        scanStore.clearHistoryRecords({ preserveLocalCache: true });
+        showGuestMigrationError('discardFailed');
+      }
+      return;
+    }
+
+    const account = user.value?.email || user.value?.name || String(user.value?.id || '');
+    let confirmed;
     try {
-      return await ensureGuestToken();
+      confirmed = window.confirm(
+        globalT('auth.guestMigration.prompt', {
+          account,
+          remoteCount,
+          localCount,
+        })
+      );
     } catch {
+      scanStore.clearHistoryRecords({ preserveLocalCache: true });
+      showGuestMigrationError('previewFailed');
+      return;
+    }
+
+    if (!confirmed) {
+      try {
+        await discardGuestSession(guestToken);
+      } catch {
+        scanStore.clearHistoryRecords({ preserveLocalCache: true });
+        showGuestMigrationError('discardFailed');
+        return;
+      }
       clearGuestToken();
-      return '';
+      scanStore.clearHistoryRecords();
+      return;
+    }
+
+    if (guestToken) {
+      try {
+        await claimGuestHistory(guestToken);
+      } catch {
+        scanStore.clearHistoryRecords({ preserveLocalCache: true });
+        showGuestMigrationError('claimFailed');
+        return;
+      }
+      try {
+        await discardGuestSession();
+      } catch {
+        showGuestMigrationError('cleanupFailed');
+      }
+    } else {
+      try {
+        await discardGuestSession();
+      } catch {
+        scanStore.clearHistoryRecords({ preserveLocalCache: true });
+        showGuestMigrationError('discardFailed');
+        return;
+      }
+    }
+
+    clearGuestToken();
+    await migrateConfirmedLocalHistory(scanStore);
+  };
+
+  const settleGuestMigrationSafely = async (migration) => {
+    try {
+      await settleGuestMigration(migration);
+    } catch {
+      migration?.scanStore?.clearHistoryRecords({ preserveLocalCache: true });
+      showGuestMigrationError('syncFailed');
     }
   };
 
-  const login = async ({ identifier, password }) => {
-    const guestToken = await prepareGuestTokenForClaim();
-    await loginRequest({ identifier, password });
-    clearLegacyUserToken();
-    persistUserSession(true);
-    token.value = '__cookie__';
-    const snapshot = await fetchMe();
-    applyMeSnapshot(snapshot);
-    await syncHistoryAfterAuthentication(guestToken);
-    return snapshot;
+  const runAuthentication = (operation) => {
+    if (authenticationPromise) return authenticationPromise;
+    authenticationPromise = Promise.resolve()
+      .then(operation)
+      .finally(() => {
+        authenticationPromise = null;
+      });
+    return authenticationPromise;
   };
 
-  const register = async ({ name, email, password }) => {
-    const guestToken = await prepareGuestTokenForClaim();
-    const payload = { email, password };
-    if (name?.trim()) {
-      payload.name = name.trim();
-    }
-    await registerRequest(payload);
-    try {
-      await loginRequest({ identifier: email, password });
-    } catch (error) {
-      const err = new Error('Registration succeeded but sign-in failed. Please sign in again.');
-      err.code = 'LOGIN_FAILED';
-      throw err;
-    }
-    clearLegacyUserToken();
-    persistUserSession(true);
-    token.value = '__cookie__';
-    try {
+  const login = ({ identifier, password }) =>
+    runAuthentication(async () => {
+      const guestMigration = await prepareGuestMigration();
+      await loginRequest({ identifier, password });
+      clearLegacyUserToken();
+      persistUserSession(true);
+      token.value = '__cookie__';
       const snapshot = await fetchMe();
       applyMeSnapshot(snapshot);
-      await syncHistoryAfterAuthentication(guestToken);
+      await settleGuestMigrationSafely(guestMigration);
       return snapshot;
-    } catch (error) {
-      const err = new Error('Sign-in succeeded but profile loading failed. Please retry.');
-      err.code = 'ME_FAILED';
-      throw err;
-    }
-  };
+    });
+
+  const register = ({ name, email, password }) =>
+    runAuthentication(async () => {
+      const guestMigration = await prepareGuestMigration();
+      const payload = { email, password };
+      if (name?.trim()) {
+        payload.name = name.trim();
+      }
+      await registerRequest(payload);
+      try {
+        await loginRequest({ identifier: email, password });
+      } catch (error) {
+        const err = new Error('Registration succeeded but sign-in failed. Please sign in again.');
+        err.code = 'LOGIN_FAILED';
+        throw err;
+      }
+      clearLegacyUserToken();
+      persistUserSession(true);
+      token.value = '__cookie__';
+      let snapshot;
+      try {
+        snapshot = await fetchMe();
+        applyMeSnapshot(snapshot);
+      } catch (error) {
+        const err = new Error('Sign-in succeeded but profile loading failed. Please retry.');
+        err.code = 'ME_FAILED';
+        throw err;
+      }
+      await settleGuestMigrationSafely(guestMigration);
+      return snapshot;
+    });
 
   const logout = async () => {
     try {

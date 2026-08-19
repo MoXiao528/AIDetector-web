@@ -180,7 +180,7 @@ const requestInternal = async <T>(
 
     if (!response.ok) {
       const apiCode = getPayloadErrorCode(payload);
-      if (response.status === 401 && typeof window !== 'undefined') {
+      if (response.status === 401 && auth && typeof window !== 'undefined') {
         const hasUserSession = hasStoredUserSession();
         const hasLegacyToken = Boolean(window.localStorage.getItem(LEGACY_TOKEN_STORAGE_KEY));
         if (hasUserSession || hasLegacyToken) {

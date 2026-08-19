@@ -27,6 +27,12 @@ interface AuthTokenResponse {
   };
 }
 
+interface GuestMigrationPreviewResponse {
+  active?: boolean;
+  historyCount?: number;
+  history_count?: number;
+}
+
 export const getStoredGuestToken = () => {
   if (typeof window === 'undefined') return '';
   return window.localStorage.getItem(GUEST_TOKEN_STORAGE_KEY) || '';
@@ -81,6 +87,29 @@ export const fetchMe = async () => apiClient.get(`${AUTH_PREFIX}/me`);
 export const updateProfile = async (payload) => apiClient.patch(`${AUTH_PREFIX}/me/profile`, payload);
 
 export const logout = async () => apiClient.post(`${AUTH_PREFIX}/logout`, undefined);
+
+export const previewGuestSession = async (guestToken = '') => {
+  const response = await apiClient.get<GuestMigrationPreviewResponse>(`${AUTH_PREFIX}/guest`, {
+    auth: false,
+    credentials: 'include',
+    headers: guestToken ? { Authorization: `Bearer ${guestToken}` } : undefined,
+  });
+  const historyCount = Number(response?.historyCount ?? response?.history_count);
+  if (typeof response?.active !== 'boolean' || !Number.isInteger(historyCount) || historyCount < 0) {
+    throw new Error('Invalid guest migration preview');
+  }
+  return {
+    active: response.active,
+    historyCount,
+  };
+};
+
+export const discardGuestSession = async (guestToken = '') =>
+  apiClient.delete<void>(`${AUTH_PREFIX}/guest`, {
+    auth: false,
+    credentials: 'include',
+    headers: guestToken ? { Authorization: `Bearer ${guestToken}` } : undefined,
+  });
 
 const resolveGuestToken = async () => {
   if (typeof window === 'undefined') return '';

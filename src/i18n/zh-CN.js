@@ -919,6 +919,16 @@ export default {
     },
   },
   auth: {
+    guestMigration: {
+      prompt: '是否将游客记录导入账号 {account}？\n当前云端游客记录：{remoteCount} 条\n当前本地浏览器缓存：{localCount} 条\n两类来源可能重复，导入时会按内容去重。\n\n确定 = 导入；取消/Esc = 永久丢弃游客能力和本地缓存。',
+      errorTitle: '游客记录尚未处理',
+      previewFailed: '无法确认游客记录数量，本次不会认领或上传；残留数据已保留，可稍后重试。',
+      discardFailed: '无法安全丢弃游客会话，本次未认领或上传，残留数据已保留。',
+      claimFailed: '游客云端记录认领失败，本地记录未上传，残留数据已保留。',
+      cleanupFailed: '游客记录已认领，但恢复 Cookie 暂未清除；该会话已失效。',
+      syncFailed: '账号历史同步失败，本地记录未上传，避免产生重复记录。',
+      partialFailed: '部分本地记录未能上传，失败项仍保留在本浏览器。',
+    },
     login: {
       title: '欢迎回来',
       subtitle: '登录后可使用检测、保存历史并管理额度。',

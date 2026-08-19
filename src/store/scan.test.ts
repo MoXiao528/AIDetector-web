@@ -120,6 +120,17 @@ describe('scan store local history migration', () => {
     historyMocks.getHistoryList.mockResolvedValue({ items: [] });
   });
 
+  it('只统计可迁移的持久化本地记录，供确认提示显示 local 数量', () => {
+    const first = makeLocalRecord({ id: 'local-first', inputText: 'first text' });
+    const second = makeLocalRecord({ id: 'local-second', inputText: 'second text' });
+    const blank = makeLocalRecord({ id: 'local-blank', inputText: '', editorHtml: '' });
+    window.localStorage.setItem(HISTORY_STORAGE_KEY, JSON.stringify([first, null, blank, second]));
+
+    const scanStore = useScanStore();
+
+    expect(scanStore.getPersistedLocalHistoryCount()).toBe(2);
+  });
+
   it('imports only local guest records missing from the claimed backend history', async () => {
     const duplicate = makeLocalRecord({ id: 'local-duplicate', inputText: 'same text', editorHtml: '<p>same text</p>' });
     const unique = makeLocalRecord({ id: 'local-unique', inputText: 'new text', editorHtml: '<p>new text</p>' });
@@ -186,6 +197,17 @@ describe('scan store local history migration', () => {
     });
     expect(scanStore.historyRecords).toHaveLength(1);
     expect(scanStore.historyRecords[0].isPinned).toBe(true);
+  });
+
+  it('strict backend sync 会透传失败，阻止确认流程把未去重的本地记录上传', async () => {
+    const syncError = new Error('history sync unavailable');
+    setAuthenticatedSession();
+    const scanStore = useScanStore();
+    historyMocks.getHistoryList.mockRejectedValueOnce(syncError);
+
+    await expect(scanStore.syncHistoryFromBackend({ strict: true })).rejects.toBe(syncError);
+
+    expect(historyMocks.createHistoryRecord).not.toHaveBeenCalled();
   });
 
   it('guest search does not overwrite unmatched local history when pinning a visible result', async () => {
