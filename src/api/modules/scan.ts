@@ -55,8 +55,20 @@ export interface DetectionResponse {
   currentCredits?: number;
 }
 
-export const detectText = async (payload: { text: string; functions: string[]; editorHtml?: string }) =>
-  apiClient.post<DetectionResponse>('/api/v1/detect', payload, { guestAuth: true });
+export const detectText = async (
+  payload: { text: string; functions: string[]; editorHtml?: string },
+  guestToken = ''
+) =>
+  apiClient.post<DetectionResponse>(
+    '/api/v1/detect',
+    payload,
+    guestToken
+      ? {
+          auth: false,
+          headers: { Authorization: `Bearer ${guestToken}` },
+        }
+      : undefined
+  );
 
 export const parseFiles = async (formData: FormData) =>
   apiClient.post('/api/v1/detections/parse-files', formData);

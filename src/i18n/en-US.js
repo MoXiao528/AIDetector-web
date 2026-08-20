@@ -926,13 +926,13 @@ export default {
   },
   auth: {
     guestMigration: {
-      prompt: 'Import guest records into {account}?\nCurrent remote guest records: {remoteCount}\nCurrent local browser cache: {localCount}\nThe two sources may overlap and will be deduplicated by content.\n\nOK = import; Cancel/Esc = permanently discard the guest capability and local cache.',
+      prompt: 'Import guest records into {account}?\nCurrent remote guest records: {remoteCount}\nCurrent local independent history: {localCount} (disabled)\nOnly server records will be claimed; current-page memory will not be uploaded again.\n\nOK = import; Cancel/Esc = permanently discard the guest capability and clear the current page.',
       errorTitle: 'Guest records were not processed',
-      previewFailed: 'Guest record counts could not be verified. Nothing was claimed or uploaded; residual data was kept for retry.',
-      discardFailed: 'The guest session could not be discarded safely. Nothing was claimed or uploaded, and residual data was kept.',
-      claimFailed: 'Remote guest records could not be claimed. Local records were not uploaded, and residual data was kept.',
+      previewFailed: 'Guest record counts could not be verified. Nothing was claimed; the current page was cleared so you can retry later.',
+      discardFailed: 'The guest session could not be discarded safely. Nothing was claimed; the current page was cleared and the guest session was kept.',
+      claimFailed: 'Remote guest records could not be claimed. The current page was cleared and the guest session was kept so you can retry later.',
       cleanupFailed: 'Guest records were claimed, but the recovery cookie could not be cleared. The guest session is already inactive.',
-      syncFailed: 'Account history could not be synchronized, so local records were not uploaded to avoid duplicates.',
+      syncFailed: 'Account history could not be synchronized. The current page was cleared; reload the account history later.',
       partialFailed: 'Some local records could not be uploaded. Failed records remain in this browser.',
     },
     login: {

@@ -55,7 +55,10 @@ import { showToast } from '../utils/toast';
 const router = useRouter();
 const scanStore = useScanStore();
 const showUsageExamples = ref(false);
-const localInput = ref(scanStore.inputText || '');
+const localInput = computed({
+  get: () => scanStore.inputText || '',
+  set: (value) => scanStore.setInputText(value),
+});
 const { t, locale } = useI18n();
 const usageExampleItems = computed(() => scanStore.usageExamples);
 

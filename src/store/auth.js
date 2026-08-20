@@ -8,6 +8,7 @@ import {
   discardGuestSession,
   ensureGuestToken,
   fetchMe,
+  getGuestSessionId,
   getStoredGuestToken,
   login as loginRequest,
   logout as logoutRequest,
@@ -206,7 +207,7 @@ export const useAuthStore = defineStore('auth', () => {
 
     const { useScanStore } = await import('./scan');
     const scanStore = useScanStore();
-    const localCount = scanStore.getPersistedLocalHistoryCount();
+    const localCount = 0;
     const storedGuestToken = getStoredGuestToken();
 
     if (storedGuestToken) {
@@ -214,15 +215,16 @@ export const useAuthStore = defineStore('auth', () => {
       try {
         guestToken = await ensureGuestToken();
         if (!guestToken) throw new Error('Guest session token is unavailable');
+        scanStore.activateGuestSession(getGuestSessionId(guestToken));
       } catch {
-        clearGuestToken();
+        clearGuestToken(storedGuestToken);
         return { available: false, guestToken: '', remoteCount: 0, localCount, scanStore };
       }
 
       try {
         const preview = await previewGuestSession(guestToken);
         if (!preview.active) {
-          clearGuestToken();
+          clearGuestToken(guestToken);
           return { available: true, guestToken: '', remoteCount: 0, localCount, scanStore };
         }
         return {
@@ -245,6 +247,7 @@ export const useAuthStore = defineStore('auth', () => {
       try {
         const guestToken = await ensureGuestToken();
         if (!guestToken) throw new Error('Guest session token is unavailable');
+        scanStore.activateGuestSession(getGuestSessionId(guestToken));
         return {
           available: true,
           guestToken,
@@ -260,20 +263,12 @@ export const useAuthStore = defineStore('auth', () => {
     }
   };
 
-  const migrateConfirmedLocalHistory = async (scanStore) => {
-    let existingRecords;
+  const syncClaimedGuestHistory = async (scanStore) => {
+    scanStore.clearScanSessionData();
     try {
-      existingRecords = await scanStore.syncHistoryFromBackend({ strict: true });
+      await scanStore.syncHistoryFromBackend({ strict: true });
     } catch {
-      scanStore.clearHistoryRecords({ preserveLocalCache: true });
       showGuestMigrationError('syncFailed');
-      return;
-    }
-
-    const migration = await scanStore.migrateLocalStorageToBackend({ existingRecords });
-    await scanStore.syncHistoryFromBackend();
-    if (migration?.failed?.length) {
-      showGuestMigrationError('partialFailed');
     }
   };
 
@@ -281,7 +276,7 @@ export const useAuthStore = defineStore('auth', () => {
     if (!migration) return;
     const { available, guestToken, remoteCount, localCount, scanStore } = migration;
     if (!available) {
-      scanStore.clearHistoryRecords({ preserveLocalCache: true });
+      scanStore.clearScanSessionData();
       showGuestMigrationError('previewFailed');
       return;
     }
@@ -289,10 +284,10 @@ export const useAuthStore = defineStore('auth', () => {
     if (remoteCount === 0 && localCount === 0) {
       try {
         await discardGuestSession(guestToken);
-        clearGuestToken();
-        scanStore.clearHistoryRecords();
+        clearGuestToken(guestToken);
+        scanStore.clearScanSessionData();
       } catch {
-        scanStore.clearHistoryRecords({ preserveLocalCache: true });
+        scanStore.clearScanSessionData();
         showGuestMigrationError('discardFailed');
       }
       return;
@@ -309,7 +304,7 @@ export const useAuthStore = defineStore('auth', () => {
         })
       );
     } catch {
-      scanStore.clearHistoryRecords({ preserveLocalCache: true });
+      scanStore.clearScanSessionData();
       showGuestMigrationError('previewFailed');
       return;
     }
@@ -318,47 +313,43 @@ export const useAuthStore = defineStore('auth', () => {
       try {
         await discardGuestSession(guestToken);
       } catch {
-        scanStore.clearHistoryRecords({ preserveLocalCache: true });
+        scanStore.clearScanSessionData();
         showGuestMigrationError('discardFailed');
         return;
       }
-      clearGuestToken();
-      scanStore.clearHistoryRecords();
+      clearGuestToken(guestToken);
+      scanStore.clearScanSessionData();
       return;
     }
 
-    if (guestToken) {
-      try {
-        await claimGuestHistory(guestToken);
-      } catch {
-        scanStore.clearHistoryRecords({ preserveLocalCache: true });
-        showGuestMigrationError('claimFailed');
-        return;
-      }
-      try {
-        await discardGuestSession();
-      } catch {
-        showGuestMigrationError('cleanupFailed');
-      }
-    } else {
-      try {
-        await discardGuestSession();
-      } catch {
-        scanStore.clearHistoryRecords({ preserveLocalCache: true });
-        showGuestMigrationError('discardFailed');
-        return;
-      }
+    if (!guestToken) {
+      scanStore.clearScanSessionData();
+      showGuestMigrationError('claimFailed');
+      return;
     }
 
-    clearGuestToken();
-    await migrateConfirmedLocalHistory(scanStore);
+    try {
+      await claimGuestHistory(guestToken);
+    } catch {
+      scanStore.clearScanSessionData();
+      showGuestMigrationError('claimFailed');
+      return;
+    }
+    try {
+      await discardGuestSession();
+    } catch {
+      showGuestMigrationError('cleanupFailed');
+    }
+
+    clearGuestToken(guestToken);
+    await syncClaimedGuestHistory(scanStore);
   };
 
   const settleGuestMigrationSafely = async (migration) => {
     try {
       await settleGuestMigration(migration);
     } catch {
-      migration?.scanStore?.clearHistoryRecords({ preserveLocalCache: true });
+      migration?.scanStore?.clearScanSessionData();
       showGuestMigrationError('syncFailed');
     }
   };
@@ -435,7 +426,7 @@ export const useAuthStore = defineStore('auth', () => {
     if (typeof window !== 'undefined') {
       try {
         const { useScanStore } = await import('./scan');
-        useScanStore().clearHistoryRecords();
+        useScanStore().clearScanSessionData();
       } catch {
         // Ignore local history cleanup failures during logout.
       }

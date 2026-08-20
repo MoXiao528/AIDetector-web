@@ -13,7 +13,7 @@ vi.mock('../../utils/toast', () => ({
 }));
 
 import { apiClient } from '../client';
-import { discardGuestSession, ensureGuestToken, previewGuestSession } from './auth';
+import { clearGuestToken, discardGuestSession, ensureGuestToken, getGuestSessionId, previewGuestSession } from './auth';
 
 const NOW_SECONDS = 1_800_000_000;
 const GUEST_ID = '08b57ec3-e1db-4f3b-ad41-ad5c443707c8';
@@ -142,6 +142,77 @@ describe('ensureGuestToken session recovery', () => {
     expect(apiClient.post).toHaveBeenCalledTimes(1);
     resolveRequest({ access_token: nextToken });
     await expect(Promise.all([firstRecovery, secondRecovery])).resolves.toEqual([nextToken, nextToken]);
+  });
+
+  it('跨标签已写入新 guest token 时，迟到的恢复响应不得覆盖新主体', async () => {
+    const currentToken = createGuestToken(NOW_SECONDS + 20);
+    const refreshedToken = createGuestToken(NOW_SECONDS + 3600);
+    const nextGuestId = 'd30a6c94-d1c0-4da4-bfd7-8f2f43f67fa3';
+    const nextGuestToken = createGuestToken(NOW_SECONDS + 3600, {
+      sid: nextGuestId,
+      sub: nextGuestId,
+    });
+    let resolveRequest: (value: { access_token: string }) => void = () => undefined;
+    const pendingResponse = new Promise<{ access_token: string }>((resolve) => {
+      resolveRequest = resolve;
+    });
+    window.localStorage.setItem('guest_token', currentToken);
+    vi.mocked(apiClient.post).mockReturnValue(pendingResponse);
+
+    const recovery = ensureGuestToken();
+    window.localStorage.setItem('guest_token', nextGuestToken);
+    resolveRequest({ access_token: refreshedToken });
+
+    await expect(recovery).resolves.toBe(nextGuestToken);
+    expect(window.localStorage.getItem('guest_token')).toBe(nextGuestToken);
+  });
+
+  it('guest 请求在途时用户已登录，迟到响应不得重新写入 guest token', async () => {
+    const guestToken = createGuestToken(NOW_SECONDS + 3600);
+    let resolveRequest: (value: { access_token: string }) => void = () => undefined;
+    const pendingResponse = new Promise<{ access_token: string }>((resolve) => {
+      resolveRequest = resolve;
+    });
+    vi.mocked(apiClient.post).mockReturnValue(pendingResponse);
+
+    const recovery = ensureGuestToken();
+    window.localStorage.setItem('auth_session', '1');
+    resolveRequest({ access_token: guestToken });
+
+    await expect(recovery).resolves.toBe('');
+    expect(window.localStorage.getItem('guest_token')).toBeNull();
+  });
+
+  it('按旧 token 清理时不会删除另一标签已经写入的新主体 token', () => {
+    const previousToken = createGuestToken(NOW_SECONDS + 120);
+    const nextGuestId = 'f1c24977-ecac-4fb4-a0e8-aad23891a910';
+    const nextToken = createGuestToken(NOW_SECONDS + 3600, {
+      sid: nextGuestId,
+      sub: nextGuestId,
+    });
+    window.localStorage.setItem('guest_token', nextToken);
+
+    expect(clearGuestToken(previousToken)).toBe(false);
+    expect(window.localStorage.getItem('guest_token')).toBe(nextToken);
+    expect(clearGuestToken(nextToken)).toBe(true);
+    expect(window.localStorage.getItem('guest_token')).toBeNull();
+  });
+
+  it('token refresh 只要 sid 不变就解析为同一 guest 主体', () => {
+    const beforeRefresh = createGuestToken(NOW_SECONDS + 120);
+    const afterRefresh = createGuestToken(NOW_SECONDS + 3600);
+
+    expect(getGuestSessionId(beforeRefresh)).toBe(GUEST_ID);
+    expect(getGuestSessionId(afterRefresh)).toBe(GUEST_ID);
+  });
+
+  it.each([
+    ['空 token', ''],
+    ['畸形 token', 'not-a-jwt'],
+    ['缺少 sid 的旧 token', createGuestToken(NOW_SECONDS + 3600, { includeSid: false })],
+    ['sid/sub 不一致', createGuestToken(NOW_SECONDS + 3600, { sid: 'another-session-id' })],
+  ])('%s 不产生可绑定的 guest sid', (_label, token) => {
+    expect(getGuestSessionId(token)).toBe('');
   });
 });
 

@@ -1202,7 +1202,7 @@ import ProfilePanel from '../components/dashboard/ProfilePanel.vue';
 import QAPanel from '../components/dashboard/QAPanel.vue';
 import OnboardingStepsBar from '../components/dashboard/OnboardingStepsBar.vue';
 import { useI18n } from '../i18n';
-import { clearGuestToken, ensureGuestToken } from '../api/modules/auth';
+import { clearGuestToken, ensureGuestToken, getGuestSessionId, getStoredGuestToken } from '../api/modules/auth';
 import { extractApiErrorCode } from '../api/client';
 import { fetchQuota } from '../api/modules/quota';
 import { exportPdfReport as requestPdfReport } from '../api/modules/reports';
@@ -1220,6 +1220,9 @@ import { showComingSoon, showToast } from '../utils/toast';
 
 const authStore = useAuthStore();
 const scanStore = useScanStore();
+if (!authStore.isAuthenticated && typeof window !== 'undefined') {
+  scanStore.activateGuestSession(getGuestSessionId(getStoredGuestToken()));
+}
 const router = useRouter();
 const route = useRoute();
 const { t, locale } = useI18n();
@@ -1768,12 +1771,54 @@ const homeActivityItems = computed(() => {
 
 const homeActionItems = computed(() => dashboardHomeCopy.value.actions);
 
+const activateGuestScanSession = (guestToken = '') =>
+  scanStore.activateGuestSession(getGuestSessionId(guestToken));
+
+const getAuthenticatedActorUserId = () =>
+  String(authStore.user?.id ?? authStore.user?.userId ?? authStore.user?.user_id ?? '').trim();
+
+const capturePageActorContext = () => {
+  const authenticated = Boolean(authStore.isAuthenticated);
+  return {
+    generation: scanStore.sessionGeneration,
+    authenticated,
+    userId: authenticated ? getAuthenticatedActorUserId() : '',
+  };
+};
+
+const isPageActorContextCurrent = (context) => {
+  const current = capturePageActorContext();
+  return (
+    context.generation === current.generation &&
+    context.authenticated === current.authenticated &&
+    context.userId === current.userId
+  );
+};
+
+const ensureActiveGuestToken = async () => {
+  if (authStore.isAuthenticated) return '';
+  const guestToken = await ensureGuestToken();
+  if (!authStore.isAuthenticated) {
+    activateGuestScanSession(guestToken);
+  }
+  return guestToken;
+};
+
+const clearGuestScanSession = async () => {
+  scanStore.clearScanSessionData();
+  await resetEditor();
+};
+
 const refreshQuota = async ({ retryOnGuestError = true } = {}) => {
   if (typeof window === 'undefined') return;
   isQuotaLoading.value = true;
+  let requestContext = capturePageActorContext();
+  let requestGuestToken = '';
   try {
-    await ensureGuestToken();
+    requestGuestToken = await ensureActiveGuestToken();
+    requestContext = capturePageActorContext();
     const response = await fetchQuota();
+    if (!isPageActorContextCurrent(requestContext)) return;
     const limit = Number(response?.limit ?? 0);
     const remaining = Number(response?.remaining ?? 0);
     quotaInfo.value = {
@@ -1795,6 +1840,7 @@ const refreshQuota = async ({ retryOnGuestError = true } = {}) => {
       }
     }
   } catch (error) {
+    if (!isPageActorContextCurrent(requestContext)) return;
     const errorCode = extractApiErrorCode(error);
     if (
       error?.status === 401 &&
@@ -1802,14 +1848,18 @@ const refreshQuota = async ({ retryOnGuestError = true } = {}) => {
       retryOnGuestError &&
       errorCode === 'GUEST_TOKEN_REQUIRED'
     ) {
-      clearGuestToken();
-      await ensureGuestToken();
+      const clearedCurrentToken = clearGuestToken(requestGuestToken);
+      if (clearedCurrentToken) {
+        await clearGuestScanSession();
+      }
       await refreshQuota({ retryOnGuestError: false });
       return;
     }
     isQuotaReady.value = false;
   } finally {
-    isQuotaLoading.value = false;
+    if (isPageActorContextCurrent(requestContext)) {
+      isQuotaLoading.value = false;
+    }
   }
 };
 
@@ -2045,17 +2095,21 @@ const clearHistorySearch = () => {
 
 const runHistoryAction = async (action) => {
   if (isHistoryActionPending.value) return null;
+  const context = capturePageActorContext();
   isHistoryActionPending.value = true;
   try {
     return await action();
   } catch (error) {
+    if (!isPageActorContextCurrent(context)) return null;
     showToast({
       title: t('scan.history.actionErrorTitle'),
       message: error?.message || t('scan.history.actionErrorMessage'),
     });
     return null;
   } finally {
-    isHistoryActionPending.value = false;
+    if (isPageActorContextCurrent(context)) {
+      isHistoryActionPending.value = false;
+    }
   }
 };
 
@@ -2074,7 +2128,9 @@ const confirmRenameHistory = async () => {
   const title = renameHistoryDraft.value.trim();
   if (!id || !title) return;
   await runHistoryAction(async () => {
-    await scanStore.renameHistoryRecord(id, title);
+    const context = capturePageActorContext();
+    const updated = await scanStore.renameHistoryRecord(id, title);
+    if (!updated || !isPageActorContextCurrent(context)) return;
     cancelRenameHistory();
   });
 };
@@ -2089,7 +2145,9 @@ const deleteSingleHistoryRecord = async (record) => {
   if (typeof window !== 'undefined' && !window.confirm(t('scan.history.deleteConfirm'))) return;
   const deletedActiveRecord = String(record.id) === String(activeHistoryId.value);
   await runHistoryAction(async () => {
-    await scanStore.deleteHistoryRecord(record.id);
+    const context = capturePageActorContext();
+    const deleted = await scanStore.deleteHistoryRecord(record.id);
+    if (!deleted || !isPageActorContextCurrent(context)) return;
     selectedHistoryIds.value = selectedHistoryIds.value.filter((item) => String(item) !== String(record.id));
     if (deletedActiveRecord) {
       await resetEditor();
@@ -2103,7 +2161,9 @@ const deleteSelectedHistoryRecords = async () => {
   if (typeof window !== 'undefined' && !window.confirm(t('scan.history.deleteSelectedConfirm', { value: ids.length }))) return;
   const shouldResetEditor = ids.some((id) => String(id) === String(activeHistoryId.value));
   await runHistoryAction(async () => {
+    const context = capturePageActorContext();
     await scanStore.batchDeleteHistoryRecords(ids);
+    if (!isPageActorContextCurrent(context)) return;
     clearHistorySelection();
     if (shouldResetEditor) {
       await resetEditor();
@@ -2115,14 +2175,18 @@ const clearAllHistoryRecords = async () => {
   if (!historyRecords.value.length) return;
   if (typeof window !== 'undefined' && !window.confirm(t('scan.history.clearAllConfirm'))) return;
   await runHistoryAction(async () => {
+    const context = capturePageActorContext();
     await scanStore.clearAllHistoryRecords();
+    if (!isPageActorContextCurrent(context)) return;
     clearHistorySelection();
     await resetEditor();
   });
 };
 
 const searchHistoryRecords = async () => {
+  const context = capturePageActorContext();
   await scanStore.searchHistoryRecords({ q: historySearchQuery.value });
+  if (!isPageActorContextCurrent(context)) return;
   selectedHistoryIds.value = selectedHistoryIds.value.filter((id) =>
     historyRecords.value.some((record) => String(record.id) === String(id))
   );
@@ -2136,7 +2200,7 @@ const loadHistoryRecord = async (id) => {
   }
   let record = historyRecords.value.find((item) => String(item.id) === String(id));
   if (authStore.isAuthenticated && (!record || !record.analysis)) {
-    record = (await scanStore.fetchHistoryRecordDetail(id)) || record;
+    record = await scanStore.fetchHistoryRecordDetail(id);
   }
   if (!record) return;
 
@@ -2235,6 +2299,41 @@ const syncEditorFromStore = () => {
     editorRef.value.innerHTML = html;
   }
 };
+
+const resetPageSessionState = () => {
+  if (historySearchTimer) {
+    clearTimeout(historySearchTimer);
+    historySearchTimer = null;
+  }
+  localText.value = '';
+  historySearchQuery.value = '';
+  isHistoryManaging.value = false;
+  selectedHistoryIds.value = [];
+  renamingHistoryId.value = '';
+  renameHistoryDraft.value = '';
+  activeHistoryId.value = '';
+  isResultDetailOpen.value = false;
+  activeSentenceId.value = '';
+  highlightedPreviewHtml.value = '';
+  editorMode.value = 'edit';
+  activeResultTab.value = 'scan';
+  isScanning.value = false;
+  isHistoryActionPending.value = false;
+  isQuotaLoading.value = false;
+  quotaInfo.value = { actor_type: '', limit: 0, used_today: 0, remaining: 0 };
+  isQuotaReady.value = false;
+  if (!authStore.isAuthenticated) {
+    authStore.setCredits({ total: 0, remaining: 0 });
+  }
+  if ('detail' in route.query) {
+    syncDetailRoute('');
+  }
+  if (editorRef.value) {
+    editorRef.value.innerHTML = '';
+  }
+};
+
+watch(() => scanStore.sessionGeneration, resetPageSessionState, { flush: 'sync' });
 
 onMounted(async () => {
   await scanStore.loadExamples(locale.value);
@@ -2363,7 +2462,10 @@ watch(historySearchQuery, () => {
   if (historySearchTimer) {
     clearTimeout(historySearchTimer);
   }
+  const searchGeneration = scanStore.sessionGeneration;
   historySearchTimer = setTimeout(() => {
+    historySearchTimer = null;
+    if (searchGeneration !== scanStore.sessionGeneration) return;
     searchHistoryRecords();
   }, 250);
 });
@@ -2596,6 +2698,10 @@ const onFontSizeChange = (event) => {
 };
 
 const handleScan = async () => {
+  const initialContext = capturePageActorContext();
+  const ensuredGuestToken = await ensureActiveGuestToken();
+  if (!isPageActorContextCurrent(initialContext)) return;
+
   if (!scanStore.selectedFunctions.length) {
     scanStore.setFunctions(['scan']);
   }
@@ -2624,20 +2730,23 @@ const handleScan = async () => {
     return;
   }
 
-  await ensureGuestToken();
   if (!authStore.isAuthenticated && isQuotaReady.value && scanStore.inputText.length > quotaRemainingValue.value) {
     promptGuestQuotaUpgrade();
     return;
   }
+  if (!authStore.isAuthenticated && !ensuredGuestToken) return;
 
   isScanning.value = true;
   scanStore.resetResult();
   highlightedPreviewHtml.value = '';
+  const scanContext = capturePageActorContext();
   try {
     const analysis = await scanStore.analyzeText(scanStore.inputText, {
       functions: scanStore.selectedFunctions,
       html: scanStore.editorHtml || plainTextToHtml(scanStore.inputText),
+      guestToken: scanContext.authenticated ? '' : ensuredGuestToken,
     });
+    if (!analysis || !isPageActorContextCurrent(scanContext)) return;
     syncHighlightedPreviewHtml(analysis);
     editorMode.value = 'preview';
     activeResultTab.value = 'scan';
@@ -2647,6 +2756,7 @@ const handleScan = async () => {
     await refreshQuota({ retryOnGuestError: false });
     showQuotaUpsellOnce();
   } catch (error) {
+    if (!isPageActorContextCurrent(scanContext)) return;
     const errorCode = extractApiErrorCode(error);
     if (errorCode === 'TEXT_TOO_LONG') {
       showToast({
@@ -2665,8 +2775,10 @@ const handleScan = async () => {
       showScanFailureToast(error);
     }
   } finally {
-    isScanning.value = false;
-    scanStore.commitDraftToStorage();
+    if (isPageActorContextCurrent(scanContext)) {
+      isScanning.value = false;
+      scanStore.commitDraftToStorage();
+    }
   }
 };
 
@@ -2723,7 +2835,8 @@ const onFileChange = async (event) => {
   const [file] = event.target.files || [];
   if (!file) return;
   try {
-    await scanStore.readFile(file);
+    const imported = await scanStore.readFile(file);
+    if (!imported) return;
     clearCurrentHistorySelection();
     scanStore.resetResult();
     highlightedPreviewHtml.value = '';
@@ -2762,7 +2875,8 @@ const onDrop = async (event) => {
   const files = event.dataTransfer?.files;
   if (!files?.length) return;
   try {
-    await scanStore.readFiles(files);
+    const imported = await scanStore.readFiles(files);
+    if (!imported) return;
     clearCurrentHistorySelection();
     scanStore.resetResult();
     highlightedPreviewHtml.value = '';

@@ -38,10 +38,12 @@ export const getStoredGuestToken = () => {
   return window.localStorage.getItem(GUEST_TOKEN_STORAGE_KEY) || '';
 };
 
-export const clearGuestToken = () => {
-  if (typeof window === 'undefined') return;
+export const clearGuestToken = (expectedToken?: string) => {
+  if (typeof window === 'undefined') return false;
+  if (expectedToken !== undefined && getStoredGuestToken() !== expectedToken) return false;
   window.localStorage.removeItem(GUEST_TOKEN_STORAGE_KEY);
   window.localStorage.removeItem(GUEST_SESSION_ID_STORAGE_KEY);
+  return true;
 };
 
 const hasStoredUserSession = () => {
@@ -76,6 +78,11 @@ const isGuestSessionToken = (payload: GuestJwtPayload | null) => {
   const subject = String(payload?.sub || '').trim();
   const sessionId = String(payload?.sid || '').trim();
   return String(payload?.sub_type || '').toLowerCase() === 'guest' && Boolean(subject) && sessionId === subject;
+};
+
+export const getGuestSessionId = (token = '') => {
+  const payload = decodeJwtPayload(token);
+  return isGuestSessionToken(payload) ? String(payload?.sid || '').trim() : '';
 };
 
 export const login = async (payload) => apiClient.post<AuthTokenResponse>(`${AUTH_PREFIX}/login`, payload, { auth: false });
@@ -127,6 +134,7 @@ const resolveGuestToken = async () => {
   if (guestToken && !hasGuestSessionToken) {
     window.localStorage.removeItem(GUEST_TOKEN_STORAGE_KEY);
   }
+  const expectedStoredToken = hasGuestSessionToken ? guestToken : '';
 
   try {
     const response = await apiClient.post<AuthTokenResponse>(
@@ -140,6 +148,15 @@ const resolveGuestToken = async () => {
     const token = response?.accessToken || response?.access_token || response?.token || response?.data?.token;
     if (!token || !isGuestSessionToken(decodeJwtPayload(token))) {
       throw new Error('Invalid guest session token');
+    }
+
+    if (hasStoredUserSession()) return '';
+    const currentStoredToken = getStoredGuestToken();
+    if (currentStoredToken !== expectedStoredToken) {
+      const currentPayload = decodeJwtPayload(currentStoredToken);
+      return isGuestSessionToken(currentPayload) && !isGuestTokenExpired(currentPayload)
+        ? currentStoredToken
+        : '';
     }
 
     window.localStorage.setItem(GUEST_TOKEN_STORAGE_KEY, token);
