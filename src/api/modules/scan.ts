@@ -71,6 +71,3 @@ export const detectText = async (
       },
     }
   );
-
-export const parseFiles = async (formData: FormData) =>
-  apiClient.post('/api/v1/detections/parse-files', formData);
