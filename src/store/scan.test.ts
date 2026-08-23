@@ -418,6 +418,187 @@ describe('scan store guest history boundary', () => {
     expect(scanStore.historyRecords).toEqual([]);
   });
 
+  it('同一账号和 payload 的普通失败重试复用 Idempotency-Key', async () => {
+    const authStore = setAuthenticatedSession();
+    authStore.user = { id: 83 };
+    const scanStore = useScanStore();
+    const request = {
+      functions: ['scan'],
+      html: '<p>retryable detection text</p>',
+    };
+    scanApiMocks.detectText
+      .mockRejectedValueOnce(Object.assign(new Error('temporary failure'), { status: 500, code: 'SERVER_ERROR' }))
+      .mockResolvedValueOnce({
+        inputText: 'retryable detection text',
+        result: makeAnalysis(23),
+      });
+
+    await expect(scanStore.analyzeText('retryable detection text', request)).rejects.toThrow('temporary failure');
+    const firstKey = scanApiMocks.detectText.mock.calls[0][2];
+    expect(firstKey).toMatch(/^[0-9a-f-]{36}$/i);
+    const serializedStorage = [window.localStorage, window.sessionStorage]
+      .flatMap((storage) => getStorageEntries(storage).flat())
+      .join('\n');
+    expect(serializedStorage).not.toContain(firstKey);
+    expect(serializedStorage).not.toContain('retryable detection text');
+
+    await expect(scanStore.analyzeText('retryable detection text', request)).resolves.toMatchObject({
+      summary: { ai: 23 },
+    });
+    expect(scanApiMocks.detectText.mock.calls[1][2]).toBe(firstKey);
+  });
+
+  it('失败后开始新扫描，相同 payload 也会生成新 Idempotency-Key', async () => {
+    const authStore = setAuthenticatedSession();
+    authStore.user = { id: 91 };
+    const scanStore = useScanStore();
+    const request = {
+      functions: ['scan'],
+      html: '<p>same text in a new logical scan</p>',
+    };
+    scanApiMocks.detectText
+      .mockRejectedValueOnce(new Error('first logical scan failed'))
+      .mockResolvedValueOnce({ inputText: 'same text in a new logical scan', result: makeAnalysis(30) });
+
+    await expect(scanStore.analyzeText('same text in a new logical scan', request)).rejects.toThrow(
+      'first logical scan failed'
+    );
+    const firstKey = scanApiMocks.detectText.mock.calls[0][2];
+
+    scanStore.resetAll();
+    await scanStore.analyzeText('same text in a new logical scan', request);
+
+    expect(scanApiMocks.detectText.mock.calls[1][2]).not.toBe(firstKey);
+  });
+
+  it('成功完成后相同 payload 的下一次逻辑扫描生成新 Idempotency-Key', async () => {
+    const authStore = setAuthenticatedSession();
+    authStore.user = { id: 84 };
+    const scanStore = useScanStore();
+    const request = {
+      functions: ['scan'],
+      html: '<p>repeatable successful text</p>',
+    };
+    scanApiMocks.detectText.mockResolvedValue({
+      inputText: 'repeatable successful text',
+      result: makeAnalysis(24),
+    });
+
+    await scanStore.analyzeText('repeatable successful text', request);
+    await scanStore.analyzeText('repeatable successful text', request);
+
+    expect(scanApiMocks.detectText.mock.calls[1][2]).not.toBe(scanApiMocks.detectText.mock.calls[0][2]);
+  });
+
+  it('失败后 payload 改变会生成新 Idempotency-Key', async () => {
+    const authStore = setAuthenticatedSession();
+    authStore.user = { id: 85 };
+    const scanStore = useScanStore();
+    scanApiMocks.detectText
+      .mockRejectedValueOnce(new Error('first payload failed'))
+      .mockResolvedValueOnce({ inputText: 'second payload text', result: makeAnalysis(25) });
+
+    await expect(
+      scanStore.analyzeText('first payload text', {
+        functions: ['scan'],
+        html: '<p>first payload text</p>',
+      })
+    ).rejects.toThrow('first payload failed');
+    await scanStore.analyzeText('second payload text', {
+      functions: ['scan'],
+      html: '<p>second payload text</p>',
+    });
+
+    expect(scanApiMocks.detectText.mock.calls[1][2]).not.toBe(scanApiMocks.detectText.mock.calls[0][2]);
+  });
+
+  it('失败后账号主体改变会生成新 Idempotency-Key', async () => {
+    const authStore = setAuthenticatedSession();
+    authStore.user = { id: 86 };
+    const scanStore = useScanStore();
+    const request = {
+      functions: ['scan'],
+      html: '<p>same payload after actor switch</p>',
+    };
+    scanApiMocks.detectText
+      .mockRejectedValueOnce(new Error('old actor failed'))
+      .mockResolvedValueOnce({ inputText: 'same payload after actor switch', result: makeAnalysis(26) });
+
+    await expect(scanStore.analyzeText('same payload after actor switch', request)).rejects.toThrow(
+      'old actor failed'
+    );
+    authStore.user = { id: 87 };
+    await scanStore.analyzeText('same payload after actor switch', request);
+
+    expect(scanApiMocks.detectText.mock.calls[1][2]).not.toBe(scanApiMocks.detectText.mock.calls[0][2]);
+  });
+
+  it.each(['IDEMPOTENCY_KEY_CONFLICT', 'IDEMPOTENCY_RESULT_GONE'])(
+    '%s 会清除旧 attempt，让相同 payload 的下一次扫描生成新 key',
+    async (code) => {
+      const authStore = setAuthenticatedSession();
+      authStore.user = { id: 88 };
+      const scanStore = useScanStore();
+      const request = {
+        functions: ['scan'],
+        html: '<p>replace invalid idempotency attempt</p>',
+      };
+      scanApiMocks.detectText
+        .mockRejectedValueOnce(Object.assign(new Error('invalid attempt'), { status: 409, code }))
+        .mockResolvedValueOnce({ inputText: 'replace invalid idempotency attempt', result: makeAnalysis(27) });
+
+      await expect(scanStore.analyzeText('replace invalid idempotency attempt', request)).rejects.toThrow(
+        'invalid attempt'
+      );
+      await scanStore.analyzeText('replace invalid idempotency attempt', request);
+
+      expect(scanApiMocks.detectText.mock.calls[1][2]).not.toBe(scanApiMocks.detectText.mock.calls[0][2]);
+    }
+  );
+
+  it.each([
+    ['DETECTION_IN_PROGRESS', '检测任务仍在处理中，请稍后重试。'],
+    ['DETECTION_ACTOR_BUSY', '当前账号已有检测任务在处理中，请稍后重试。'],
+  ])('%s 保留 key 并通过现有错误链显示明确消息', async (code, message) => {
+    const authStore = setAuthenticatedSession();
+    authStore.user = { id: 89 };
+    const scanStore = useScanStore();
+    const request = {
+      functions: ['scan'],
+      html: '<p>pending idempotent request</p>',
+    };
+    scanApiMocks.detectText
+      .mockRejectedValueOnce(Object.assign(new Error('Request failed'), { status: 409, code }))
+      .mockResolvedValueOnce({ inputText: 'pending idempotent request', result: makeAnalysis(28) });
+
+    await expect(scanStore.analyzeText('pending idempotent request', request)).rejects.toThrow(message);
+    expect(scanStore.analysisError?.message).toBe(message);
+    await scanStore.analyzeText('pending idempotent request', request);
+
+    expect(scanApiMocks.detectText.mock.calls[1][2]).toBe(scanApiMocks.detectText.mock.calls[0][2]);
+  });
+
+  it.each([
+    [408, 'UNKNOWN_ERROR'],
+    [0, 'NETWORK_ERROR'],
+  ])('status=%s 的不确定失败重试复用 Idempotency-Key', async (status, code) => {
+    const authStore = setAuthenticatedSession();
+    authStore.user = { id: 90 };
+    const scanStore = useScanStore();
+    const request = {
+      functions: ['scan'],
+      html: '<p>ambiguous request result</p>',
+    };
+    scanApiMocks.detectText
+      .mockRejectedValueOnce(Object.assign(new Error('ambiguous failure'), { status, code }))
+      .mockResolvedValueOnce({ inputText: 'ambiguous request result', result: makeAnalysis(29) });
+
+    await expect(scanStore.analyzeText('ambiguous request result', request)).rejects.toThrow('ambiguous failure');
+    await scanStore.analyzeText('ambiguous request result', request);
+
+    expect(scanApiMocks.detectText.mock.calls[1][2]).toBe(scanApiMocks.detectText.mock.calls[0][2]);
+  });
+
   it('clear 后丢弃旧 deferred history sync，不覆盖新会话历史', async () => {
     setAuthenticatedSession();
     const scanStore = useScanStore();

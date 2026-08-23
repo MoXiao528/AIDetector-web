@@ -27,6 +27,11 @@ import {
 } from '../api/modules/history';
 
 const validFunctionKeys = ['scan'];
+const RESET_IDEMPOTENCY_CODES = new Set(['IDEMPOTENCY_KEY_CONFLICT', 'IDEMPOTENCY_RESULT_GONE']);
+const IDEMPOTENCY_ERROR_MESSAGES = {
+  DETECTION_IN_PROGRESS: '检测任务仍在处理中，请稍后重试。',
+  DETECTION_ACTOR_BUSY: '当前账号已有检测任务在处理中，请稍后重试。',
+};
 const CHARACTER_LIMIT = 20000;
 const STORAGE_KEY = 'ai-detector-scan-draft';
 const EXAMPLES_LOCALE_STORAGE_KEY = 'locale';
@@ -439,6 +444,7 @@ export const useScanStore = defineStore('scan', () => {
   const sessionGeneration = ref(0);
   let isRestoring = false;
   let activeGuestSid = authStore.isAuthenticated ? '' : getGuestSessionId(getStoredGuestToken());
+  let detectionAttempt = null;
 
   const getAuthenticatedActorUserId = () =>
     String(authStore.user?.id ?? authStore.user?.userId ?? authStore.user?.user_id ?? '').trim();
@@ -459,6 +465,27 @@ export const useScanStore = defineStore('scan', () => {
       context.authenticated === currentContext.authenticated &&
       context.userId === currentContext.userId
     );
+  };
+
+  const getDetectionIdempotencyKey = (actorGeneration, payloadFingerprint) => {
+    if (
+      !detectionAttempt ||
+      detectionAttempt.actorGeneration !== actorGeneration ||
+      detectionAttempt.payloadFingerprint !== payloadFingerprint
+    ) {
+      detectionAttempt = {
+        actorGeneration,
+        payloadFingerprint,
+        key: crypto.randomUUID(),
+      };
+    }
+    return detectionAttempt.key;
+  };
+
+  const clearDetectionAttempt = (idempotencyKey = '') => {
+    if (!idempotencyKey || detectionAttempt?.key === idempotencyKey) {
+      detectionAttempt = null;
+    }
   };
 
   const characterCount = computed(() => inputText.value.length);
@@ -651,6 +678,7 @@ export const useScanStore = defineStore('scan', () => {
   };
 
   const resetText = () => {
+    clearDetectionAttempt();
     inputText.value = '';
     editorHtml.value = '';
     selectedExampleKey.value = '';
@@ -675,6 +703,7 @@ export const useScanStore = defineStore('scan', () => {
 
   const clearScanSessionData = () => {
     sessionGeneration.value += 1;
+    clearDetectionAttempt();
     guestHistoryRecords = [];
     historyRecords.value = [];
     activeGuestSid = '';
@@ -1079,6 +1108,7 @@ export const useScanStore = defineStore('scan', () => {
   const analyzeText = async (text, options = {}) => {
     const sessionContext = captureScanSessionContext();
     const guestToken = String(options.guestToken || '').trim();
+    let idempotencyKey = '';
     resetAnalysisError();
     const functions = Array.from(
       new Set(
@@ -1101,13 +1131,19 @@ export const useScanStore = defineStore('scan', () => {
         });
       }
 
+      const requestPayload = {
+        text,
+        functions: functions.length ? functions : ['scan'],
+        editorHtml: editorHtmlValue,
+      };
+      const actorGeneration = `${sessionContext.generation}:${
+        sessionContext.authenticated ? `user:${sessionContext.userId}` : `guest:${activeGuestSid}`
+      }`;
+      idempotencyKey = getDetectionIdempotencyKey(actorGeneration, JSON.stringify(requestPayload));
       const response = await detectText(
-        {
-          text,
-          functions: functions.length ? functions : ['scan'],
-          editorHtml: editorHtmlValue,
-        },
-        sessionContext.authenticated ? '' : guestToken
+        requestPayload,
+        sessionContext.authenticated ? '' : guestToken,
+        idempotencyKey
       );
       if (!isScanSessionContextCurrent(sessionContext)) return null;
       if (typeof response?.currentCredits === 'number' && Number.isFinite(response.currentCredits)) {
@@ -1150,6 +1186,7 @@ export const useScanStore = defineStore('scan', () => {
 
         if (historyRecord && historyRecord.analysis) {
           result.value = historyRecord.analysis;
+          clearDetectionAttempt(idempotencyKey);
           return historyRecord.analysis;
         }
       } else if (!authStore.isAuthenticated) {
@@ -1164,9 +1201,17 @@ export const useScanStore = defineStore('scan', () => {
         if (!isScanSessionContextCurrent(sessionContext)) return null;
       }
 
+      clearDetectionAttempt(idempotencyKey);
       return analysis;
     } catch (error) {
       if (!isScanSessionContextCurrent(sessionContext)) return null;
+      const errorCode = extractApiErrorCode(error);
+      if (RESET_IDEMPOTENCY_CODES.has(errorCode)) {
+        clearDetectionAttempt(idempotencyKey);
+      }
+      if (IDEMPOTENCY_ERROR_MESSAGES[errorCode]) {
+        error.message = IDEMPOTENCY_ERROR_MESSAGES[errorCode];
+      }
       if (error?.status === 402) {
         analysisError.value = { type: 'credits_insufficient', message: error?.message || '' };
       } else if (error?.status === 429) {

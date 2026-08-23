@@ -22,11 +22,15 @@ describe('detectText guest identity pinning', () => {
         text: 'guest A private text',
         functions: ['scan'],
       },
-      'guest-a-token'
+      'guest-a-token',
+      '11111111-1111-4111-8111-111111111111'
     );
 
     const requestOptions = fetchMock.mock.calls[0][1];
     expect(new Headers(requestOptions?.headers).get('Authorization')).toBe('Bearer guest-a-token');
+    expect(new Headers(requestOptions?.headers).get('Idempotency-Key')).toBe(
+      '11111111-1111-4111-8111-111111111111'
+    );
   });
 
   it('账号检测不会携带残留的 guest token', async () => {
@@ -40,9 +44,16 @@ describe('detectText guest identity pinning', () => {
     window.localStorage.setItem('auth_session', '1');
     window.localStorage.setItem('guest_token', 'residual-guest-token');
 
-    await detectText({ text: 'account text', functions: ['scan'] });
+    await detectText(
+      { text: 'account text', functions: ['scan'] },
+      '',
+      '22222222-2222-4222-8222-222222222222'
+    );
 
     const requestOptions = fetchMock.mock.calls[0][1];
     expect(new Headers(requestOptions?.headers).has('Authorization')).toBe(false);
+    expect(new Headers(requestOptions?.headers).get('Idempotency-Key')).toBe(
+      '22222222-2222-4222-8222-222222222222'
+    );
   });
 });

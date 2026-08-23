@@ -57,17 +57,19 @@ export interface DetectionResponse {
 
 export const detectText = async (
   payload: { text: string; functions: string[]; editorHtml?: string },
-  guestToken = ''
+  guestToken: string,
+  idempotencyKey: string
 ) =>
   apiClient.post<DetectionResponse>(
     '/api/v1/detect',
     payload,
-    guestToken
-      ? {
-          auth: false,
-          headers: { Authorization: `Bearer ${guestToken}` },
-        }
-      : undefined
+    {
+      ...(guestToken ? { auth: false } : {}),
+      headers: {
+        ...(guestToken ? { Authorization: `Bearer ${guestToken}` } : {}),
+        'Idempotency-Key': idempotencyKey,
+      },
+    }
   );
 
 export const parseFiles = async (formData: FormData) =>
