@@ -74,7 +74,6 @@ export default {
     snapshot: 'Result snapshot',
     labels: {
       ai: 'AI {value}%',
-      mixed: 'Review {value}%',
       human: 'Human {value}%',
     },
     snapshotValue: 'Snapshot: {value}',
@@ -746,10 +745,8 @@ export default {
         modelBadge: 'Model {version}',
         label: 'AI Probability',
         ai: 'AI Generated',
-        mixed: 'Review',
         human: 'Human Written',
         aiLabel: 'AI',
-        mixedShort: 'Review',
         humanShort: 'Human',
       },
       export: 'Export report',
@@ -907,7 +904,6 @@ export default {
     simulation: {
       reasons: {
         ai: 'Repetitive structure and lack of concrete details suggest templated generation.',
-        mixed: 'Some sentences are natural but include common model transitions and generalizations.',
         human: 'Personal details and nuance read like genuine human writing.',
       },
       emptyTranslation: 'No analyzable sentences yet. Please enter text and rescan.',

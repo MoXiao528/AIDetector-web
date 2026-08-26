@@ -7,8 +7,7 @@ export const fallbackHeroExamplesByLocale = {
       content:
         '人工智能系统正在以前所未有的速度推动信息生成，这使得教育工作者越来越难以区分真实的学生写作与由生成式模型产出的文本内容。',
       ai: 88,
-      mixed: 8,
-      human: 4,
+      human: 12,
       snapshot: '高结构化说明',
       snippet:
         '人工智能系统正在以前所未有的速度推动信息生成，这使得教育工作者越来越难以区分真实的学生写作与由生成式模型产出的文本内容。',
@@ -23,8 +22,7 @@ export const fallbackHeroExamplesByLocale = {
       content:
         '我在访谈每一位学生时，都会留意他们停顿时的迟疑、举例时的生活细节，以及他们如何把课堂讨论和自己的真实经历连接起来。',
       ai: 14,
-      mixed: 10,
-      human: 76,
+      human: 86,
       snapshot: '个人经验表达',
       snippet:
         '我在访谈每一位学生时，都会留意他们停顿时的迟疑、举例时的生活细节，以及他们如何把课堂讨论和自己的真实经历连接起来。',
@@ -39,8 +37,7 @@ export const fallbackHeroExamplesByLocale = {
       content:
         '初始提纲由 AI 助手生成，但我重新撰写了每一段内容，补入最近期刊的引用，并按学院写作规范把语气调整得更克制、更正式。',
       ai: 56,
-      mixed: 28,
-      human: 16,
+      human: 44,
       snapshot: 'AI 起草后人工重写',
       snippet:
         '初始提纲由 AI 助手生成，但我重新撰写了每一段内容，补入最近期刊的引用，并按学院写作规范把语气调整得更克制、更正式。',
@@ -55,8 +52,7 @@ export const fallbackHeroExamplesByLocale = {
       content:
         '完成初稿后，我重新整理了段落结构并压缩了重复表述，结果虽然更规整，但也让文本显得过于平均和顺滑。',
       ai: 64,
-      mixed: 22,
-      human: 14,
+      human: 36,
       snapshot: '规整改写版本',
       snippet:
         '完成初稿后，我重新整理了段落结构并压缩了重复表述，结果虽然更规整，但也让文本显得过于平均和顺滑。',
@@ -73,8 +69,7 @@ export const fallbackHeroExamplesByLocale = {
       content:
         'Artificial intelligence systems have rapidly accelerated the pace of information creation, challenging educators to distinguish authentic student work from generated text.',
       ai: 88,
-      mixed: 8,
-      human: 4,
+      human: 12,
       snapshot: 'Highly structured explanation',
       snippet:
         'Artificial intelligence systems have rapidly accelerated the pace of information creation, challenging educators to distinguish authentic student work from generated text.',
@@ -89,8 +84,7 @@ export const fallbackHeroExamplesByLocale = {
       content:
         'When I interviewed each student, I paid attention to their pauses, their personal anecdotes, and the way they connected class discussions to their own experiences.',
       ai: 14,
-      mixed: 10,
-      human: 76,
+      human: 86,
       snapshot: 'Personal narrative detail',
       snippet:
         'When I interviewed each student, I paid attention to their pauses, their personal anecdotes, and the way they connected class discussions to their own experiences.',
@@ -105,8 +99,7 @@ export const fallbackHeroExamplesByLocale = {
       content:
         'The initial outline was produced by an AI assistant, but I rewrote each paragraph to weave in citations from recent journals and to adjust the tone to match our faculty guidelines.',
       ai: 56,
-      mixed: 28,
-      human: 16,
+      human: 44,
       snapshot: 'AI draft with human revision',
       snippet:
         'The initial outline was produced by an AI assistant, but I rewrote each paragraph to weave in citations from recent journals and to adjust the tone to match our faculty guidelines.',
@@ -121,8 +114,7 @@ export const fallbackHeroExamplesByLocale = {
       content:
         'After revising the draft, I compressed repeated points and smoothed the transitions; the result reads more uniform, but also less grounded and more mechanically balanced.',
       ai: 64,
-      mixed: 22,
-      human: 14,
+      human: 36,
       snapshot: 'Smoothed rewrite',
       snippet:
         'After revising the draft, I compressed repeated points and smoothed the transitions; the result reads more uniform, but also less grounded and more mechanically balanced.',
@@ -142,8 +134,7 @@ export const fallbackUsageExamplesByLocale = {
       length: '1200 words',
       description: '研究生论文中关于课堂互动的论证段落，包含引用与方法说明。',
       ai: 22,
-      mixed: 18,
-      human: 60,
+      human: 78,
       snapshot: '章节摘要 + 标色句段',
       snippet:
         '本研究通过对 46 份课堂观察记录进行扎根理论编码，进一步提炼出互动质量指标与学生自我效能之间的非线性关系。',
@@ -157,8 +148,7 @@ export const fallbackUsageExamplesByLocale = {
       length: '780 words',
       description: '面向高校的 AI 评分助手推广页，突出效率提升与团队协作。',
       ai: 35,
-      mixed: 28,
-      human: 37,
+      human: 65,
       snapshot: 'AI 概率分布 + CTA 建议',
       snippet:
         '我们为教师提供统一的反馈模板与语气库，让跨课程的评分标准更加一致，同时保留个性化的书写空间。',
@@ -172,8 +162,7 @@ export const fallbackUsageExamplesByLocale = {
       length: '6 pages',
       description: '数据清洗流水线的设计提案，包含风险提示与性能指标。',
       ai: 18,
-      mixed: 24,
-      human: 58,
+      human: 82,
       snapshot: '风险提示 + 改写建议',
       snippet:
         '为避免批量检测阻塞，我们将文件分片上传并行处理，并在队列服务中设置退避重试策略以稳定延迟。',
@@ -189,8 +178,7 @@ export const fallbackUsageExamplesByLocale = {
       length: '1200 words',
       description: 'A graduate thesis passage about classroom interaction with citations and method notes.',
       ai: 22,
-      mixed: 18,
-      human: 60,
+      human: 78,
       snapshot: 'Section summary + highlighted sentences',
       snippet:
         'This study coded 46 classroom observation records with grounded theory to surface the nonlinear relationship between interaction quality and student self-efficacy.',
@@ -204,8 +192,7 @@ export const fallbackUsageExamplesByLocale = {
       length: '780 words',
       description: 'A landing page for an AI grading assistant aimed at universities.',
       ai: 35,
-      mixed: 28,
-      human: 37,
+      human: 65,
       snapshot: 'AI distribution + CTA guidance',
       snippet:
         'We give instructors shared feedback templates and tone libraries so grading standards stay aligned across courses without flattening individual teaching styles.',
@@ -219,8 +206,7 @@ export const fallbackUsageExamplesByLocale = {
       length: '6 pages',
       description: 'A data-cleaning pipeline proposal with risk controls and performance targets.',
       ai: 18,
-      mixed: 24,
-      human: 58,
+      human: 82,
       snapshot: 'Risk flags + rewrite guidance',
       snippet:
         'To prevent batch scans from stalling, we upload file shards in parallel and apply exponential backoff in the queue service to stabilize latency.',

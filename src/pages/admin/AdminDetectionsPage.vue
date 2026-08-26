@@ -136,7 +136,6 @@ const actorTypeOptions = [
 const labelOptions = [
   { value: '', label: '全部标签' },
   { value: 'ai', label: 'AI' },
-  { value: 'mixed', label: 'Mixed' },
   { value: 'human', label: 'Human' },
 ];
 

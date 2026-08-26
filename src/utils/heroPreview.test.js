@@ -38,7 +38,6 @@ const zhCopy = {
     actionPending: '点击扫描',
     actionPendingDescription: '进入工作台后开始正式检测',
     ai: 'AI 痕迹',
-    mixed: '改写痕迹',
     human: '人工细节',
     emptyLine: '输入文本后，这里会显示优先复核的句段。',
     badges: {
@@ -86,7 +85,11 @@ describe('heroPreview utils', () => {
     expect(chatgptOutput.mode).toBe('example');
     expect(chatgptOutput.ai).toBeGreaterThan(humanOutput.ai);
     expect(chatgptOutput.ai).toBe(88);
+    expect(chatgptOutput.human).toBe(12);
+    expect(chatgptOutput).not.toHaveProperty('mixed');
+    expect(chatgptOutput.riskBars.map((item) => item.label)).toEqual(['AI 痕迹', '人工细节']);
     expect(humanOutput.ai).toBe(14);
+    expect(humanOutput.human).toBe(86);
     expect(chatgptOutput.hasQuantitativeSnapshot).toBe(true);
   });
 

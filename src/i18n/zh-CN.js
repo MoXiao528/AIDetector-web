@@ -74,7 +74,6 @@ export default {
     snapshot: '结果快照',
     labels: {
       ai: 'AI {value}%',
-      mixed: '待复核 {value}%',
       human: '人工 {value}%',
     },
     snapshotValue: '快照：{value}',
@@ -738,10 +737,8 @@ export default {
         modelBadge: '模型 {version}',
         label: 'AI 概率',
         ai: 'AI 生成',
-        mixed: '待复核',
         human: '人工写作',
         aiLabel: 'AI',
-        mixedShort: '复核',
         humanShort: '人工',
       },
       export: '导出报告',
@@ -901,7 +898,6 @@ export default {
     simulation: {
       reasons: {
         ai: '重复的结构和缺乏具体细节，说明这段内容更像模板化生成。',
-        mixed: '部分句子自然，但夹杂了常见模型过渡和泛化表达。',
         human: '个人细节和细腻表达更像真实的人类写作。',
       },
       emptyTranslation: '当前还没有可分析的句子，请先输入文本并重新检测。',

@@ -74,17 +74,11 @@ const splitParagraphTokens = (text = '') =>
     .split('\n')
     .map((raw) => ({ raw, text: raw.trim() }));
 
-const labelToTypeMap = {
-  AI: 'ai',
-  Human: 'human',
-  Mixed: 'mixed',
-};
-
 const normalizeLabelType = (value) => {
   const normalized = String(value || '').trim().toLowerCase();
   if (['ai', 'fake', 'llm'].includes(normalized)) return 'ai';
   if (['human', 'real'].includes(normalized)) return 'human';
-  if (['mixed', 'borderline'].includes(normalized)) return 'mixed';
+  if (['mixed', 'borderline'].includes(normalized)) return 'human';
   if (['too_short', 'too-short', 'too short', 'undetectable'].includes(normalized)) return 'too_short';
   return '';
 };
@@ -101,12 +95,12 @@ const parseSummaryValue = (value) => {
 const normalizeSummary = ({ summary, sentences, score }) => {
   const parsed = {
     ai: parseSummaryValue(summary?.ai),
-    mixed: parseSummaryValue(summary?.mixed),
     human: parseSummaryValue(summary?.human),
   };
   const hasParsed = Object.values(parsed).every((value) => typeof value === 'number' && Number.isFinite(value));
   if (hasParsed) {
-    const total = parsed.ai + parsed.mixed + parsed.human;
+    parsed.human += parseSummaryValue(summary?.mixed) ?? 0;
+    const total = parsed.ai + parsed.human;
     if (total === 0) {
       return parsed;
     }
@@ -119,7 +113,7 @@ const normalizeSummary = ({ summary, sentences, score }) => {
   if (sentences.length) {
     const detectableSentences = sentences.filter((sentence) => sentence.type !== 'too_short');
     if (!detectableSentences.length) {
-      return { ai: 0, mixed: 0, human: 0 };
+      return { ai: 0, human: 0 };
     }
     const counts = sentences.reduce(
       (acc, sentence) => {
@@ -128,15 +122,14 @@ const normalizeSummary = ({ summary, sentences, score }) => {
         }
         return acc;
       },
-      { ai: 0, mixed: 0, human: 0 }
+      { ai: 0, human: 0 }
     );
     const total = detectableSentences.length;
     const computed = {
       ai: Math.round((counts.ai / total) * 100),
-      mixed: Math.round((counts.mixed / total) * 100),
       human: Math.round((counts.human / total) * 100),
     };
-    const diff = computed.ai + computed.mixed + computed.human - 100;
+    const diff = computed.ai + computed.human - 100;
     if (diff !== 0) {
       computed.human = Math.max(0, computed.human - diff);
     }
@@ -146,10 +139,16 @@ const normalizeSummary = ({ summary, sentences, score }) => {
   const safeScore = typeof score === 'number' && Number.isFinite(score) ? Math.max(0, Math.min(score, 100)) : 0;
   return {
     ai: safeScore,
-    mixed: 0,
     human: Math.max(0, 100 - safeScore),
   };
 };
+
+const normalizeExamples = (items = []) =>
+  items.map(({ mixed, ...item }) => ({
+    ...item,
+    ai: parseSummaryValue(item.ai) ?? 0,
+    human: (parseSummaryValue(item.human) ?? 0) + (parseSummaryValue(mixed) ?? 0),
+  }));
 
 const pickFirst = (...values) => values.find((value) => value !== undefined && value !== null);
 
@@ -215,17 +214,7 @@ const normalizeSentenceParagraphRanges = (sentences = []) => {
 };
 
 const resolveSentenceType = (sentence, fallbackType = 'human') => {
-  if (['ai', 'mixed', 'human', 'too_short'].includes(sentence?.type)) {
-    return sentence.type;
-  }
-  const normalizedLabelType = normalizeLabelType(sentence?.label);
-  if (normalizedLabelType) {
-    return normalizedLabelType;
-  }
-  if (sentence?.label && labelToTypeMap[sentence.label]) {
-    return labelToTypeMap[sentence.label];
-  }
-  return fallbackType;
+  return normalizeLabelType(sentence?.type) || normalizeLabelType(sentence?.label) || fallbackType;
 };
 
 const buildFallbackSentences = ({ text = '', score = null, label = '', idPrefix = 'analysis' }) => {
@@ -233,7 +222,7 @@ const buildFallbackSentences = ({ text = '', score = null, label = '', idPrefix 
   if (!normalizedText) return [];
 
   const scorePercent = normalizeScorePercent(score) ?? 0;
-  const fallbackType = normalizeLabelType(label) || labelToTypeMap[label] || (scorePercent >= 70 ? 'ai' : scorePercent >= 40 ? 'mixed' : 'human');
+  const fallbackType = normalizeLabelType(label) || (scorePercent >= 70 ? 'ai' : 'human');
   const probability = clampProbability(scorePercent / 100);
 
   return splitParagraphTokens(normalizedText)
@@ -329,9 +318,7 @@ const normalizeAnalysisPayload = (
         source: pickFirst(item?.source, item?.note, item?.status, ''),
       }))
       : [],
-    aiLikelyCount:
-      pickFirst(source?.aiLikelyCount, source?.ai_likely_count) ??
-      sentences.filter((item) => item.type === 'ai' || item.type === 'mixed').length,
+    aiLikelyCount: sentences.filter((item) => item.type === 'ai').length,
     highlightedHtml,
   };
 };
@@ -362,33 +349,6 @@ const normalizeHistoryRecordPayload = (record) => {
       fallbackScore: pickFirst(record.score, record.raw_score),
       fallbackLabel: pickFirst(record.label, ''),
     }),
-  };
-};
-
-const buildSeedHistoryAnalysis = ({ summary, sentences, translation = '', polish = '', citations = [] }) => {
-  const normalizedSentences = sentences.map((item, index) => ({
-    id: item.id || `seed-paragraph-${index}`,
-    text: item.text,
-    raw: item.raw || item.text,
-    startParagraph: pickFirst(item.startParagraph, item.start_paragraph, index + 1),
-    endParagraph: pickFirst(item.endParagraph, item.end_paragraph, index + 1),
-    type: item.type,
-    probability: clampProbability(item.probability ?? 0.5),
-    reason: item.reason,
-  }));
-  const aiLikelyCount = normalizedSentences.filter((item) => item.type === 'ai' || item.type === 'mixed').length;
-  const highlightedHtml = buildHighlightedPreviewHtml({
-    fallbackText: normalizedSentences.map((item) => item.raw || item.text || '').join('\n'),
-    sentences: normalizedSentences,
-  });
-  return {
-    summary,
-    sentences: normalizedSentences,
-    translation,
-    polish,
-    citations,
-    aiLikelyCount,
-    highlightedHtml,
   };
 };
 
@@ -588,17 +548,17 @@ export const useScanStore = defineStore('scan', () => {
     }
 
     examplesLocale.value = nextLocale;
-    examples.value = getFallbackHeroExamples(nextLocale);
-    usageExamples.value = getFallbackUsageExamples(nextLocale);
+    examples.value = normalizeExamples(getFallbackHeroExamples(nextLocale));
+    usageExamples.value = normalizeExamples(getFallbackUsageExamples(nextLocale));
     isLoadingExamples.value = true;
 
     try {
       const response = await fetchScanExamples(nextLocale);
       if (Array.isArray(response?.heroExamples) && response.heroExamples.length) {
-        examples.value = response.heroExamples;
+        examples.value = normalizeExamples(response.heroExamples);
       }
       if (Array.isArray(response?.usageExamples) && response.usageExamples.length) {
-        usageExamples.value = response.usageExamples;
+        usageExamples.value = normalizeExamples(response.usageExamples);
       }
     } catch {
       // Fallback examples are already prepared locally.
@@ -1018,46 +978,13 @@ export const useScanStore = defineStore('scan', () => {
     const normalizedFunctions = Array.from(
       new Set(functions.filter((item) => typeof item === 'string' && validFunctionKeys.includes(item)))
     );
-    // 本地状态使用的 camelCase 对象
     const recordAnalysis = analysis
       ? {
         ...analysis,
-        summary: analysis.summary || { ai: 0, mixed: 0, human: 0 },
-        sentences: (analysis.sentences || []).map((sentence, index) => ({
-          id: sentence.id || `history-new-paragraph-${index}`,
-          text: sentence.text || '',
-          raw: sentence.raw || sentence.text || '',
-          startParagraph: pickFirst(sentence.startParagraph, sentence.start_paragraph, index + 1),
-          endParagraph: pickFirst(sentence.endParagraph, sentence.end_paragraph, index + 1),
-          type: ['ai', 'mixed', 'human', 'too_short'].includes(sentence.type)
-            ? sentence.type
-            : labelToTypeMap[sentence.label] || 'human',
-          probability: clampProbability(
-            typeof sentence.probability === 'number' ? sentence.probability : Number(sentence.score || 0) / 100
-          ),
-          score: typeof sentence.score === 'number' ? sentence.score : Number(sentence.score || 0),
-          reason: sentence.reason || sentence.suggestion || '',
-          suggestion: sentence.suggestion || sentence.reason || '',
-          tokenCount: pickFirst(sentence.tokenCount, sentence.token_count, null),
-          visibleChars: pickFirst(sentence.visibleChars, sentence.visible_chars, null),
-          isTruncated: Boolean(pickFirst(sentence.isTruncated, sentence.is_truncated, false)),
-        })),
-        translation: analysis.translation || '',
-        polish: Array.isArray(analysis.polish)
-          ? analysis.polish.map((entry) => entry?.suggestion).filter(Boolean).join('\n\n')
-          : analysis.polish || '',
-        citations: Array.isArray(analysis.citations)
-          ? analysis.citations.map((entry, index) => ({
-            id: entry.id || `history-new-citation-${index}`,
-            text: entry.text || entry.excerpt || '',
-            source: entry.source || entry.note || entry.status || '',
-          }))
-          : [],
-        aiLikelyCount:
-          typeof analysis.aiLikelyCount === 'number'
-            ? analysis.aiLikelyCount
-            : (analysis.sentences || []).filter((item) => item.type === 'ai' || item.type === 'mixed').length,
-        highlightedHtml: analysis.highlightedHtml || '',
+        ...normalizeAnalysisPayload(analysis, {
+          fallbackText: text,
+          idPrefix: 'history-new',
+        }),
       }
       : null;
 

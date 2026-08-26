@@ -256,7 +256,7 @@ describe('ScanPage panel switching', () => {
       .mockImplementationOnce(async () => {
         const scanStore = useScanStore();
         scanStore.setText('old guest secret');
-        scanStore.result = { summary: { ai: 88, mixed: 0, human: 12 } };
+        scanStore.result = { summary: { ai: 88, human: 12 } };
         scanStore.currentResultHistoryId = 'old-result';
         scanStore.historyRecords.push({ id: 'old-history', inputText: 'old guest secret' });
         throw { status: 401, code: 'GUEST_TOKEN_REQUIRED' };
@@ -361,7 +361,7 @@ describe('ScanPage panel switching', () => {
     await flushPromises();
     const scanStore = useScanStore();
     scanStore.setText('sid-a secret');
-    scanStore.result = { summary: { ai: 99, mixed: 0, human: 1 } };
+    scanStore.result = { summary: { ai: 99, human: 1 } };
     scanStore.currentResultHistoryId = 'sid-a-result';
     scanStore.historyRecords.push({ id: 'sid-a-history', inputText: 'sid-a secret' });
 
@@ -471,7 +471,7 @@ describe('ScanPage panel switching', () => {
     const searchSpy = vi.spyOn(scanStore, 'searchHistoryRecords');
     searchSpy.mockClear();
     scanStore.setEditorHtml('<p>sid-a editor secret</p>');
-    scanStore.result = { summary: { ai: 95, mixed: 0, human: 5 }, sentences: [] };
+    scanStore.result = { summary: { ai: 95, human: 5 }, sentences: [] };
     scanStore.historyRecords.push({ id: 'sid-a-history', inputText: 'sid-a history secret' });
     state.localText = 'sid-a local secret';
     state.historySearchQuery = 'sid-a search secret';
@@ -520,7 +520,7 @@ describe('ScanPage panel switching', () => {
     const scanStore = useScanStore();
     const state = getScanPageSetupState(wrapper);
     const staleAnalysis = {
-      summary: { ai: 90, mixed: 0, human: 10 },
+      summary: { ai: 90, human: 10 },
       sentences: [],
       highlightedHtml: '<p>stale analysis secret</p>',
     };
@@ -699,14 +699,14 @@ describe('ScanPage panel switching', () => {
     await vi.waitFor(() => expect(clearSpy).toHaveBeenCalledTimes(1));
     scanStore.clearScanSessionData();
     scanStore.setEditorHtml('<p>new actor draft</p>');
-    scanStore.result = { summary: { ai: 10, mixed: 0, human: 90 } };
+    scanStore.result = { summary: { ai: 10, human: 90 } };
     scanStore.historyRecords = [{ id: 'new-record', inputText: 'new actor draft' }];
     deferred.resolve({ deletedCount: 0 });
     await clearing;
     await flushPromises();
 
     expect(scanStore.inputText).toBe('new actor draft');
-    expect(scanStore.result).toEqual({ summary: { ai: 10, mixed: 0, human: 90 } });
+    expect(scanStore.result).toEqual({ summary: { ai: 10, human: 90 } });
     expect(scanStore.historyRecords).toEqual([{ id: 'new-record', inputText: 'new actor draft' }]);
     wrapper.unmount();
   });
@@ -724,13 +724,13 @@ describe('ScanPage panel switching', () => {
     await vi.waitFor(() => expect(readSpy).toHaveBeenCalledTimes(1));
     scanStore.clearScanSessionData();
     scanStore.setEditorHtml('<p>new actor file draft</p>');
-    scanStore.result = { summary: { ai: 5, mixed: 0, human: 95 } };
+    scanStore.result = { summary: { ai: 5, human: 95 } };
     deferred.resolve(false);
     await reading;
     await flushPromises();
 
     expect(scanStore.inputText).toBe('new actor file draft');
-    expect(scanStore.result).toEqual({ summary: { ai: 5, mixed: 0, human: 95 } });
+    expect(scanStore.result).toEqual({ summary: { ai: 5, human: 95 } });
     expect(state.editorMode).toBe('edit');
     wrapper.unmount();
   });

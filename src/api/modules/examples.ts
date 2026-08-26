@@ -6,7 +6,6 @@ export interface HeroExampleItem {
   content: string;
   description?: string | null;
   ai?: number | null;
-  mixed?: number | null;
   human?: number | null;
   snapshot?: string | null;
   snippet?: string | null;
@@ -22,7 +21,6 @@ export interface UsageExampleItem {
   length: string;
   description: string;
   ai: number;
-  mixed: number;
   human: number;
   snapshot: string;
   snippet: string;
