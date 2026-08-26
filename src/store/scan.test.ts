@@ -21,12 +21,16 @@ const scanApiMocks = vi.hoisted(() => ({
   detectText: vi.fn(),
 }));
 
+const exampleApiMocks = vi.hoisted(() => ({
+  fetchScanExamples: vi.fn(async () => ({})),
+}));
+
 const fileReaderMocks = vi.hoisted(() => ({
   readTextFromFile: vi.fn(),
 }));
 
 vi.mock('../api/modules/examples', () => ({
-  fetchScanExamples: vi.fn(async () => ({})),
+  fetchScanExamples: exampleApiMocks.fetchScanExamples,
 }));
 
 vi.mock('../api/modules/scan', () => ({
@@ -88,7 +92,7 @@ const expectNoHistoryStorage = () => {
 };
 
 const makeAnalysis = (ai = 12) => ({
-  summary: { ai, mixed: 0, human: 100 - ai },
+  summary: { ai, human: 100 - ai },
   sentences: [
     {
       id: 'paragraph-1',
@@ -131,7 +135,7 @@ const makeBackendRecord = (record, id = 100) => ({
   editor_html: record.editorHtml || '',
   is_pinned: Boolean(record.isPinned),
   analysis: {
-    summary: record.analysis?.summary || { ai: 0, mixed: 0, human: 100 },
+    summary: record.analysis?.summary || { ai: 0, human: 100 },
     sentences: (record.analysis?.sentences || []).map((sentence) => ({
       ...sentence,
       start_paragraph: sentence.startParagraph ?? sentence.start_paragraph ?? 1,
@@ -169,6 +173,60 @@ describe('scan store guest history boundary', () => {
       return sid;
     });
     historyMocks.getHistoryList.mockResolvedValue({ items: [] });
+  });
+
+  it('旧三分类检测结果只在读取边界折叠为 AI/Human', async () => {
+    const authStore = setAuthenticatedSession();
+    authStore.user = { id: 92 };
+    const scanStore = useScanStore();
+    scanApiMocks.detectText.mockResolvedValueOnce({
+      inputText: 'legacy mixed response',
+      result: {
+        summary: { ai: 45, mixed: 25, human: 30 },
+        sentences: [
+          {
+            id: 'legacy-mixed',
+            text: 'legacy mixed sentence',
+            type: 'mixed',
+            probability: 0.55,
+            score: 55,
+          },
+          {
+            id: 'legacy-ai',
+            text: 'legacy ai sentence',
+            type: 'ai',
+            probability: 0.8,
+            score: 80,
+          },
+        ],
+        ai_likely_count: 2,
+      },
+    });
+
+    const result = await scanStore.analyzeText('legacy mixed response', {
+      functions: ['scan'],
+      html: '<p>legacy mixed response</p>',
+    });
+
+    expect(result?.summary).toEqual({ ai: 45, human: 55 });
+    expect(result?.sentences.map((sentence) => sentence.type)).toEqual(['human', 'ai']);
+    expect(result?.aiLikelyCount).toBe(1);
+    expect(result?.summary).not.toHaveProperty('mixed');
+  });
+
+  it('旧示例响应把第三类并入 Human，store 不再暴露第三个分桶', async () => {
+    exampleApiMocks.fetchScanExamples.mockResolvedValueOnce({
+      heroExamples: [{ key: 'legacy-hero', content: 'hero', ai: 45, mixed: 25, human: 30 }],
+      usageExamples: [{ key: 'legacy-usage', content: 'usage', ai: 20, mixed: 15, human: 65 }],
+    });
+    const scanStore = useScanStore();
+
+    await scanStore.loadExamples('zh-CN');
+
+    expect(scanStore.examples[0]).toMatchObject({ ai: 45, human: 55 });
+    expect(scanStore.examples[0]).not.toHaveProperty('mixed');
+    expect(scanStore.usageExamples[0]).toMatchObject({ ai: 20, human: 80 });
+    expect(scanStore.usageExamples[0]).not.toHaveProperty('mixed');
   });
 
   it('未 opt-in 的游客正文、HTML 和完整分析只留当前 Pinia，新实例不从 Web Storage 恢复', async () => {

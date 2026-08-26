@@ -1,27 +1,24 @@
 const clamp = (value, min, max) => Math.min(max, Math.max(min, value));
 
-const normalizeDistribution = ({ ai = 0, mixed = 0, human = 0 }) => {
+const normalizeDistribution = ({ ai = 0, human = 0 }) => {
   const normalizedAi = clamp(Math.round(ai), 0, 100);
-  const normalizedMixed = clamp(Math.round(mixed), 0, 100);
   const normalizedHuman = clamp(Math.round(human), 0, 100);
-  const total = normalizedAi + normalizedMixed + normalizedHuman;
+  const total = normalizedAi + normalizedHuman;
 
   if (total === 100) {
-    return { ai: normalizedAi, mixed: normalizedMixed, human: normalizedHuman };
+    return { ai: normalizedAi, human: normalizedHuman };
   }
 
   if (total === 0) {
-    return { ai: 0, mixed: 0, human: 0 };
+    return { ai: 0, human: 0 };
   }
 
   const scale = 100 / total;
   const aiValue = clamp(Math.round(normalizedAi * scale), 0, 100);
-  const mixedValue = clamp(Math.round(normalizedMixed * scale), 0, 100);
-  const humanValue = Math.max(0, 100 - aiValue - mixedValue);
+  const humanValue = Math.max(0, 100 - aiValue);
 
   return {
     ai: aiValue,
-    mixed: mixedValue,
     human: humanValue,
   };
 };
@@ -84,15 +81,14 @@ const resolveExamplePreset = ({ selectedExampleKey, examples }) => {
   if (!matched) return null;
 
   const ai = matched?.ai;
-  const mixed = matched?.mixed;
   const human = matched?.human;
 
-  if (![ai, mixed, human].every((value) => typeof value === 'number' && Number.isFinite(value))) {
+  if (![ai, human].every((value) => typeof value === 'number' && Number.isFinite(value))) {
     return null;
   }
 
   return {
-    ...normalizeDistribution({ ai, mixed, human }),
+    ...normalizeDistribution({ ai, human }),
     snapshot: matched?.snapshot || '',
     snippet: matched?.snippet || matched?.content || '',
     structure: matched?.structure || '',
@@ -104,7 +100,6 @@ const resolveExamplePreset = ({ selectedExampleKey, examples }) => {
 const buildEmptyState = (copy) => ({
   mode: 'empty',
   ai: null,
-  mixed: null,
   human: null,
   badge: copy.empty,
   readiness: copy.typing,
@@ -151,7 +146,6 @@ const buildExampleState = ({ copy, preset }) => {
   return {
     mode: 'example',
     ai: preset.ai,
-    mixed: preset.mixed,
     human: preset.human,
     badge,
     readiness: copy.ready,
@@ -181,7 +175,6 @@ const buildExampleState = ({ copy, preset }) => {
     ],
     riskBars: [
       { label: copy.signals.ai, value: preset.ai, className: 'bg-rose-500' },
-      { label: copy.signals.mixed, value: preset.mixed, className: 'bg-amber-400' },
       { label: copy.signals.human, value: preset.human, className: 'bg-emerald-500' },
     ],
     snippets: [
@@ -202,7 +195,6 @@ const buildDraftState = ({ copy, text }) => {
   return {
     mode: 'draft',
     ai: null,
-    mixed: null,
     human: null,
     badge: copy.previewOnly,
     readiness: copy.scanRequired,

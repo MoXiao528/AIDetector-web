@@ -10,19 +10,18 @@ export interface AnalysisSentence {
   end_paragraph?: number;
   score?: number;
   probability?: number;
-  type?: 'ai' | 'mixed' | 'human' | 'too_short';
-  label?: 'Human' | 'AI' | 'Mixed';
+  type?: 'ai' | 'human' | 'too_short';
+  label?: 'Human' | 'AI';
   reason?: string;
   suggestion?: string;
 }
 
 export interface AnalysisResult {
   score?: number;
-  label?: 'Human' | 'AI' | 'Mixed';
+  label?: 'Human' | 'AI';
   summary?: {
     ai: string | number;
     human: string | number;
-    mixed: string | number;
   };
   sentences?: AnalysisSentence[];
   polish?: string;

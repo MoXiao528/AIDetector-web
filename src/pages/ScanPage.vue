@@ -1658,14 +1658,13 @@ const countVisibleCharacters = (value = '') => String(value || '').replace(/\s/g
 const clampPercent = (value) => Math.max(0, Math.min(100, Math.round(Number(value) || 0)));
 const collapseSummaryForDisplay = (summary) => {
   const ai = clampPercent(summary?.ai);
-  const mixed = clampPercent(summary?.mixed);
   const human = clampPercent(summary?.human);
-  if (summary && ai === 0 && mixed === 0 && human === 0) {
+  if (summary && ai === 0 && human === 0) {
     return { ai: 0, human: 0 };
   }
   return {
     ai,
-    human: Math.max(0, 100 - ai),
+    human,
   };
 };
 

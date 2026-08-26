@@ -2,7 +2,7 @@ import { apiClient } from '../client';
 
 export type AdminSystemRole = 'INDIVIDUAL' | 'TEAM_ADMIN' | 'SYS_ADMIN';
 export type AdminActorType = 'user' | 'guest';
-export type AdminDetectionLabel = 'ai' | 'mixed' | 'human';
+export type AdminDetectionLabel = 'ai' | 'human';
 export type AdminOverviewPreset = 'today' | 'week' | 'month' | 'quarter' | 'year';
 export type AdminOverviewGranularity = 'hour' | 'day' | 'week' | 'month';
 

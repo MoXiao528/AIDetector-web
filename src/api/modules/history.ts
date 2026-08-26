@@ -4,7 +4,6 @@ import { apiClient } from '../client';
 
 export interface Summary {
     ai: number;
-    mixed: number;
     human: number;
 }
 
@@ -12,7 +11,7 @@ export interface Sentence {
     id: string;
     text: string;
     raw: string;
-    type: 'ai' | 'mixed' | 'human' | 'too_short';
+    type: 'ai' | 'human' | 'too_short';
     probability: number;
     score: number;
     reason: string;
