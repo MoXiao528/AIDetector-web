@@ -1,4 +1,5 @@
 import { apiClient } from '../client';
+import type { EvidenceResult } from './scan';
 
 // ==================== 类型定义 ====================
 
@@ -45,6 +46,7 @@ export interface HistoryRecord {
     is_pinned?: boolean;
     isPinned?: boolean;
     analysis: Analysis | null;
+    evidence?: EvidenceResult;
 }
 
 export interface HistoryListResponse {

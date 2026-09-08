@@ -3,6 +3,7 @@ import { createPinia, disposePinia, setActivePinia } from 'pinia';
 import { reactive, nextTick } from 'vue';
 import { mount, flushPromises } from '@vue/test-utils';
 import ScanPage from './ScanPage.vue';
+import EvidencePanel from '../components/EvidencePanel.vue';
 import { createI18n, globalT } from '../i18n';
 import { useAuthStore } from '../store/auth';
 import { useScanStore } from '../store/scan';
@@ -792,6 +793,188 @@ describe('ScanPage panel switching', () => {
 
     expect(scanApi.detectText).toHaveBeenCalledTimes(1);
     expect(vi.mocked(scanApi.detectText).mock.calls[0][1]).toBe('guest-a-token');
+    wrapper.unmount();
+  });
+
+  it.each([23, 77])('Evidence 随检测和历史切换面板，缺失时恢复旧页面，主摘要 AI=%i 与段落预览不变', async (ai) => {
+    route.query = { panel: 'document' };
+    route.fullPath = '/dashboard?panel=document';
+    const text = 'The same paragraph remains unchanged across both responses. '.repeat(4).trim();
+    const label = ai === 77 ? 'ai' : 'human';
+    const evidence: scanApi.EvidenceResult = {
+      status: 'unsupported',
+      artifactVersion: null,
+      featureSchemaVersion: 1,
+      route: null,
+      quality: { level: 'unavailable', coverage: 0, reasons: ['unsupported_language'] },
+      signals: [],
+      patterns: null,
+    };
+    const response: scanApi.DetectionResponse = {
+      historyId: 91,
+      inputText: text,
+      score: ai / 100,
+      label,
+      result: {
+        summary: { ai, human: 100 - ai },
+        sentences: [{
+          id: 'ev5-main-paragraph',
+          text,
+          raw: text,
+          startParagraph: 1,
+          endParagraph: 1,
+          type: label,
+          probability: ai / 100,
+          score: ai,
+        }],
+      },
+    };
+    vi.mocked(scanApi.detectText)
+      .mockResolvedValueOnce(response)
+      .mockResolvedValueOnce({ ...response, evidence });
+    const wrapper = mountScanPage();
+    await flushPromises();
+    const scanStore = useScanStore();
+    const state = getScanPageSetupState(wrapper);
+    scanStore.setText(text);
+
+    await state.handleScan();
+    await flushPromises();
+    const legacyHistoryId = scanStore.currentResultHistoryId;
+    const legacyResultPanel = wrapper.get('.text-6xl').element.closest('aside')!.innerHTML;
+    const legacySummary = wrapper.get('.text-6xl').element.closest('.shadow-premium')!.outerHTML;
+    const legacyPreview = wrapper.get('.preview-surface').html();
+    expect(wrapper.find('[data-testid="evidence-panel"]').exists()).toBe(false);
+    expect(wrapper.get('.text-6xl').text()).toBe(`${ai}%`);
+    expect(legacyResultPanel).toContain(`${100 - ai}%`);
+    expect(legacyPreview).toContain('data-sentence-id="ev5-main-paragraph"');
+    expect(scanStore.result?.summary).toEqual({ ai, human: 100 - ai });
+
+    await state.handleScan();
+    await flushPromises();
+    const evidenceHistoryId = scanStore.currentResultHistoryId;
+    expect(scanStore.result?.evidence).toEqual(evidence);
+    expect(wrapper.get('.text-6xl').element.closest('.shadow-premium')!.outerHTML).toBe(legacySummary);
+    expect(wrapper.get('[data-testid="evidence-status"]').text()).toBe(globalT('scan.evidence.status.unsupported'));
+    expect(wrapper.get('.preview-surface').html()).toBe(legacyPreview);
+
+    await state.loadHistoryRecord(legacyHistoryId);
+    await flushPromises();
+    expect(scanStore.result?.evidence).toBeUndefined();
+    expect(scanStore.result?.summary).toEqual({ ai, human: 100 - ai });
+    expect(wrapper.find('[data-testid="evidence-panel"]').exists()).toBe(false);
+    expect(wrapper.get('.text-6xl').element.closest('aside')!.innerHTML).toBe(legacyResultPanel);
+
+    await state.loadHistoryRecord(evidenceHistoryId);
+    await flushPromises();
+    expect(scanStore.result?.evidence).toEqual(evidence);
+    expect(scanStore.result?.summary).toEqual({ ai, human: 100 - ai });
+    expect(wrapper.get('.text-6xl').element.closest('.shadow-premium')!.outerHTML).toBe(legacySummary);
+    expect(wrapper.get('[data-testid="evidence-status"]').text()).toBe(globalT('scan.evidence.status.unsupported'));
+    expect(wrapper.get('.preview-surface').html()).toBe(legacyPreview);
+    wrapper.unmount();
+  });
+
+  it.each([23, 77])('侧栏和详情复用路由、Quality 与逐项参考快照，旧历史清除元信息且主结果 AI=%i 不受提示影响', async (ai) => {
+    route.query = { panel: 'document' };
+    route.fullPath = '/dashboard?panel=document';
+    const label = ai === 77 ? 'ai' : 'human';
+    const metrics: Record<scanApi.EvidenceSignal['dimension'], string[]> = {
+      lexical: ['mattr', 'token_entropy', 'entropy_per_log_vocab', 'hapax_type_ratio', 'top_token_concentration'],
+      phrase_template: ['repeat_ngram_coverage', 'sentence_start_repeat'],
+      rhythm: ['sentence_length_median', 'sentence_length_iqr', 'sentence_length_cv', 'sentence_adjacent_change_median',
+        'paragraph_length_median', 'paragraph_length_iqr', 'paragraph_length_cv', 'punctuation_per_1k', 'punctuation_entropy'],
+      discourse: ['transition_per_1k', 'transition_diversity', 'paragraph_adjacent_jaccard',
+        'paragraph_nonadjacent_jaccard_q90', 'intro_conclusion_jaccard', 'section_heading_count'],
+    };
+    const evidence: scanApi.EvidenceResult = {
+      status: 'partial', artifactVersion: '1'.repeat(64), featureSchemaVersion: 1,
+      route: {
+        language: 'zh', domain: 'news', confidence: { language: 0, domain: 0.8125 },
+        lengthBucket: 'short', fallbackLevel: 'language_length',
+      },
+      quality: { level: 'partial', coverage: 19 / 22, reasons: ['reference_fallback_language_length', 'reference_metrics_unavailable'] },
+      signals: Object.entries(metrics).flatMap(([dimension, names]) => names.map((metric) => {
+        const comparable = !['paragraph_adjacent_jaccard', 'paragraph_nonadjacent_jaccard_q90', 'intro_conclusion_jaccard'].includes(metric);
+        return {
+          dimension: dimension as scanApi.EvidenceSignal['dimension'], metric, observed: 0,
+          humanPercentile: comparable ? 50 : null, aiPercentile: comparable ? 50 : null,
+          referenceRanges: comparable ? { human: [0, 0], ai: [0, 0] } : null,
+          relation: comparable ? { human: 'within', ai: 'within' } : null,
+          notice: null, sampleCount: comparable ? 10 : 0, offsets: [],
+          reasons: comparable ? [] : ['no_valid_source_groups'],
+        };
+      })),
+      patterns: { descriptive_top_tokens: [], repeated_phrases: [], sentence_start_templates: [] },
+    };
+    Object.assign(evidence.signals[0], {
+      humanPercentile: label === 'human' ? 0 : 2.5, aiPercentile: label === 'ai' ? 0 : 2.5,
+      referenceRanges: { human: [label === 'human' ? 0.1 : 0, 0.5], ai: [label === 'ai' ? 0.1 : 0, 0.5] },
+      relation: { human: label === 'human' ? 'below' : 'within', ai: label === 'ai' ? 'below' : 'within' },
+      notice: 'reference_mismatch',
+    });
+    Object.assign(evidence.signals[1], {
+      humanPercentile: 0, aiPercentile: 0,
+      referenceRanges: { human: [0.1, 0.5], ai: [0.1, 0.5] },
+      relation: { human: 'below', ai: 'below' }, notice: 'outside_both',
+    });
+    vi.mocked(scanApi.detectText).mockResolvedValue({
+      historyId: 92, score: ai / 100, label, evidence,
+      result: { summary: { ai, human: 100 - ai }, sentences: [] },
+    });
+    const wrapper = mountScanPage();
+    await flushPromises();
+    const scanStore = useScanStore();
+    scanStore.setText('用于验证四维面板的中文文本。'.repeat(20));
+    await getScanPageSetupState(wrapper).handleScan();
+    await flushPromises();
+    const historyId = scanStore.currentResultHistoryId;
+    expect(wrapper.findAll('[data-testid="evidence-panel"]')).toHaveLength(1);
+    const openDetail = wrapper.findAll('button').find((button) => button.text() === globalT('scan.results.openDetail'))!;
+    await openDetail.trigger('click');
+    await flushPromises();
+    const panels = wrapper.findAllComponents(EvidencePanel);
+    expect(panels).toHaveLength(2);
+    for (const panel of panels) {
+      expect(panel.props('evidence')).toEqual(evidence);
+      expect(panel.findAll('details')).toHaveLength(4);
+      expect(panel.findAll('[data-metric]')).toHaveLength(22);
+      expect(panel.get('[data-value="coverage"]').text()).toBe('86.4%');
+      expect(panel.get('[data-route="fallbackLevel"]').text()).toBe(globalT('scan.evidence.route.values.fallbackLevel.language_length'));
+      expect(panel.get('[data-confidence="language"]').text()).toBe('0');
+      expect(panel.get('[data-confidence="domain"]').text()).toBe('0.8125');
+      expect(panel.get('[data-metric="mattr"] [data-value="sample-count"]').text()).toBe('10');
+      expect(panel.findAll('[data-testid="evidence-notice"]')).toHaveLength(2);
+      expect(panel.findAll('summary [data-testid="dimension-notice"]')).toHaveLength(1);
+    }
+    expect(panels[0].html()).toBe(panels[1].html().replace(' mb-6', ''));
+    expect(wrapper.get('.text-6xl').text()).toBe(`${ai}%`);
+    expect(wrapper.get('.text-5xl').text()).toBe(`${ai}%`);
+    expect(scanStore.result?.summary).toEqual({ ai, human: 100 - ai });
+    expect(scanStore.result?.sentences[0].type).toBe(label);
+    const legacyRecord = await scanStore.addHistoryRecord({
+      title: 'Legacy without Evidence', text: '旧记录没有证据快照。'.repeat(30), html: '', functions: ['scan'],
+      analysis: { summary: { ai, human: 100 - ai }, sentences: [] },
+    });
+    await getScanPageSetupState(wrapper).loadHistoryRecord(legacyRecord.id);
+    await flushPromises();
+    expect(scanStore.result?.evidence).toBeUndefined();
+    expect(wrapper.find('[data-testid="evidence-panel"]').exists()).toBe(false);
+    expect(wrapper.find('[data-testid="evidence-route"]').exists()).toBe(false);
+    expect(wrapper.find('[data-testid="evidence-quality"]').exists()).toBe(false);
+    expect(wrapper.find('[data-testid="evidence-notice"]').exists()).toBe(false);
+    expect(wrapper.get('.text-6xl').text()).toBe(`${ai}%`);
+    expect(wrapper.get('.text-5xl').text()).toBe(`${ai}%`);
+    await getScanPageSetupState(wrapper).loadHistoryRecord(historyId);
+    await flushPromises();
+    expect(wrapper.findAll('[data-testid="evidence-panel"]')).toHaveLength(2);
+    expect(wrapper.findAll('[data-testid="evidence-route"]')).toHaveLength(2);
+    expect(wrapper.findAll('[data-testid="evidence-notice"]')).toHaveLength(4);
+    expect(scanStore.result?.evidence).toEqual(evidence);
+    expect(scanStore.result?.summary).toEqual({ ai, human: 100 - ai });
+    expect(scanStore.result?.sentences[0].type).toBe(label);
+    expect(wrapper.get('.text-6xl').text()).toBe(`${ai}%`);
+    expect(wrapper.get('.text-5xl').text()).toBe(`${ai}%`);
     wrapper.unmount();
   });
 });
