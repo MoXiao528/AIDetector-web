@@ -813,6 +813,8 @@
                        </div>
                     </div>
 
+                    <EvidencePanel :evidence="scanStore.result?.evidence" />
+
                     <button
                       type="button"
                       class="flex w-full items-start gap-4 rounded-2xl border border-neutral-100 bg-white p-4 text-left shadow-sm transition hover:border-primary-200 hover:bg-primary-50/40"
@@ -920,7 +922,7 @@
 
           </div>
           <div class="pointer-events-none fixed bottom-6 left-1/2 z-30 flex w-full max-w-3xl -translate-x-1/2 px-4 transition-all duration-500 ease-out" :class="{ 'translate-y-24 opacity-0': !isPanelActive('document') }">
-            <div class="pointer-events-auto flex w-full items-center justify-between gap-4 rounded-full border border-white/20 bg-white/90 px-2 pl-6 py-2 shadow-premium backdrop-blur-xl ring-1 ring-black/5">
+            <div class="pointer-events-auto flex w-full flex-col items-center justify-between gap-2 rounded-2xl border border-white/20 bg-white/90 px-2 py-2 shadow-premium backdrop-blur-xl ring-1 ring-black/5 sm:flex-row sm:gap-4 sm:rounded-full sm:pl-6">
               <div class="flex items-center gap-1">
                 <button type="button" class="toolbar-button rounded-lg p-2 text-neutral-500 hover:bg-neutral-100 hover:text-neutral-900 transition-colors" @click="applyCommand('bold')"><span class="font-bold">B</span></button>
                 <button type="button" class="toolbar-button italic rounded-lg p-2 text-neutral-500 hover:bg-neutral-100 hover:text-neutral-900 transition-colors" @click="applyCommand('italic')">I</button>
@@ -1082,6 +1084,7 @@
             </aside>
 
             <main class="min-h-0 px-6 py-6">
+              <EvidencePanel :evidence="scanStore.result?.evidence" class="mb-6" />
               <div v-if="activeResultTab === 'scan'" class="space-y-4">
                 <p v-if="resultHasMergedBlocks" class="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
                   {{ t('scan.results.mergeNotice') }}
@@ -1201,6 +1204,7 @@ import BaseListbox from '../components/common/BaseListbox.vue';
 import ProfilePanel from '../components/dashboard/ProfilePanel.vue';
 import QAPanel from '../components/dashboard/QAPanel.vue';
 import OnboardingStepsBar from '../components/dashboard/OnboardingStepsBar.vue';
+import EvidencePanel from '../components/EvidencePanel.vue';
 import { useI18n } from '../i18n';
 import { clearGuestToken, ensureGuestToken, getGuestSessionId, getStoredGuestToken } from '../api/modules/auth';
 import { extractApiErrorCode } from '../api/client';

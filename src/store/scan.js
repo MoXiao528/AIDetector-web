@@ -329,10 +329,15 @@ const normalizeFunctions = (functions) => {
   return normalized.length ? normalized : ['scan'];
 };
 
+/** @typedef {import('../api/modules/scan').EvidenceResult} EvidenceResult */
+/** @typedef {Partial<ReturnType<typeof normalizeAnalysisPayload>> & { evidence?: EvidenceResult, modelName?: string, model_name?: string }} ScanResult */
+
 const normalizeHistoryRecordPayload = (record) => {
   if (!record) return null;
   const inputTextValue = pickFirst(record.inputText, record.input_text, '');
   const recordId = pickFirst(record.id, record.historyId, record.history_id);
+  /** @type {EvidenceResult | undefined} */
+  const evidence = record.evidence ?? undefined;
 
   return {
     id: recordId,
@@ -343,6 +348,8 @@ const normalizeHistoryRecordPayload = (record) => {
     inputText: inputTextValue,
     editorHtml: sanitizeHtmlForEditor(pickFirst(record.editorHtml, record.editor_html, plainTextToHtml(inputTextValue)), inputTextValue),
     isPinned: Boolean(pickFirst(record.isPinned, record.is_pinned, false)),
+    // Keep an explicit missing value so a fresh public projection clears old Evidence on merge.
+    evidence,
     analysis: normalizeAnalysisPayload(pickFirst(record.analysis, record.result), {
       fallbackText: inputTextValue,
       idPrefix: `history-${recordId || 'record'}`,
@@ -398,6 +405,7 @@ export const useScanStore = defineStore('scan', () => {
   const historyRecords = ref([...seedHistoryRecords]);
   let guestHistoryRecords = [...seedHistoryRecords];
   let guestHistoryRecordSequence = 0;
+  /** @type {import('vue').Ref<ScanResult | null>} */
   const result = ref(null);
   const currentResultHistoryId = ref(null);
   const analysisError = ref({ type: '', message: '' });
@@ -954,7 +962,7 @@ export const useScanStore = defineStore('scan', () => {
       normalized.inputText || ''
     );
     setFunctions(normalized.functions);
-    result.value = normalized.analysis || null;
+    result.value = { ...normalized.analysis, evidence: normalized.evidence };
     currentResultHistoryId.value = normalized.id || null;
     selectedExampleKey.value = normalized.exampleKey || '';
     lastUploadedFileName.value = '';
@@ -978,10 +986,11 @@ export const useScanStore = defineStore('scan', () => {
     const normalizedFunctions = Array.from(
       new Set(functions.filter((item) => typeof item === 'string' && validFunctionKeys.includes(item)))
     );
+    const { evidence, ...modelAnalysis } = analysis || {};
     const recordAnalysis = analysis
       ? {
-        ...analysis,
-        ...normalizeAnalysisPayload(analysis, {
+        ...modelAnalysis,
+        ...normalizeAnalysisPayload(modelAnalysis, {
           fallbackText: text,
           idPrefix: 'history-new',
         }),
@@ -1004,6 +1013,7 @@ export const useScanStore = defineStore('scan', () => {
       inputText: text || '',
       editorHtml: sanitizeHtmlForEditor(html || plainTextToHtml(text || ''), text || ''),
       isPinned: false,
+      evidence: evidence ?? undefined,
       analysis: recordAnalysis,
     };
 
@@ -1013,6 +1023,7 @@ export const useScanStore = defineStore('scan', () => {
     return record;
   };
 
+  /** @returns {ScanResult} */
   const mapAnalysisResult = (response, originalText) => {
     const inputTextValue = pickFirst(response?.inputText, response?.input_text, originalText, '');
     const analysis = normalizeAnalysisPayload(response?.result, {
@@ -1029,7 +1040,7 @@ export const useScanStore = defineStore('scan', () => {
       analysis.modelName = modelName;
       analysis.model_name = modelName;
     }
-    return analysis;
+    return { ...analysis, evidence: response?.evidence ?? undefined };
   };
 
   const analyzeText = async (text, options = {}) => {
@@ -1102,19 +1113,19 @@ export const useScanStore = defineStore('scan', () => {
           if (!isScanSessionContextCurrent(sessionContext)) return null;
         }
 
-        await syncHistoryFromBackend();
+        const syncedRecords = await syncHistoryFromBackend();
         if (!isScanSessionContextCurrent(sessionContext)) return null;
 
-        let historyRecord = historyRecords.value.find((item) => String(item.id) === String(historyId));
+        let historyRecord = syncedRecords.find((item) => String(item.id) === String(historyId));
         if (!historyRecord) {
           historyRecord = await fetchHistoryRecordDetail(historyId);
           if (!isScanSessionContextCurrent(sessionContext)) return null;
         }
 
         if (historyRecord && historyRecord.analysis) {
-          result.value = historyRecord.analysis;
+          result.value = { ...historyRecord.analysis, evidence: historyRecord.evidence };
           clearDetectionAttempt(idempotencyKey);
-          return historyRecord.analysis;
+          return result.value;
         }
       } else if (!authStore.isAuthenticated) {
         // 游客用户：仅保留当前会话内存态

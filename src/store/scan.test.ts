@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { createPinia, setActivePinia } from 'pinia';
 import { nextTick } from 'vue';
+import type { EvidenceResult } from '../api/modules/scan';
 
 const historyMocks = vi.hoisted(() => ({
   createHistoryRecord: vi.fn(),
@@ -114,6 +115,61 @@ const makeAnalysis = (ai = 12) => ({
   highlightedHtml: '',
 });
 
+// Synthetic snapshots follow backend EvidenceResult and the frozen METRICS order.
+const makeEvidence = (status: EvidenceResult['status'] = 'partial'): EvidenceResult => {
+  if (status === 'unsupported' || status === 'failed') {
+    return {
+      status,
+      artifactVersion: null,
+      featureSchemaVersion: 1,
+      route: null,
+      quality: { level: 'unavailable', coverage: 0, reasons: [status === 'failed' ? 'timeout' : 'unsupported_language'] },
+      signals: [],
+      patterns: null,
+    };
+  }
+  const metrics = {
+    lexical: ['mattr', 'token_entropy', 'entropy_per_log_vocab', 'hapax_type_ratio', 'top_token_concentration'],
+    phrase_template: ['repeat_ngram_coverage', 'sentence_start_repeat'],
+    rhythm: ['sentence_length_median', 'sentence_length_iqr', 'sentence_length_cv', 'sentence_adjacent_change_median',
+      'paragraph_length_median', 'paragraph_length_iqr', 'paragraph_length_cv', 'punctuation_per_1k', 'punctuation_entropy'],
+    discourse: ['transition_per_1k', 'transition_diversity', 'paragraph_adjacent_jaccard',
+      'paragraph_nonadjacent_jaccard_q90', 'intro_conclusion_jaccard', 'section_heading_count'],
+  } satisfies Record<EvidenceResult['signals'][number]['dimension'], string[]>;
+  const comparableCount = status === 'ready' ? 22 : status === 'partial' ? 19 : 0;
+  const signals: EvidenceResult['signals'] = Object.entries(metrics)
+    .flatMap(([dimension, names]) => names.map((metric) => ({ dimension, metric })))
+    .map(({ dimension, metric }, index) => ({
+      dimension: dimension as EvidenceResult['signals'][number]['dimension'],
+      metric,
+      observed: index === 21 && status !== 'ready' ? null : 0,
+      humanPercentile: index < comparableCount ? 0 : null,
+      aiPercentile: index < comparableCount ? 0 : null,
+      referenceRanges: index < comparableCount ? { human: [1, 2], ai: [index === 1 ? 1 : 0, 2] } : null,
+      relation: index < comparableCount ? { human: 'below', ai: index === 1 ? 'below' : 'within' } : null,
+      notice: index < comparableCount ? index === 1 ? 'outside_both' : 'reference_mismatch' : null,
+      sampleCount: index < comparableCount ? 10 : index === 21 ? null : 0,
+      offsets: index === 5 ? [{ start: 2, end: 8 }, { start: 9, end: 15 }] : [],
+      reasons: index < comparableCount ? [] : ['reference_metrics_unavailable'],
+    }));
+  return {
+    status,
+    artifactVersion: '1'.repeat(64),
+    featureSchemaVersion: 1,
+    route: {
+      language: 'en', domain: 'academic', confidence: { language: 0, domain: 0.8 },
+      lengthBucket: 'short', fallbackLevel: 'exact',
+    },
+    quality: { level: status, coverage: comparableCount / 22, reasons: status === 'ready' ? [] : ['reference_metrics_unavailable'] },
+    signals,
+    patterns: {
+      descriptive_top_tokens: [{ count: 1, offsets: [{ start: 0, end: 1 }] }],
+      repeated_phrases: [{ count: 2, offsets: [{ start: 2, end: 8 }, { start: 9, end: 15 }] }],
+      sentence_start_templates: [],
+    },
+  };
+};
+
 const makeLocalRecord = (overrides = {}) => ({
   id: `local-${Math.random().toString(16).slice(2)}`,
   title: 'Scan record',
@@ -134,6 +190,7 @@ const makeBackendRecord = (record, id = 100) => ({
   input_text: record.inputText || '',
   editor_html: record.editorHtml || '',
   is_pinned: Boolean(record.isPinned),
+  ...(Object.prototype.hasOwnProperty.call(record, 'evidence') ? { evidence: record.evidence } : {}),
   analysis: {
     summary: record.analysis?.summary || { ai: 0, human: 100 },
     sentences: (record.analysis?.sentences || []).map((sentence) => ({
@@ -175,12 +232,225 @@ describe('scan store guest history boundary', () => {
     historyMocks.getHistoryList.mockResolvedValue({ items: [] });
   });
 
-  it('旧三分类检测结果只在读取边界折叠为 AI/Human', async () => {
+  it.each((['ready', 'partial', 'insufficient', 'unsupported', 'failed'] as const)
+    .flatMap((status) => [23, 77].map((ai) => ({ status, ai }))))(
+    '$status Evidence 原样穿过游客检测、内存历史、改名、置顶和重开，主分析 AI=$ai 不变',
+    async ({ status, ai }) => {
+      const scanStore = useScanStore();
+      scanStore.activateGuestSession('sid-a');
+      const evidence = makeEvidence(status);
+      if (ai === 77) {
+        for (const signal of evidence.signals) {
+          if (signal.referenceRanges) {
+            const { human, ai } = signal.referenceRanges;
+            signal.referenceRanges = { human: ai, ai: human };
+          }
+          if (signal.relation) {
+            const { human, ai } = signal.relation;
+            signal.relation = { human: ai, ai: human };
+          }
+        }
+      }
+      const text = '😀 sample sample';
+      const request = { functions: ['scan'], html: `<p>${text}</p>`, guestToken: 'guest:sid-a:token' };
+      scanApiMocks.detectText
+        .mockResolvedValueOnce({ inputText: text, result: makeAnalysis(ai) })
+        .mockResolvedValueOnce({ inputText: text, result: makeAnalysis(ai), evidence });
+
+      const baseline = await scanStore.analyzeText(text, request);
+      const result = await scanStore.analyzeText(text, request);
+
+      expect(result.evidence).toEqual(evidence);
+      expect({ ...result, evidence: undefined }).toEqual({ ...baseline, evidence: undefined });
+      const record = scanStore.historyRecords.find((item) => item.id === scanStore.currentResultHistoryId);
+      expect(record.evidence).toEqual(evidence);
+      expect(record.analysis).not.toHaveProperty('evidence');
+      await scanStore.renameHistoryRecord(record.id, 'Evidence snapshot');
+      await scanStore.togglePinnedHistoryRecord(record.id, true);
+      scanStore.resetResult();
+      expect(scanStore.result).toBeNull();
+      expect(scanStore.loadHistoryRecord(scanStore.historyRecords.find((item) => item.id === record.id))).toBe(true);
+      expect(scanStore.result.evidence).toEqual(evidence);
+      expect(scanStore.result.summary).toEqual({ ai, human: 100 - ai });
+      expect(scanStore.result.sentences[0]).toMatchObject({
+        type: ai === 77 ? 'ai' : 'human', score: ai, probability: ai / 100,
+      });
+      scanStore.commitDraftToStorage();
+      await nextTick();
+      expectNoHistoryStorage();
+      for (const storage of [window.localStorage, window.sessionStorage]) {
+        expect(getStorageEntries(storage).map(([, value]) => value).join('\n')).not.toContain('"evidence"');
+      }
+      setActivePinia(createPinia());
+      expect(useScanStore().historyRecords).toEqual([]);
+      expect(useScanStore().result).toBeNull();
+    }
+  );
+
+  it.each([
+    { source: 'score/label Human', payload: { score: 0.77, label: 'human', rawScore: 4, threshold: 0 }, score: 77, label: 'human' },
+    { source: 'score/label AI', payload: { score: 0.23, label: 'ai' }, score: 23, label: 'ai' },
+    { source: 'rawScore/threshold AI', payload: { rawScore: -1, threshold: -2, label: 'ai' }, score: 73, label: 'ai' },
+    { source: 'raw_score/threshold Human', payload: { raw_score: 1, threshold: 2, label: 'human' }, score: 27, label: 'human' },
+  ])('$source 备用响应有无 Evidence 时保留既有分数和服务端标签', async ({ payload, score, label }) => {
+    const scanStore = useScanStore();
+    scanStore.activateGuestSession('sid-a');
+    const text = 'Fallback response keeps the original model result.';
+    const request = { functions: ['scan'], guestToken: 'guest:sid-a:token' };
+    const response = { historyId: 504, inputText: text, ...payload };
+    const original = JSON.stringify(response);
+    const evidence = makeEvidence('failed');
+    scanApiMocks.detectText
+      .mockResolvedValueOnce(response)
+      .mockResolvedValueOnce({ ...response, evidence });
+
+    const baseline = await scanStore.analyzeText(text, request);
+    const result = await scanStore.analyzeText(text, request);
+
+    expect(result.evidence).toEqual(evidence);
+    expect({ ...result, evidence: undefined }).toEqual({ ...baseline, evidence: undefined });
+    expect(result.sentences).toHaveLength(1);
+    expect(result.sentences[0]).toMatchObject({ type: label, score, probability: score / 100 });
+    // The existing fallback summary counts paragraph labels, not the raw model score.
+    expect(result.summary).toEqual(label === 'ai' ? { ai: 100, human: 0 } : { ai: 0, human: 100 });
+    expect(JSON.stringify(response)).toBe(original);
+  });
+
+  it.each([
+    { source: 'list', hasEvidence: true }, { source: 'list', hasEvidence: false },
+    { source: 'detail', hasEvidence: true }, { source: 'detail', hasEvidence: false },
+  ])('登录检测由历史 $source 替换（Evidence=$hasEvidence）时，主分析与快照保持一致', async ({ source, hasEvidence }) => {
+    setAuthenticatedSession();
+    const scanStore = useScanStore();
+    await nextTick();
+    const evidence = hasEvidence ? makeEvidence('partial') : undefined;
+    const record = makeBackendRecord(makeLocalRecord({
+      analysis: makeAnalysis(91), ...(hasEvidence ? { evidence } : {}),
+    }), 501);
+    scanApiMocks.detectText.mockResolvedValueOnce({
+      historyId: 501, inputText: 'sample text', result: makeAnalysis(23), evidence: makeEvidence('ready'),
+    });
+    historyMocks.getHistoryList.mockResolvedValueOnce({ items: source === 'list' ? [record] : [] });
+    if (source === 'detail') historyMocks.getHistoryRecord.mockResolvedValueOnce(record);
+
+    const result = await scanStore.analyzeText('sample text', { functions: ['scan'] });
+
+    expect(result.summary).toEqual({ ai: 91, human: 9 });
+    expect(result.evidence).toEqual(evidence);
+    expect(scanStore.result).toEqual(result);
+    expect(scanStore.historyRecords[0].evidence).toEqual(evidence);
+    expect(scanStore.historyRecords[0].analysis).not.toHaveProperty('evidence');
+    expect(historyMocks.getHistoryRecord).toHaveBeenCalledTimes(source === 'detail' ? 1 : 0);
+  });
+
+  it('历史列表和详情读取失败时，不用旧同 ID 快照覆盖当前无 Evidence 的检测响应', async () => {
+    setAuthenticatedSession();
+    const scanStore = useScanStore();
+    await nextTick();
+    scanStore.historyRecords = [makeLocalRecord({
+      id: 501, analysis: makeAnalysis(91), evidence: makeEvidence(),
+    })];
+    scanApiMocks.detectText.mockResolvedValueOnce({
+      historyId: 501, inputText: 'sample text', result: makeAnalysis(23),
+    });
+    historyMocks.getHistoryList.mockRejectedValueOnce(new Error('history list unavailable'));
+    historyMocks.getHistoryRecord.mockRejectedValueOnce(new Error('history detail unavailable'));
+
+    const result = await scanStore.analyzeText('sample text', { functions: ['scan'] });
+
+    expect(historyMocks.getHistoryRecord).toHaveBeenCalledWith(501);
+    expect(result.summary).toEqual({ ai: 23, human: 77 });
+    expect(result.evidence).toBeUndefined();
+    expect(scanStore.result).toEqual(result);
+    expect(scanStore.currentResultHistoryId).toBe(501);
+  });
+
+  it.each(['missing', 'null', 'result.evidence', 'result.analysis.evidence'])(
+    '检测根级 Evidence 为 %s 时清除旧值，不提升嵌套值或 options.evidence',
+    async (source) => {
+      const scanStore = useScanStore();
+      scanStore.activateGuestSession('sid-a');
+      const evidence = makeEvidence();
+      scanStore.result = { ...makeAnalysis(), evidence };
+      const response = {
+        inputText: 'sample text',
+        result: source === 'result.analysis.evidence'
+          ? { analysis: { ...makeAnalysis(), evidence } }
+          : { ...makeAnalysis(), ...(source === 'result.evidence' ? { evidence } : {}) },
+        ...(source === 'null' ? { evidence: null } : {}),
+      };
+      scanApiMocks.detectText.mockResolvedValueOnce(response);
+
+      await scanStore.analyzeText('sample text', { functions: ['scan'], guestToken: 'guest:sid-a:token', evidence });
+
+      expect(scanStore.result.evidence).toBeUndefined();
+      expect(scanStore.historyRecords[0].evidence).toBeUndefined();
+      expect(scanStore.historyRecords[0].analysis).not.toHaveProperty('evidence');
+      expect(scanApiMocks.detectText.mock.calls[0][0]).not.toHaveProperty('evidence');
+      expect(scanStore.result.summary).toEqual({ ai: 12, human: 88 });
+    }
+  );
+
+  it.each(['list', 'detail', 'rename', 'pin'])(
+    '历史 %s 省略 Evidence 时清除集合旧值，重新选择后当前结果也不残留',
+    async (source) => {
+      setAuthenticatedSession();
+      const scanStore = useScanStore();
+      await nextTick();
+      const evidence = makeEvidence();
+      const original = makeBackendRecord(makeLocalRecord({ evidence }), 502);
+      historyMocks.getHistoryList.mockResolvedValueOnce({ items: [original] });
+      await scanStore.syncHistoryFromBackend();
+      scanStore.loadHistoryRecord(scanStore.historyRecords[0]);
+      expect(scanStore.result.evidence).toEqual(evidence);
+      const withoutEvidence = makeBackendRecord(makeLocalRecord(), 502);
+      if (source === 'list') {
+        historyMocks.getHistoryList.mockResolvedValueOnce({ items: [withoutEvidence] });
+        await scanStore.syncHistoryFromBackend();
+      } else if (source === 'detail') {
+        historyMocks.getHistoryRecord.mockResolvedValueOnce(withoutEvidence);
+        await scanStore.fetchHistoryRecordDetail(502);
+      } else {
+        historyMocks.updateHistoryRecord.mockResolvedValueOnce(withoutEvidence);
+        if (source === 'rename') await scanStore.renameHistoryRecord(502, 'New title');
+        else await scanStore.togglePinnedHistoryRecord(502, true);
+      }
+
+      expect(scanStore.historyRecords[0].evidence).toBeUndefined();
+      // Existing selection semantics: list/patch updates do not reload the current result.
+      expect(scanStore.result.evidence).toEqual(evidence);
+      expect(scanStore.loadHistoryRecord(scanStore.historyRecords[0])).toBe(true);
+      expect(scanStore.result.evidence).toBeUndefined();
+    }
+  );
+
+  it.each(['null', 'analysis.evidence', 'result.evidence'])(
+    '历史 %s 不作为根级 Evidence 恢复',
+    (source) => {
+      const scanStore = useScanStore();
+      const evidence = makeEvidence();
+      scanStore.result = { ...makeAnalysis(), evidence };
+      const record = {
+        ...makeLocalRecord(),
+        ...(source === 'null' ? { evidence: null } : {}),
+        ...(source === 'analysis.evidence' ? { analysis: { ...makeAnalysis(), evidence } } : {}),
+        ...(source === 'result.evidence' ? { analysis: undefined, result: { ...makeAnalysis(), evidence } } : {}),
+      };
+
+      expect(scanStore.loadHistoryRecord(record)).toBe(true);
+      expect(scanStore.result.evidence).toBeUndefined();
+      expect(scanStore.result.summary).toEqual({ ai: 12, human: 88 });
+    }
+  );
+
+  it.each([false, true])('旧三分类检测结果只在读取边界折叠为 AI/Human（Evidence=%s）', async (hasEvidence) => {
     const authStore = setAuthenticatedSession();
     authStore.user = { id: 92 };
     const scanStore = useScanStore();
+    const evidence = hasEvidence ? makeEvidence() : undefined;
     scanApiMocks.detectText.mockResolvedValueOnce({
       inputText: 'legacy mixed response',
+      ...(hasEvidence ? { evidence } : {}),
       result: {
         summary: { ai: 45, mixed: 25, human: 30 },
         sentences: [
@@ -212,6 +482,7 @@ describe('scan store guest history boundary', () => {
     expect(result?.sentences.map((sentence) => sentence.type)).toEqual(['human', 'ai']);
     expect(result?.aiLikelyCount).toBe(1);
     expect(result?.summary).not.toHaveProperty('mixed');
+    expect(result?.evidence).toEqual(evidence);
   });
 
   it('旧示例响应把第三类并入 Human，store 不再暴露第三个分桶', async () => {
@@ -277,9 +548,9 @@ describe('scan store guest history boundary', () => {
   it('clearScanSessionData 会清敏感内存及两类 Storage 的全部历史版本键', () => {
     const scanStore = useScanStore();
     scanStore.setEditorHtml('<p>owner-a secret</p>');
-    scanStore.result = makeAnalysis(91);
+    scanStore.result = { ...makeAnalysis(91), evidence: makeEvidence() };
     scanStore.currentResultHistoryId = 'owner-a-result';
-    scanStore.historyRecords.push(makeLocalRecord({ id: 'owner-a-history', inputText: 'owner-a secret' }));
+    scanStore.historyRecords.push(makeLocalRecord({ id: 'owner-a-history', inputText: 'owner-a secret', evidence: makeEvidence() }));
     for (const storage of [window.localStorage, window.sessionStorage]) {
       storage.setItem(HISTORY_STORAGE_KEY, 'legacy-global');
       storage.setItem(`${HISTORY_STORAGE_KEY}:v2:guest-a`, 'legacy-v2');
@@ -302,13 +573,13 @@ describe('scan store guest history boundary', () => {
     const scanStore = useScanStore();
     expect(scanStore.activateGuestSession('sid-a')).toBe(false);
     scanStore.setEditorHtml('<p>sid-a secret</p>');
-    scanStore.result = makeAnalysis(82);
+    scanStore.result = { ...makeAnalysis(82), evidence: makeEvidence() };
     scanStore.currentResultHistoryId = 'sid-a-result';
     scanStore.historyRecords.push(makeLocalRecord({ id: 'sid-a-history', inputText: 'sid-a secret' }));
 
     expect(scanStore.activateGuestSession('sid-a')).toBe(false);
     expect(scanStore.inputText).toBe('sid-a secret');
-    expect(scanStore.result).not.toBeNull();
+    expect(scanStore.result.evidence).toEqual(makeEvidence());
     expect(scanStore.historyRecords).toHaveLength(1);
 
     expect(scanStore.activateGuestSession('sid-b')).toBe(true);
@@ -395,11 +666,13 @@ describe('scan store guest history boundary', () => {
       historyId: 991,
       inputText: 'sid-a pending text',
       result: makeAnalysis(99),
+      evidence: makeEvidence(),
     });
 
     await expect(pendingAnalysis).resolves.toBeNull();
     expect(scanStore.inputText).toBe('sid-b fresh draft');
     expect(scanStore.result?.summary.ai).toBe(17);
+    expect(scanStore.result.evidence).toBeUndefined();
     expect(scanStore.currentResultHistoryId).toBe(sidBRecord.id);
     expect(scanStore.historyRecords).toHaveLength(1);
     expect(scanStore.historyRecords[0].inputText).toBe('sid-b fresh draft');
@@ -480,6 +753,7 @@ describe('scan store guest history boundary', () => {
     const authStore = setAuthenticatedSession();
     authStore.user = { id: 83 };
     const scanStore = useScanStore();
+    const evidence = makeEvidence();
     const request = {
       functions: ['scan'],
       html: '<p>retryable detection text</p>',
@@ -489,6 +763,7 @@ describe('scan store guest history boundary', () => {
       .mockResolvedValueOnce({
         inputText: 'retryable detection text',
         result: makeAnalysis(23),
+        evidence,
       });
 
     await expect(scanStore.analyzeText('retryable detection text', request)).rejects.toThrow('temporary failure');
@@ -502,7 +777,9 @@ describe('scan store guest history boundary', () => {
 
     await expect(scanStore.analyzeText('retryable detection text', request)).resolves.toMatchObject({
       summary: { ai: 23 },
+      evidence,
     });
+    expect(scanStore.result.evidence).toEqual(evidence);
     expect(scanApiMocks.detectText.mock.calls[1][2]).toBe(firstKey);
   });
 
@@ -669,7 +946,7 @@ describe('scan store guest history boundary', () => {
     const freshRecord = makeLocalRecord({ id: 'fresh-session', inputText: 'fresh session text' });
     scanStore.historyRecords = [freshRecord];
     pendingHistory.resolve({
-      items: [makeBackendRecord(makeLocalRecord({ inputText: 'stale owner text' }), 404)],
+      items: [makeBackendRecord(makeLocalRecord({ inputText: 'stale owner text', evidence: makeEvidence() }), 404)],
     });
 
     await expect(pendingSync).resolves.toEqual([]);
