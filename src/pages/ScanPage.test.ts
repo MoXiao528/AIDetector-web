@@ -665,6 +665,53 @@ describe('ScanPage panel switching', () => {
     }
   });
 
+  it('旧记录正文用单换行保存、编辑器用双段落保存时不误报覆盖不全', async () => {
+    route.query = { panel: 'document' };
+    const wrapper = mountScanPage();
+    try {
+      await flushPromises();
+      const scanStore = useScanStore();
+      const text = '第一段正文\n第二段正文';
+      const html = '<p>第一段正文</p><p>第二段正文</p>';
+      const record = await scanStore.addHistoryRecord({
+        id: 453,
+        title: '旧版分段记录', text, html, functions: ['scan'],
+        analysis: { summary: { ai: 20, human: 80 }, sentences: [] },
+      });
+
+      await getScanPageSetupState(wrapper).loadHistoryRecord(record.id);
+      await flushPromises();
+      expect(scanStore.resultInputText).toBe(text);
+      expect(scanStore.resultInputHtml).toBe(html);
+      expect(wrapper.find('[data-testid="incomplete-text-notice"]').exists()).toBe(false);
+      getScanPageSetupState(wrapper).isResultDetailOpen = true;
+      await nextTick();
+      expect(wrapper.findAll('[data-testid="incomplete-text-notice"]')).toHaveLength(0);
+    } finally {
+      wrapper.unmount();
+    }
+  });
+
+  it('旧记录正文少了词间分隔时仍提示正文不一致', async () => {
+    route.query = { panel: 'document' };
+    const wrapper = mountScanPage();
+    try {
+      await flushPromises();
+      const scanStore = useScanStore();
+      const record = await scanStore.addHistoryRecord({
+        id: 454,
+        title: '旧版正文差异', text: 'foobar', html: '<p>foo bar</p>', functions: ['scan'],
+        analysis: { summary: { ai: 20, human: 80 }, sentences: [] },
+      });
+
+      await getScanPageSetupState(wrapper).loadHistoryRecord(record.id);
+      await flushPromises();
+      expect(wrapper.find('[data-testid="incomplete-text-notice"]').exists()).toBe(true);
+    } finally {
+      wrapper.unmount();
+    }
+  });
+
   it('旧漏段记录显示覆盖提示，手动重检提交完整原文并恢复正确高亮', async () => {
     route.query = { panel: 'document' };
     const wrapper = mountScanPage();

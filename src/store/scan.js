@@ -398,6 +398,7 @@ export const useScanStore = defineStore('scan', () => {
   /** @type {import('vue').Ref<ScanResult | null>} */
   const result = ref(null);
   const resultInputText = ref('');
+  const resultInputHtml = ref('');
   const currentResultHistoryId = ref(null);
   const analysisError = ref({ type: '', message: '' });
   const sessionGeneration = ref(0);
@@ -664,6 +665,7 @@ export const useScanStore = defineStore('scan', () => {
   const resetResult = () => {
     result.value = null;
     resultInputText.value = '';
+    resultInputHtml.value = '';
     currentResultHistoryId.value = null;
     analysisError.value = null;
   };
@@ -944,6 +946,7 @@ export const useScanStore = defineStore('scan', () => {
     setFunctions(normalized.functions);
     result.value = normalized.analysis ? { ...normalized.analysis, evidence: normalized.evidence } : null;
     resultInputText.value = normalized.analysis ? normalized.inputText || '' : '';
+    resultInputHtml.value = normalized.analysis ? normalized.editorHtml || '' : '';
     currentResultHistoryId.value = normalized.id || null;
     selectedExampleKey.value = normalized.exampleKey || '';
     lastUploadedFileName.value = '';
@@ -1071,6 +1074,7 @@ export const useScanStore = defineStore('scan', () => {
       const submittedText = pickFirst(response?.inputText, response?.input_text, text, '');
       result.value = analysis;
       resultInputText.value = submittedText;
+      resultInputHtml.value = editorHtmlValue;
 
       const historyId = pickFirst(
         response?.historyId,
@@ -1107,6 +1111,7 @@ export const useScanStore = defineStore('scan', () => {
         if (historyRecord && historyRecord.analysis) {
           result.value = { ...historyRecord.analysis, evidence: historyRecord.evidence };
           resultInputText.value = historyRecord.inputText || '';
+          resultInputHtml.value = historyRecord.editorHtml || '';
           clearDetectionAttempt(idempotencyKey);
           return result.value;
         }
@@ -1143,6 +1148,7 @@ export const useScanStore = defineStore('scan', () => {
       }
       result.value = null;
       resultInputText.value = '';
+      resultInputHtml.value = '';
       throw error;
     }
   };
@@ -1248,6 +1254,7 @@ export const useScanStore = defineStore('scan', () => {
     commitDraftToStorage,
     result,
     resultInputText,
+    resultInputHtml,
     currentResultHistoryId,
     analysisError,
     sessionGeneration,

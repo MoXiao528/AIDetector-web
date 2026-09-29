@@ -450,9 +450,9 @@ export const extractTextFromHtml = (html = '') => {
 export const hasTextMismatch = (text = '', analyzedText = '') =>
   normalizeBlockText(text) !== normalizeBlockText(analyzedText);
 
-// Legacy fallback text may flatten paragraph breaks; this guard checks missing content only.
-const hasTextContentMismatch = (text = '', analyzedText = '') =>
-  String(text).replace(/\s+/g, '') !== String(analyzedText).replace(/\s+/g, '');
+// Legacy fallback text may replace paragraph breaks with spaces; keep word boundaries.
+export const hasTextContentMismatch = (text = '', analyzedText = '') =>
+  String(text).replace(/\s+/g, ' ').trim() !== String(analyzedText).replace(/\s+/g, ' ').trim();
 
 export const hasParagraphRange = (sentence) => {
   const start = Number(sentence?.startParagraph ?? sentence?.start_paragraph);

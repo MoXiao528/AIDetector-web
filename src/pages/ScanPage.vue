@@ -1244,6 +1244,7 @@ import {
   buildSentenceParagraphLinkId,
   escapeHtml,
   extractTextFromHtml,
+  hasTextContentMismatch,
   hasTextMismatch,
   plainTextToHtml,
   sanitizeHtmlForEditor,
@@ -1967,7 +1968,12 @@ const loginPromptRegisterTo = computed(() => ({
 }));
 
 const hasResults = computed(() => Boolean(detectionResults.value));
-const resultTextMismatch = computed(() => hasResults.value && hasTextMismatch(editorText.value, scanStore.resultInputText));
+const resultTextMismatch = computed(() => hasResults.value && (
+  hasTextMismatch(editorText.value, scanStore.resultInputHtml
+    ? extractTextFromHtml(scanStore.resultInputHtml)
+    : scanStore.resultInputText) ||
+  hasTextContentMismatch(editorText.value, scanStore.resultInputText)
+));
 
 const buildPreviewHtmlForAnalysis = ({ analysis, editorHtml = '', inputText = '' } = {}) => {
   if (!analysis) return '';
