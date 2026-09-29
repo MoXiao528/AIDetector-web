@@ -296,7 +296,7 @@ const createDocumentFromHtml = (html = '') => {
   return parser.parseFromString(`<body>${html}</body>`, 'text/html');
 };
 
-const normalizeBlockText = (value = '') =>
+export const normalizeBlockText = (value = '') =>
   String(value)
     .replace(/\u00a0/g, ' ')
     .replace(/\r\n/g, '\n')

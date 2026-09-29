@@ -717,10 +717,15 @@ describe('ScanPage panel switching', () => {
     wrapper.unmount();
   });
 
-  it('检测期间编辑正文后，旧结果只标注送检快照并提示当前正文不匹配', async () => {
+  it.each(['修改文字', '只拆分段落'])('检测期间%s后，旧结果只标注送检快照并提示当前正文不匹配', async (edit) => {
     route.query = { panel: 'document' };
     const oldText = '旧正文'.repeat(70);
-    const newText = '新正文'.repeat(70);
+    const newText = edit === '只拆分段落'
+      ? `${oldText.slice(0, 105)}\n\n${oldText.slice(105)}`
+      : '新正文'.repeat(70);
+    const editedHtml = edit === '只拆分段落'
+      ? `<p>${oldText.slice(0, 105)}</p><p>${oldText.slice(105)}</p>`
+      : `<p>${newText}</p>`;
     const response = createDeferred<scanApi.DetectionResponse>();
     vi.mocked(scanApi.detectText).mockReturnValue(response.promise);
     const wrapper = mountScanPage();
@@ -733,7 +738,7 @@ describe('ScanPage panel switching', () => {
       await vi.waitFor(() => expect(scanApi.detectText).toHaveBeenCalledTimes(1));
 
       const editor = wrapper.get('.editor-surface');
-      editor.element.innerHTML = `<p>${newText}</p>`;
+      editor.element.innerHTML = editedHtml;
       await editor.trigger('input');
       expect(scanStore.inputText).toBe(newText);
 
@@ -753,7 +758,7 @@ describe('ScanPage panel switching', () => {
       expect(wrapper.find('[data-testid="incomplete-text-notice"]').exists()).toBe(true);
       expect(wrapper.get('.preview-surface [data-sentence-id="submitted-sentence"]').text()).toBe(oldText);
       expect(wrapper.get('.preview-surface').text()).not.toContain(newText);
-      expect(editor.element.textContent).toBe(newText);
+      expect(editor.element.innerHTML).toBe(editedHtml);
     } finally {
       wrapper.unmount();
     }

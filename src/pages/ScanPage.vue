@@ -1244,7 +1244,7 @@ import {
   buildSentenceParagraphLinkId,
   escapeHtml,
   extractTextFromHtml,
-  hasTextMismatch,
+  normalizeBlockText,
   plainTextToHtml,
   sanitizeHtmlForEditor,
 } from '../utils/editorContent';
@@ -1966,7 +1966,9 @@ const loginPromptRegisterTo = computed(() => ({
 }));
 
 const hasResults = computed(() => Boolean(detectionResults.value));
-const resultTextMismatch = computed(() => hasResults.value && hasTextMismatch(editorText.value, scanStore.resultInputText));
+const resultTextMismatch = computed(() =>
+  hasResults.value && normalizeBlockText(editorText.value) !== normalizeBlockText(scanStore.resultInputText)
+);
 
 const buildPreviewHtmlForAnalysis = ({ analysis, editorHtml = '', inputText = '' } = {}) => {
   if (!analysis) return '';
