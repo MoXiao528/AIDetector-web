@@ -828,6 +828,15 @@ export const useScanStore = defineStore('scan', () => {
     try {
       const savedRecord = await updateHistoryRecord(id, changes, getHistoryGuestToken());
       if (!isScanSessionContextCurrent(sessionContext)) return null;
+      const { q, pinned } = historySearchFilter;
+      if (String(q || '').trim() || pinned !== null) {
+        const normalized = normalizeHistoryRecordPayload(savedRecord);
+        if (!normalized || !isDisplayableHistoryRecord(normalized)) return null;
+        historyRevision += 1;
+        await syncHistoryFromBackend({ q, pinned });
+        if (!isScanSessionContextCurrent(sessionContext)) return null;
+        return normalized;
+      }
       return upsertHistoryRecord(savedRecord);
     } catch (error) {
       if (!isScanSessionContextCurrent(sessionContext)) return null;

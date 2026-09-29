@@ -1192,6 +1192,50 @@ describe('scan store guest history boundary', () => {
     }
   });
 
+  it.each(['rename', 'pin'])('游客 %s 更新期间切换搜索后，按当前搜索重查且不插回旧记录', async (operation) => {
+    const scanStore = useScanStore();
+    const oldRecord = makeBackendRecord(makeLocalRecord({ title: 'Old', inputText: 'old body' }), 841);
+    const visibleRecord = makeBackendRecord(makeLocalRecord({ title: 'Current', inputText: 'current body' }), 842);
+    historyMocks.getHistoryList.mockResolvedValueOnce({ items: [oldRecord] });
+    await scanStore.searchHistoryRecords({ q: 'old' });
+
+    const update = createDeferred<ReturnType<typeof makeBackendRecord>>();
+    historyMocks.updateHistoryRecord.mockReturnValueOnce(update.promise);
+    const saving = operation === 'rename'
+      ? scanStore.renameHistoryRecord(oldRecord.id, 'Renamed')
+      : scanStore.togglePinnedHistoryRecord(oldRecord.id, true);
+    historyMocks.getHistoryList.mockResolvedValueOnce({ items: [visibleRecord] });
+    await scanStore.searchHistoryRecords({ q: 'current' });
+    historyMocks.getHistoryList.mockResolvedValueOnce({ items: [visibleRecord] });
+    update.resolve({ ...oldRecord, ...(operation === 'rename' ? { title: 'Renamed' } : { is_pinned: true }) });
+
+    expect(await saving).toMatchObject({ id: oldRecord.id });
+    expect(scanStore.historyRecords.map((record) => record.id)).toEqual([visibleRecord.id]);
+    expect(historyMocks.getHistoryList.mock.calls.map(([params]) => params.q)).toEqual(['old', 'current', 'current']);
+  });
+
+  it.each(['rename', 'pin'])('游客 %s 更新后不再匹配原筛选时，从服务端重查列表', async (operation) => {
+    const scanStore = useScanStore();
+    const record = makeBackendRecord(makeLocalRecord({
+      title: 'Needle', inputText: 'ordinary body', isPinned: true,
+    }), 843);
+    const filter = operation === 'rename' ? { q: 'needle' } : { pinned: true };
+    historyMocks.getHistoryList.mockResolvedValueOnce({ items: [record] });
+    await scanStore.searchHistoryRecords(filter);
+    historyMocks.updateHistoryRecord.mockResolvedValueOnce({
+      ...record,
+      ...(operation === 'rename' ? { title: 'Changed' } : { is_pinned: false }),
+    });
+    historyMocks.getHistoryList.mockResolvedValueOnce({ items: [] });
+
+    if (operation === 'rename') await scanStore.renameHistoryRecord(record.id, 'Changed');
+    else await scanStore.togglePinnedHistoryRecord(record.id, false);
+
+    expect(scanStore.historyRecords).toEqual([]);
+    expect(historyMocks.getHistoryList.mock.calls).toHaveLength(2);
+    expect(historyMocks.getHistoryList.mock.calls[1][0]).toMatchObject(filter);
+  });
+
   it('游客批量删除保留失败项，清空使用服务器结果且不创建历史 Storage', async () => {
     const scanStore = useScanStore();
     const first = makeBackendRecord(makeLocalRecord({ inputText: 'first text' }), 811);
