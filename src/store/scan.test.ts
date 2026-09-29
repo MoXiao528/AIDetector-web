@@ -409,6 +409,31 @@ describe('scan store guest history boundary', () => {
     expect(historyMocks.getHistoryRecord).toHaveBeenCalledTimes(source === 'detail' ? 1 : 0);
   });
 
+  it('登录检测在历史搜索下仍显示服务端详情，但不把不匹配的新记录插入列表', async () => {
+    setAuthenticatedSession();
+    const scanStore = useScanStore();
+    await nextTick();
+    historyMocks.getHistoryList.mockClear();
+    const matched = makeBackendRecord(makeLocalRecord({ title: 'Needle', inputText: 'needle body' }), 844);
+    const newRecord = makeBackendRecord(makeLocalRecord({
+      title: 'New result', inputText: 'ordinary result', analysis: makeAnalysis(91),
+    }), 845);
+    historyMocks.getHistoryList.mockResolvedValueOnce({ items: [matched] });
+    await scanStore.searchHistoryRecords({ q: 'needle' });
+    scanApiMocks.detectText.mockResolvedValueOnce({ historyId: newRecord.id, result: makeAnalysis(23) });
+    historyMocks.getHistoryList.mockResolvedValueOnce({ items: [matched] });
+    historyMocks.getHistoryRecord.mockResolvedValueOnce(newRecord);
+
+    const result = await scanStore.analyzeText('ordinary result', { functions: ['scan'] });
+
+    expect(result?.summary).toEqual({ ai: 91, human: 9 });
+    expect(scanStore.resultInputText).toBe('ordinary result');
+    expect(scanStore.currentResultHistoryId).toBe(newRecord.id);
+    expect(scanStore.historyRecords.map((record) => record.id)).toEqual([matched.id]);
+    expect(historyMocks.getHistoryList.mock.calls.map(([params]) => params.q)).toEqual(['needle', 'needle']);
+    expect(historyMocks.getHistoryRecord).toHaveBeenCalledWith(newRecord.id, '');
+  });
+
   it('历史列表和详情读取失败时，不用旧同 ID 快照覆盖当前无 Evidence 的检测响应', async () => {
     setAuthenticatedSession();
     const scanStore = useScanStore();
@@ -1192,6 +1217,25 @@ describe('scan store guest history boundary', () => {
     }
   });
 
+  it('游客检测在历史搜索下重查当前筛选，保留当前结果但不插入不匹配的新记录', async () => {
+    const scanStore = useScanStore();
+    scanStore.activateGuestSession('sid-a');
+    const matched = makeBackendRecord(makeLocalRecord({ title: 'Needle', inputText: 'needle body' }), 846);
+    historyMocks.getHistoryList.mockResolvedValueOnce({ items: [matched] });
+    await scanStore.searchHistoryRecords({ q: 'needle' });
+    scanApiMocks.detectText.mockResolvedValueOnce({ historyId: 847, result: makeAnalysis(23) });
+    historyMocks.getHistoryList.mockResolvedValueOnce({ items: [matched] });
+
+    const result = await scanStore.analyzeText('ordinary result', {
+      functions: ['scan'], guestToken: 'guest:sid-a:token',
+    });
+
+    expect(result?.summary).toEqual({ ai: 23, human: 77 });
+    expect(scanStore.currentResultHistoryId).toBe(847);
+    expect(scanStore.historyRecords.map((record) => record.id)).toEqual([matched.id]);
+    expect(historyMocks.getHistoryList.mock.calls.map(([params]) => params.q)).toEqual(['needle', 'needle']);
+  });
+
   it.each(['rename', 'pin'])('游客 %s 更新期间切换搜索后，按当前搜索重查且不插回旧记录', async (operation) => {
     const scanStore = useScanStore();
     const oldRecord = makeBackendRecord(makeLocalRecord({ title: 'Old', inputText: 'old body' }), 841);
@@ -1292,6 +1336,7 @@ describe('scan store guest history boundary', () => {
     historyMocks.clearAllHistory.mockReturnValueOnce(clear.promise);
     const clearing = scanStore.clearAllHistoryRecords();
     scanApiMocks.detectText.mockResolvedValueOnce({ historyId: newRecord.id, result: makeAnalysis() });
+    historyMocks.getHistoryList.mockResolvedValueOnce({ items: [] });
     await scanStore.analyzeText('new result', { guestToken: 'guest:sid-a:token' });
 
     historyMocks.getHistoryList
@@ -1300,7 +1345,7 @@ describe('scan store guest history boundary', () => {
     clear.resolve({ deleted_count: 1 });
     await clearing;
 
-    expect(historyMocks.getHistoryList.mock.calls.map(([params]) => params.q)).toEqual(['old', undefined, 'old']);
+    expect(historyMocks.getHistoryList.mock.calls.map(([params]) => params.q)).toEqual(['old', 'old', undefined, 'old']);
     expect(scanStore.historyRecords).toEqual([]);
     expect(scanStore.currentResultHistoryId).toBe(newRecord.id);
   });

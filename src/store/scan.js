@@ -793,6 +793,7 @@ export const useScanStore = defineStore('scan', () => {
 
       const index = historyRecords.value.findIndex((item) => String(item.id) === String(fullRecord.id));
       if (index === -1) {
+        if (String(historySearchFilter.q || '').trim() || historySearchFilter.pinned !== null) return fullRecord;
         historyRecords.value = sortHistoryRecords([fullRecord, ...historyRecords.value]);
       } else {
         historyRecords.value[index] = fullRecord;
@@ -1010,8 +1011,14 @@ export const useScanStore = defineStore('scan', () => {
       analysis: recordAnalysis,
     };
 
-    upsertHistoryRecord(record);
     currentResultHistoryId.value = record.id;
+    const { q, pinned } = historySearchFilter;
+    if (String(q || '').trim() || pinned !== null) {
+      historyRevision += 1;
+      await syncHistoryFromBackend({ q, pinned });
+    } else {
+      upsertHistoryRecord(record);
+    }
     return record;
   };
 
@@ -1108,7 +1115,7 @@ export const useScanStore = defineStore('scan', () => {
           if (!isScanSessionContextCurrent(sessionContext)) return null;
         }
 
-        const syncedRecords = await syncHistoryFromBackend();
+        const syncedRecords = await syncHistoryFromBackend(historySearchFilter);
         if (!isScanSessionContextCurrent(sessionContext)) return null;
 
         let historyRecord = syncedRecords.find((item) => String(item.id) === String(historyId));
