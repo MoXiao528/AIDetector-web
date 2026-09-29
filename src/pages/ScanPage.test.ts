@@ -127,6 +127,7 @@ const makeHistoryResponse = (records = []) => ({
 });
 
 type ScanPageSetupState = {
+  activePanel: string;
   activeHistoryId: string;
   activeResultTab: string;
   activeSentenceId: string;
@@ -144,9 +145,11 @@ type ScanPageSetupState = {
   renamingHistoryId: string;
   selectedHistoryIds: Array<string | number>;
   clearAllHistoryRecords: () => Promise<void>;
+  closeResultDetail: () => void;
   handleScan: () => Promise<void>;
   loadHistoryRecord: (id: string | number) => Promise<void>;
   onFileChange: (event: { target: { files: File[]; value: string } }) => Promise<void>;
+  setActivePanel: (panel: string) => void;
 };
 
 const getScanPageSetupState = (wrapper: ReturnType<typeof mountScanPage>) =>
@@ -296,6 +299,107 @@ describe('ScanPage panel switching', () => {
       expect(scanStore.result).toBeNull();
       expect(scanStore.resultInputText).toBe('');
       expect(state.editorMode).toBe('edit');
+    } finally {
+      wrapper.unmount();
+    }
+  });
+
+  it('快速打开两条游客历史时，较慢的旧详情不能覆盖最后选择', async () => {
+    route.query = { panel: 'document' };
+    const list = makeHistoryResponse([
+      { id: 906, inputText: 'First history text', analysis: null },
+      { id: 907, inputText: 'Second history text', analysis: null },
+    ]);
+    vi.mocked(historyApi.getHistoryList).mockResolvedValue(list);
+    const first = createDeferred<historyApi.HistoryRecord>();
+    const second = createDeferred<historyApi.HistoryRecord>();
+    vi.mocked(historyApi.getHistoryRecord)
+      .mockReturnValueOnce(first.promise)
+      .mockReturnValueOnce(second.promise);
+    const wrapper = mountScanPage();
+    try {
+      await flushPromises();
+      const scanStore = useScanStore();
+      const state = getScanPageSetupState(wrapper);
+      const firstLoad = state.loadHistoryRecord(906);
+      const secondLoad = state.loadHistoryRecord(907);
+      expect(historyApi.getHistoryRecord).toHaveBeenCalledTimes(2);
+
+      second.resolve({
+        ...list.items[1],
+        analysis: {
+          summary: { ai: 66, human: 34 }, sentences: [], translation: '', polish: '',
+          citations: [], ai_likely_count: 0, highlighted_html: '',
+        },
+      });
+      await secondLoad;
+      first.resolve({
+        ...list.items[0],
+        analysis: {
+          summary: { ai: 22, human: 78 }, sentences: [], translation: '', polish: '',
+          citations: [], ai_likely_count: 0, highlighted_html: '',
+        },
+      });
+      await firstLoad;
+
+      expect(String(state.activeHistoryId)).toBe('907');
+      expect(scanStore.inputText).toBe('Second history text');
+      expect(scanStore.result?.summary).toEqual({ ai: 66, human: 34 });
+      expect(state.editorMode).toBe('preview');
+      expect(wrapper.find('.editor-surface').element.innerHTML).toContain('Second history text');
+    } finally {
+      wrapper.unmount();
+    }
+  });
+
+  it.each(['close', 'browser-back'])('%s 清除 URL 详情后，未完成的历史读取不能恢复正文或重开弹层', async (action) => {
+    route.query = { panel: 'document', detail: '908' };
+    const deferred = createDeferred<historyApi.HistoryRecord>();
+    vi.mocked(historyApi.getHistoryRecord).mockReturnValueOnce(deferred.promise);
+    const wrapper = mountScanPage();
+    try {
+      await vi.waitFor(() => expect(historyApi.getHistoryRecord).toHaveBeenCalledWith('908', 'guest-token'));
+      const scanStore = useScanStore();
+      const state = getScanPageSetupState(wrapper);
+      if (action === 'close') state.closeResultDetail();
+      else route.query = { panel: 'document' };
+      deferred.resolve({
+        ...makeHistoryResponse([{ id: 908, inputText: 'Closed detail text' }]).items[0],
+        analysis: {
+          summary: { ai: 77, human: 23 }, sentences: [], translation: '', polish: '',
+          citations: [], ai_likely_count: 0, highlighted_html: '',
+        },
+      });
+      await flushPromises();
+
+      expect(route.query.detail).toBeUndefined();
+      expect(state.isResultDetailOpen).toBe(false);
+      expect(scanStore.inputText).toBe('');
+      expect(scanStore.result).toBeNull();
+    } finally {
+      wrapper.unmount();
+    }
+  });
+
+  it('离开文档页后，未完成的历史读取不能重新切回文档页', async () => {
+    route.query = { panel: 'document' };
+    const list = makeHistoryResponse([{ id: 909, inputText: 'Old history text', analysis: null }]);
+    vi.mocked(historyApi.getHistoryList).mockResolvedValue(list);
+    const deferred = createDeferred<historyApi.HistoryRecord>();
+    vi.mocked(historyApi.getHistoryRecord).mockReturnValueOnce(deferred.promise);
+    const wrapper = mountScanPage();
+    try {
+      await flushPromises();
+      const scanStore = useScanStore();
+      const state = getScanPageSetupState(wrapper);
+      const loading = state.loadHistoryRecord(909);
+      state.setActivePanel('profile');
+      deferred.resolve({ ...list.items[0], analysis: null });
+      await loading;
+
+      expect(state.activePanel).toBe('profile');
+      expect(scanStore.inputText).toBe('');
+      expect(scanStore.result).toBeNull();
     } finally {
       wrapper.unmount();
     }

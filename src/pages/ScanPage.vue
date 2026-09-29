@@ -1304,6 +1304,7 @@ const allowedPanelSet = new Set(['home', 'document', 'profile', 'qa']);
 const allowedFunctionKeys = new Set(['scan']);
 let lastComingSoonAt = 0;
 let historySearchTimer = null;
+let historySelectionSequence = 0;
 
 const triggerComingSoon = (label) => {
   const now = Date.now();
@@ -2090,12 +2091,14 @@ const setActivePanel = (panel) => {
     return;
   }
   if (activePanel.value === next) return;
+  if (next !== 'document') historySelectionSequence += 1;
   activePanel.value = next;
 };
 
 const isPanelActive = (panel) => activePanel.value === panel;
 
 const clearCurrentHistorySelection = () => {
+  historySelectionSequence += 1;
   activeHistoryId.value = '';
   isResultDetailOpen.value = false;
   if ('detail' in route.query) {
@@ -2235,6 +2238,7 @@ const retryHistoryLoad = async () => {
 
 const loadHistoryRecord = async (id) => {
   if (id === null || id === undefined || id === '') return;
+  const sequence = ++historySelectionSequence;
   if (isHistoryManaging.value) {
     toggleHistorySelection(id);
     return;
@@ -2244,7 +2248,7 @@ const loadHistoryRecord = async (id) => {
   if (!record || !record.analysis) {
     record = await scanStore.fetchHistoryRecordDetail(id);
   }
-  if (!record || !isPageActorContextCurrent(context)) return;
+  if (!record || sequence !== historySelectionSequence || !isPageActorContextCurrent(context)) return;
 
   activeHistoryId.value = record.id;
   setActivePanel('document');
@@ -2258,7 +2262,7 @@ const loadHistoryRecord = async (id) => {
   }
   activeResultTab.value = 'scan';
   await nextTick();
-  syncEditorFromStore();
+  if (sequence === historySelectionSequence) syncEditorFromStore();
 };
 
 const openHistoryRecord = async (id) => {
@@ -2286,6 +2290,7 @@ const openResultDetail = () => {
 };
 
 const closeResultDetail = () => {
+  historySelectionSequence += 1;
   isResultDetailOpen.value = false;
   syncDetailRoute('');
 };
@@ -2297,6 +2302,7 @@ const openEvidenceDetail = (dimension, showAll = false) => {
 };
 
 const syncResultDetailFromRoute = async (value) => {
+  historySelectionSequence += 1;
   const context = capturePageActorContext();
   const detailId = Array.isArray(value) ? value[0] : value;
   if (!detailId) {
@@ -2307,7 +2313,7 @@ const syncResultDetailFromRoute = async (value) => {
   if (detailId !== 'current' && String(scanStore.currentResultHistoryId || activeHistoryId.value) !== String(detailId)) {
     await loadHistoryRecord(detailId);
   }
-  if (!isPageActorContextCurrent(context)) return;
+  if (!isPageActorContextCurrent(context) || String(route.query.detail || '') !== String(detailId)) return;
   isResultDetailOpen.value = hasResults.value;
 };
 
@@ -2529,7 +2535,8 @@ watch(
   () => route.query.detail,
   (value) => {
     syncResultDetailFromRoute(value);
-  }
+  },
+  { flush: 'sync' }
 );
 
 watch(isFeatureModalOpen, (open) => {

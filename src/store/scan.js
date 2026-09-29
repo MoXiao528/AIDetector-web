@@ -714,43 +714,50 @@ export const useScanStore = defineStore('scan', () => {
   const syncHistoryFromBackend = async ({ q = '', pinned = null, strict = false } = {}) => {
     const sessionContext = captureScanSessionContext();
     const sequence = ++historyReadSequence;
-    const revision = historyRevision;
     const isCurrent = () => isScanSessionContextCurrent(sessionContext)
-      && sequence === historyReadSequence && revision === historyRevision;
+      && sequence === historyReadSequence;
     purgePersistedGuestHistory();
     isHistoryLoading.value = true;
     historyLoadFailed.value = false;
     try {
-      const response = await getHistoryList({
-        page: 1,
-        per_page: 100,
-        sort: 'created_at',
-        order: 'desc',
-        q: String(q || '').trim() || undefined,
-        pinned,
-      }, getHistoryGuestToken());
-      if (!isCurrent()) return [];
-      const items = response?.items || response?.Items || [];
-      const backendRecords = items
-        .map((item) => {
-          const normalized = normalizeHistoryRecordPayload(item);
-          if (!normalized) return null;
-          return {
-            ...normalized,
-            title: buildHistoryRecordTitle({
-              title: normalized.title,
-              exampleKey: normalized.exampleKey,
-            }),
-          };
-        })
-        .filter((item) => isDisplayableHistoryRecord(item));
+      while (isCurrent()) {
+        const revision = historyRevision;
+        try {
+          const response = await getHistoryList({
+            page: 1,
+            per_page: 100,
+            sort: 'created_at',
+            order: 'desc',
+            q: String(q || '').trim() || undefined,
+            pinned,
+          }, getHistoryGuestToken());
+          if (!isCurrent()) return [];
+          if (revision !== historyRevision) continue;
+          const items = response?.items || response?.Items || [];
+          const backendRecords = items
+            .map((item) => {
+              const normalized = normalizeHistoryRecordPayload(item);
+              if (!normalized) return null;
+              return {
+                ...normalized,
+                title: buildHistoryRecordTitle({
+                  title: normalized.title,
+                  exampleKey: normalized.exampleKey,
+                }),
+              };
+            })
+            .filter((item) => isDisplayableHistoryRecord(item));
 
-      historyRecords.value = sortHistoryRecords(backendRecords);
-      return historyRecords.value;
-    } catch (error) {
-      if (!isCurrent()) return [];
-      historyLoadFailed.value = true;
-      if (strict) throw error;
+          historyRecords.value = sortHistoryRecords(backendRecords);
+          return historyRecords.value;
+        } catch (error) {
+          if (!isCurrent()) return [];
+          if (revision !== historyRevision) continue;
+          historyLoadFailed.value = true;
+          if (strict) throw error;
+          return [];
+        }
+      }
       return [];
     } finally {
       if (sequence === historyReadSequence) isHistoryLoading.value = false;

@@ -1227,6 +1227,54 @@ describe('scan store guest history boundary', () => {
     expect(scanStore.isHistoryLoading).toBe(false);
   });
 
+  it('首次历史列表加载期间完成检测，会重查并同时显示旧记录与新记录', async () => {
+    const scanStore = useScanStore();
+    const oldRecord = makeBackendRecord(makeLocalRecord({ inputText: 'old result' }), 826);
+    const newRecord = makeBackendRecord(makeLocalRecord({
+      inputText: 'new result', createdAt: '2026-09-29T00:00:00.000Z',
+    }), 827);
+    const stale = createDeferred<{ items: ReturnType<typeof makeBackendRecord>[] }>();
+    const fresh = createDeferred<{ items: ReturnType<typeof makeBackendRecord>[] }>();
+    historyMocks.getHistoryList.mockReturnValueOnce(stale.promise).mockReturnValueOnce(fresh.promise);
+
+    const pending = scanStore.syncHistoryFromBackend();
+    scanApiMocks.detectText.mockResolvedValueOnce({ historyId: 827, result: makeAnalysis() });
+    await scanStore.analyzeText('new result', { guestToken: 'guest:sid-a:token' });
+    stale.resolve({ items: [oldRecord] });
+    await vi.waitFor(() => expect(historyMocks.getHistoryList).toHaveBeenCalledTimes(2));
+    expect(scanStore.isHistoryLoading).toBe(true);
+
+    fresh.resolve({ items: [newRecord, oldRecord] });
+    await pending;
+    expect(scanStore.historyRecords.map((item) => item.id)).toEqual([827, 826]);
+    expect(scanStore.isHistoryLoading).toBe(false);
+    expect(scanStore.historyLoadFailed).toBe(false);
+  });
+
+  it('列表修订后旧请求失败仍按原搜索与置顶条件重查', async () => {
+    const scanStore = useScanStore();
+    const stale = createDeferred<{ items: ReturnType<typeof makeBackendRecord>[] }>();
+    const fresh = createDeferred<{ items: ReturnType<typeof makeBackendRecord>[] }>();
+    historyMocks.getHistoryList.mockReturnValueOnce(stale.promise).mockReturnValueOnce(fresh.promise);
+    const pending = scanStore.syncHistoryFromBackend({ q: '  needle  ', pinned: true, strict: true });
+
+    scanApiMocks.detectText.mockResolvedValueOnce({ historyId: 828, result: makeAnalysis() });
+    await scanStore.analyzeText('new result', { guestToken: 'guest:sid-a:token' });
+    stale.reject(new Error('stale request failed'));
+    await vi.waitFor(() => expect(historyMocks.getHistoryList).toHaveBeenCalledTimes(2));
+    fresh.resolve({ items: [makeBackendRecord(makeLocalRecord({
+      title: 'needle', inputText: 'needle result', isPinned: true,
+    }), 829)] });
+
+    await pending;
+    expect(scanStore.historyRecords.map((item) => item.id)).toEqual([829]);
+    expect(scanStore.historyLoadFailed).toBe(false);
+    expect(historyMocks.getHistoryList.mock.calls.map(([params]) => params)).toEqual([
+      expect.objectContaining({ q: 'needle', pinned: true }),
+      expect.objectContaining({ q: 'needle', pinned: true }),
+    ]);
+  });
+
   it.each(['delete', 'detect'])('游客 %s 成功后，旧列表响应不能复活删除项或抹掉新检测', async (operation) => {
     const scanStore = useScanStore();
     const record = makeBackendRecord(makeLocalRecord(), 831);
@@ -1244,9 +1292,15 @@ describe('scan store guest history boundary', () => {
       await scanStore.analyzeText('new result', { guestToken: 'guest:sid-a:token' });
       await scanStore.analyzeText('new result', { guestToken: 'guest:sid-a:token' });
     }
+    historyMocks.getHistoryList.mockResolvedValueOnce({
+      items: operation === 'delete' ? [] : [makeBackendRecord(makeLocalRecord({
+        inputText: 'new result', createdAt: '2026-09-29T00:00:00.000Z',
+      }), 832), record],
+    });
     first.resolve({ items: [record] });
     await pending;
     expect(scanStore.historyRecords.map((item) => item.id)).toEqual(operation === 'delete' ? [] : [832, 831]);
+    expect(historyMocks.getHistoryList).toHaveBeenCalledTimes(3);
   });
 
   it.each(['sid', 'login'])('游客历史读取在 %s 切换后丢弃旧响应，发出的 Bearer 保持原值', async (change) => {
