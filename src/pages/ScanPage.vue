@@ -1966,7 +1966,7 @@ const loginPromptRegisterTo = computed(() => ({
 }));
 
 const hasResults = computed(() => Boolean(detectionResults.value));
-const resultTextMismatch = computed(() => hasResults.value && hasTextMismatch(editorText.value, scanStore.inputText));
+const resultTextMismatch = computed(() => hasResults.value && hasTextMismatch(editorText.value, scanStore.resultInputText));
 
 const buildPreviewHtmlForAnalysis = ({ analysis, editorHtml = '', inputText = '' } = {}) => {
   if (!analysis) return '';
@@ -1978,11 +1978,11 @@ const buildPreviewHtmlForAnalysis = ({ analysis, editorHtml = '', inputText = ''
   });
 };
 
-const syncHighlightedPreviewHtml = (analysis = detectionResults.value) => {
+const syncHighlightedPreviewHtml = (analysis = detectionResults.value, editorHtml = scanStore.editorHtml || '') => {
   highlightedPreviewHtml.value = buildPreviewHtmlForAnalysis({
     analysis,
-    editorHtml: scanStore.editorHtml || '',
-    inputText: scanStore.inputText || '',
+    editorHtml,
+    inputText: scanStore.resultInputText || '',
   });
 };
 
@@ -2794,14 +2794,16 @@ const handleScan = async () => {
   scanStore.resetResult();
   highlightedPreviewHtml.value = '';
   const scanContext = capturePageActorContext();
+  const submittedText = scanStore.inputText;
+  const submittedHtml = scanStore.editorHtml || plainTextToHtml(submittedText);
   try {
-    const analysis = await scanStore.analyzeText(scanStore.inputText, {
+    const analysis = await scanStore.analyzeText(submittedText, {
       functions: scanStore.selectedFunctions,
-      html: scanStore.editorHtml || plainTextToHtml(scanStore.inputText),
+      html: submittedHtml,
       guestToken: scanContext.authenticated ? '' : ensuredGuestToken,
     });
     if (!analysis || !isPageActorContextCurrent(scanContext)) return;
-    syncHighlightedPreviewHtml(analysis);
+    syncHighlightedPreviewHtml(analysis, submittedHtml);
     editorMode.value = 'preview';
     activeResultTab.value = 'scan';
     activeHistoryId.value = scanStore.currentResultHistoryId || historyRecords.value[0]?.id || '';

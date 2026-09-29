@@ -717,6 +717,48 @@ describe('ScanPage panel switching', () => {
     wrapper.unmount();
   });
 
+  it('检测期间编辑正文后，旧结果只标注送检快照并提示当前正文不匹配', async () => {
+    route.query = { panel: 'document' };
+    const oldText = '旧正文'.repeat(70);
+    const newText = '新正文'.repeat(70);
+    const response = createDeferred<scanApi.DetectionResponse>();
+    vi.mocked(scanApi.detectText).mockReturnValue(response.promise);
+    const wrapper = mountScanPage();
+    try {
+      await flushPromises();
+      const scanStore = useScanStore();
+      const state = getScanPageSetupState(wrapper);
+      scanStore.setText(oldText);
+      const scanning = state.handleScan();
+      await vi.waitFor(() => expect(scanApi.detectText).toHaveBeenCalledTimes(1));
+
+      const editor = wrapper.get('.editor-surface');
+      editor.element.innerHTML = `<p>${newText}</p>`;
+      await editor.trigger('input');
+      expect(scanStore.inputText).toBe(newText);
+
+      response.resolve({
+        historyId: 991,
+        inputText: oldText,
+        result: {
+          summary: { ai: 80, human: 20 },
+          sentences: [{ id: 'submitted-sentence', text: oldText, raw: oldText, startParagraph: 1, endParagraph: 1, type: 'ai', probability: 0.8 }],
+        },
+      });
+      await scanning;
+      await flushPromises();
+
+      expect(scanStore.resultInputText).toBe(oldText);
+      expect(scanStore.inputText).toBe(newText);
+      expect(wrapper.find('[data-testid="incomplete-text-notice"]').exists()).toBe(true);
+      expect(wrapper.get('.preview-surface [data-sentence-id="submitted-sentence"]').text()).toBe(oldText);
+      expect(wrapper.get('.preview-surface').text()).not.toContain(newText);
+      expect(editor.element.textContent).toBe(newText);
+    } finally {
+      wrapper.unmount();
+    }
+  });
+
   it('旧 generation 的 quota 响应不会回填新主体额度', async () => {
     vi.mocked(authApi.getStoredGuestToken).mockReturnValue('guest-a-access-1');
     vi.mocked(authApi.ensureGuestToken).mockResolvedValue('guest-a-access-1');

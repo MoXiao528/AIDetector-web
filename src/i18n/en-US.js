@@ -977,7 +977,7 @@ export default {
       },
     },
     results: {
-      incompleteTextNotice: 'The submitted content differs from the original text. The current score applies only to the submitted content. Original-text highlighting is paused; please scan the complete text again.',
+      incompleteTextNotice: 'The current document differs from the submitted text. This score and its highlights apply only to the submitted text. Scan the current document again.',
       menuTitle: 'Scan menu',
       menuSubtitle: 'Select functions and view results',
       verification: 'Verification',

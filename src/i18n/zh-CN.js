@@ -969,7 +969,7 @@ export default {
       },
     },
     results: {
-      incompleteTextNotice: '此记录的送检内容与原文不一致。当前分数仅对应当时送检的内容，已暂停原文高亮；请重新检测完整原文。',
+      incompleteTextNotice: '当前正文与送检文本不一致。本次分数和标注仅对应送检文本，请重新检测当前正文。',
       menuTitle: '检测菜单',
       menuSubtitle: '选择功能并查看结果',
       verification: '校验',
