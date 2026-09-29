@@ -405,6 +405,30 @@ describe('ScanPage panel switching', () => {
     }
   });
 
+  it('浏览器返回首页后，未完成的历史读取不能重新切回文档页', async () => {
+    route.query = { panel: 'document' };
+    const list = makeHistoryResponse([{ id: 910, inputText: 'Old history text', analysis: null }]);
+    vi.mocked(historyApi.getHistoryList).mockResolvedValue(list);
+    const deferred = createDeferred<historyApi.HistoryRecord>();
+    vi.mocked(historyApi.getHistoryRecord).mockReturnValueOnce(deferred.promise);
+    const wrapper = mountScanPage();
+    try {
+      await flushPromises();
+      const scanStore = useScanStore();
+      const state = getScanPageSetupState(wrapper);
+      const loading = state.loadHistoryRecord(910);
+      route.query = { panel: 'home' };
+      deferred.resolve({ ...list.items[0], analysis: null });
+      await loading;
+
+      expect(state.activePanel).toBe('home');
+      expect(scanStore.inputText).toBe('');
+      expect(scanStore.result).toBeNull();
+    } finally {
+      wrapper.unmount();
+    }
+  });
+
   it('游客刷新详情 URL 时可读取不在当前列表中的服务器记录和 Evidence', async () => {
     route.query = { panel: 'document', detail: '902' };
     route.fullPath = '/dashboard?panel=document&detail=902';

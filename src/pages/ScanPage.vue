@@ -2497,9 +2497,11 @@ watch(
       return;
     }
     if (activePanel.value !== next) {
+      if (next !== 'document') historySelectionSequence += 1;
       activePanel.value = next;
     }
-  }
+  },
+  { flush: 'sync' }
 );
 
 watch(activePanel, async (panel) => {
