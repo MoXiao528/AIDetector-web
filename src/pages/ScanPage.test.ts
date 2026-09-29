@@ -10,11 +10,12 @@ import { useScanStore } from '../store/scan';
 import * as authApi from '../api/modules/auth';
 import * as quotaApi from '../api/modules/quota';
 import * as scanApi from '../api/modules/scan';
+import * as historyApi from '../api/modules/history';
 
 const route = reactive({
   name: 'dashboard',
   fullPath: '/dashboard?panel=home',
-  query: { panel: 'home' as string | undefined },
+  query: { panel: 'home' } as Record<string, string | undefined>,
 });
 
 const routerReplace = vi.fn(async ({ query = {} }) => {
@@ -113,6 +114,18 @@ const createDeferred = <T>() => {
   return { promise, resolve, reject };
 };
 
+const makeHistoryResponse = (records = []) => ({
+  items: records.map((record) => ({
+    id: record.id, user_id: null, title: record.title || '',
+    created_at: record.createdAt || '2026-09-12T00:00:00Z',
+    functions: record.functions || ['scan'], input_text: record.inputText,
+    editor_html: record.editorHtml || `<p>${record.inputText}</p>`,
+    is_pinned: Boolean(record.isPinned), analysis: record.analysis || null,
+    evidence: record.evidence,
+  })),
+  total: records.length, page: 1, per_page: 100, total_pages: records.length ? 1 : 0,
+});
+
 type ScanPageSetupState = {
   activeHistoryId: string;
   activeResultTab: string;
@@ -164,8 +177,11 @@ describe('ScanPage panel switching', () => {
     window.localStorage.clear();
     vi.mocked(authApi.ensureGuestToken).mockResolvedValue('guest-token');
     vi.mocked(authApi.getGuestSessionId).mockImplementation((token) => (token ? `sid:${token}` : ''));
-    vi.mocked(authApi.getStoredGuestToken).mockReturnValue('');
+    window.localStorage.setItem('guest_token', 'guest-token');
+    vi.mocked(authApi.getStoredGuestToken).mockImplementation(() => window.localStorage.getItem('guest_token') || '');
     vi.mocked(scanApi.detectText).mockReset();
+    vi.mocked(historyApi.getHistoryList).mockReset().mockResolvedValue(makeHistoryResponse());
+    vi.mocked(historyApi.getHistoryRecord).mockReset();
     vi.mocked(quotaApi.fetchQuota).mockResolvedValue({
       limit: 5000,
       remaining: 5000,
@@ -221,7 +237,157 @@ describe('ScanPage panel switching', () => {
     wrapper.unmount();
   });
 
+  it.each(['home', 'document'])('游客进入 %s 后取得凭据并从服务器恢复历史，不恢复浏览器正文缓存', async (panel) => {
+    route.query = { panel };
+    window.localStorage.removeItem('guest_token');
+    window.localStorage.setItem('ai-detector-history-records', JSON.stringify([{ id: 99, inputText: 'obsolete local secret' }]));
+    vi.mocked(authApi.ensureGuestToken).mockImplementationOnce(async () => {
+      window.localStorage.setItem('guest_token', 'recovered-token');
+      return 'recovered-token';
+    });
+    vi.mocked(historyApi.getHistoryList).mockResolvedValue(makeHistoryResponse([{ id: 901, inputText: 'server original', title: 'Server history' }]));
+    const wrapper = mountScanPage();
+    try {
+      await flushPromises();
+      const scanStore = useScanStore();
+      expect(historyApi.getHistoryList).toHaveBeenLastCalledWith(expect.any(Object), 'recovered-token');
+      expect(scanStore.historyRecords).toHaveLength(1);
+      expect(scanStore.historyRecords[0]).toMatchObject({ id: 901, inputText: 'server original' });
+      expect(scanStore.historyLoadFailed).toBe(false);
+      expect(window.localStorage.getItem('ai-detector-history-records')).toBeNull();
+      expect(JSON.stringify(Object.values(window.localStorage))).not.toContain('server original');
+      expect(scanApi.detectText).not.toHaveBeenCalled();
+    } finally {
+      wrapper.unmount();
+    }
+  });
+
+  it('游客刷新详情 URL 时可读取不在当前列表中的服务器记录和 Evidence', async () => {
+    route.query = { panel: 'document', detail: '902' };
+    route.fullPath = '/dashboard?panel=document&detail=902';
+    const evidence: scanApi.EvidenceResult = {
+      status: 'unsupported', artifactVersion: null, featureSchemaVersion: 1, route: null,
+      quality: { level: 'unavailable', coverage: 0, reasons: ['unsupported_language'] }, signals: [], patterns: null,
+    };
+    const record = makeHistoryResponse([{
+      id: 902, inputText: 'Persisted guest document', title: 'Recovered detail', evidence,
+      analysis: { summary: { ai: 77, human: 23 }, sentences: [] },
+    }]).items[0];
+    vi.mocked(historyApi.getHistoryRecord).mockResolvedValue(record);
+    const wrapper = mountScanPage();
+    try {
+      await flushPromises();
+      const scanStore = useScanStore();
+      expect(historyApi.getHistoryRecord).toHaveBeenCalledWith('902', 'guest-token');
+      expect(scanStore.currentResultHistoryId).toBe(902);
+      expect(scanStore.inputText).toBe('Persisted guest document');
+      expect(scanStore.result?.evidence).toEqual(evidence);
+      expect(scanStore.result?.summary).toEqual({ ai: 77, human: 23 });
+      expect(getScanPageSetupState(wrapper).isResultDetailOpen).toBe(true);
+      expect(wrapper.findAllComponents(EvidencePanel).find((component) => component.props('detailed'))?.props('submittedText')).toBe('Persisted guest document');
+      expect(scanApi.detectText).not.toHaveBeenCalled();
+    } finally {
+      wrapper.unmount();
+    }
+  });
+
+  it('游客历史读取失败明确显示错误和重试，不能显示成暂无记录', async () => {
+    route.query = { panel: 'document' };
+    vi.mocked(historyApi.getHistoryList).mockRejectedValue(new Error('temporary history failure'));
+    const wrapper = mountScanPage();
+    try {
+      await flushPromises();
+      expect(wrapper.get('[role="alert"]').text()).toContain(globalT('scan.history.loadFailed'));
+      expect(wrapper.text()).not.toContain(globalT('scan.history.emptyTitle'));
+      expect(useScanStore().historyRecords).toEqual([]);
+      vi.mocked(historyApi.getHistoryList).mockResolvedValue(makeHistoryResponse([{ id: 903, inputText: 'Retry recovered document' }]));
+      await wrapper.get('[role="alert"] button').trigger('click');
+      await flushPromises();
+      expect(wrapper.find('[role="alert"]').exists()).toBe(false);
+      expect(useScanStore().historyRecords[0]).toMatchObject({ id: 903, inputText: 'Retry recovered document' });
+    } finally {
+      wrapper.unmount();
+    }
+  });
+
+  it('旧漏段记录显示覆盖提示，手动重检提交完整原文并恢复正确高亮', async () => {
+    route.query = { panel: 'document' };
+    const wrapper = mountScanPage();
+    try {
+      await flushPromises();
+      const scanStore = useScanStore();
+      const state = getScanPageSetupState(wrapper);
+      const paragraphs = ['开头正文', '正文甲'.repeat(40), '中间遗漏正文', '正文乙'.repeat(40)];
+      const html = `<div>${paragraphs[0]}<div>${paragraphs[1]}</div><strong>${paragraphs[2]}</strong><div>${paragraphs[3]}</div></div>`;
+      const oldText = [paragraphs[1], paragraphs[3]].join('\n');
+      const fullText = paragraphs.join('\n\n');
+      await scanStore.addHistoryRecord({
+        id: 454,
+        title: '旧漏段记录', text: oldText, html, functions: ['scan'],
+        analysis: {
+          summary: { ai: 10, human: 90 },
+          sentences: [{ id: 'old-1', raw: oldText, startParagraph: 1, endParagraph: 2, type: 'human', probability: 0.1 }],
+        },
+      });
+      const oldRecord = scanStore.historyRecords[0];
+      await state.loadHistoryRecord(oldRecord.id);
+      await flushPromises();
+      expect(wrapper.text()).toContain(globalT('scan.results.incompleteTextNotice'));
+      expect(wrapper.get('.preview-surface').text()).toContain(paragraphs[0]);
+      expect(wrapper.get('.preview-surface').text()).toContain(paragraphs[2]);
+      expect(wrapper.find('.preview-surface [data-sentence-id]').exists()).toBe(false);
+      expect(scanStore.result?.summary.ai).toBe(10);
+      expect(scanApi.detectText).not.toHaveBeenCalled();
+      state.isResultDetailOpen = true;
+      await nextTick();
+      expect(wrapper.findAll('[data-testid="incomplete-text-notice"]')).toHaveLength(2);
+      state.isResultDetailOpen = false;
+
+      vi.mocked(scanApi.detectText).mockResolvedValueOnce({
+        historyId: 455,
+        result: {
+          summary: { ai: 20, human: 80 },
+          sentences: paragraphs.map((raw, index) => ({
+            id: `new-${index}`, text: raw, raw, startParagraph: index + 1, endParagraph: index + 1, type: 'human', probability: 0.2,
+          })),
+        },
+      });
+      await state.handleScan();
+      await flushPromises();
+      expect(scanApi.detectText).toHaveBeenCalledTimes(1);
+      expect(vi.mocked(scanApi.detectText).mock.calls[0][0].text).toBe(fullText);
+      expect(wrapper.find('[data-testid="incomplete-text-notice"]').exists()).toBe(false);
+      expect(wrapper.findAll('.preview-surface [data-sentence-id]').map((node) => node.text())).toEqual(paragraphs);
+      expect(oldRecord.inputText).toBe(oldText);
+      expect(oldRecord.analysis.summary.ai).toBe(10);
+    } finally {
+      wrapper.unmount();
+    }
+  });
+
+  it.each([
+    { missingChars: 20000, remaining: 5000 },
+    { missingChars: 300, remaining: 300 },
+  ])('重检前用补全后的正文校验长度和额度（遗漏=$missingChars，可用=$remaining）', async ({ missingChars, remaining }) => {
+    const wrapper = mountScanPage();
+    try {
+      await flushPromises();
+      const scanStore = useScanStore();
+      const state = getScanPageSetupState(wrapper);
+      state.quotaInfo = { actor_type: 'guest', limit: 5000, used_today: 5000 - remaining, remaining };
+      const oldText = '已送检'.repeat(70);
+      const missing = '字'.repeat(missingChars);
+      scanStore.setImportedContent({ text: oldText, html: `<div>${missing}<div>${oldText}</div></div>` });
+      await state.handleScan();
+      expect(scanStore.inputText).toBe(`${missing}\n\n${oldText}`);
+      expect(scanApi.detectText).not.toHaveBeenCalled();
+    } finally {
+      wrapper.unmount();
+    }
+  });
+
   it('quota 返回无错误码 401 时不清 token，也不自动创建新游客主体', async () => {
+    vi.mocked(historyApi.getHistoryList).mockRejectedValue(new Error('history unavailable'));
     vi.mocked(quotaApi.fetchQuota).mockImplementationOnce(async () => {
       const scanStore = useScanStore();
       scanStore.setText('keep current guest text');
@@ -307,6 +473,7 @@ describe('ScanPage panel switching', () => {
     const clearSessionSpy = vi.spyOn(scanStore, 'clearScanSessionData');
     scanStore.setEditorHtml('<p>same sid draft</p>');
     scanStore.historyRecords = [{ id: 'same-sid-history', inputText: 'same sid draft' }];
+    vi.mocked(historyApi.getHistoryList).mockResolvedValue(makeHistoryResponse(scanStore.historyRecords));
 
     dispatchGuestTokenStorage('guest-a-access-1', 'guest-a-access-2');
     oldQuota.reject({ status: 401, code: 'GUEST_TOKEN_REQUIRED' });
@@ -317,7 +484,8 @@ describe('ScanPage panel switching', () => {
     expect(authApi.ensureGuestToken).toHaveBeenCalledTimes(2);
     expect(quotaApi.fetchQuota).toHaveBeenCalledTimes(2);
     expect(scanStore.inputText).toBe('same sid draft');
-    expect(scanStore.historyRecords).toEqual([{ id: 'same-sid-history', inputText: 'same sid draft' }]);
+    expect(scanStore.historyRecords).toHaveLength(1);
+    expect(scanStore.historyRecords[0]).toMatchObject({ id: 'same-sid-history', inputText: 'same sid draft' });
     wrapper.unmount();
   });
 
@@ -831,7 +999,7 @@ describe('ScanPage panel switching', () => {
     };
     vi.mocked(scanApi.detectText)
       .mockResolvedValueOnce(response)
-      .mockResolvedValueOnce({ ...response, evidence });
+      .mockResolvedValueOnce({ ...response, historyId: 92, evidence });
     const wrapper = mountScanPage();
     await flushPromises();
     const scanStore = useScanStore();
@@ -855,7 +1023,7 @@ describe('ScanPage panel switching', () => {
     const evidenceHistoryId = scanStore.currentResultHistoryId;
     expect(scanStore.result?.evidence).toEqual(evidence);
     expect(wrapper.get('.text-6xl').element.closest('.shadow-premium')!.outerHTML).toBe(legacySummary);
-    expect(wrapper.get('[data-testid="evidence-status"]').text()).toBe(globalT('scan.evidence.status.unsupported'));
+    expect(wrapper.get('[data-testid="evidence-status"]').text()).toBe(globalT('scan.evidence.presentation.status.unsupported'));
     expect(wrapper.get('.preview-surface').html()).toBe(legacyPreview);
 
     await state.loadHistoryRecord(legacyHistoryId);
@@ -870,12 +1038,12 @@ describe('ScanPage panel switching', () => {
     expect(scanStore.result?.evidence).toEqual(evidence);
     expect(scanStore.result?.summary).toEqual({ ai, human: 100 - ai });
     expect(wrapper.get('.text-6xl').element.closest('.shadow-premium')!.outerHTML).toBe(legacySummary);
-    expect(wrapper.get('[data-testid="evidence-status"]').text()).toBe(globalT('scan.evidence.status.unsupported'));
+    expect(wrapper.get('[data-testid="evidence-status"]').text()).toBe(globalT('scan.evidence.presentation.status.unsupported'));
     expect(wrapper.get('.preview-surface').html()).toBe(legacyPreview);
     wrapper.unmount();
   });
 
-  it.each([23, 77])('侧栏和详情复用路由、Quality 与逐项参考快照，旧历史清除元信息且主结果 AI=%i 不受提示影响', async (ai) => {
+  it.each([23, 77])('侧栏摘要导航到分维度详情，专业快照随历史回放且主结果 AI=%i 不受提示影响', async (ai) => {
     route.query = { panel: 'document' };
     route.fullPath = '/dashboard?panel=document';
     const label = ai === 77 ? 'ai' : 'human';
@@ -900,12 +1068,16 @@ describe('ScanPage panel switching', () => {
           dimension: dimension as scanApi.EvidenceSignal['dimension'], metric, observed: 0,
           humanPercentile: comparable ? 50 : null, aiPercentile: comparable ? 50 : null,
           referenceRanges: comparable ? { human: [0, 0], ai: [0, 0] } : null,
+          referenceExtent: comparable ? [0, 1] as [number, number] : undefined,
           relation: comparable ? { human: 'within', ai: 'within' } : null,
           notice: null, sampleCount: comparable ? 10 : 0, offsets: [],
           reasons: comparable ? [] : ['no_valid_source_groups'],
         };
       })),
-      patterns: { descriptive_top_tokens: [], repeated_phrases: [], sentence_start_templates: [] },
+      patterns: {
+        descriptive_top_tokens: [],
+        repeated_phrases: [{ count: 20, offsets: [{ start: 0, end: 2 }] }], sentence_start_templates: [],
+      },
     };
     Object.assign(evidence.signals[0], {
       humanPercentile: label === 'human' ? 0 : 2.5, aiPercentile: label === 'ai' ? 0 : 2.5,
@@ -925,34 +1097,65 @@ describe('ScanPage panel switching', () => {
     const wrapper = mountScanPage();
     await flushPromises();
     const scanStore = useScanStore();
-    scanStore.setText('用于验证四维面板的中文文本。'.repeat(20));
+    const submittedText = '用于验证四维面板的中文文本。'.repeat(20);
+    scanStore.setText(submittedText);
     await getScanPageSetupState(wrapper).handleScan();
     await flushPromises();
     const historyId = scanStore.currentResultHistoryId;
+    const savedRecord = scanStore.historyRecords[0];
+    vi.mocked(historyApi.getHistoryList).mockImplementation(async (params) => makeHistoryResponse(params?.q ? [] : [savedRecord]));
     expect(wrapper.findAll('[data-testid="evidence-panel"]')).toHaveLength(1);
-    const openDetail = wrapper.findAll('button').find((button) => button.text() === globalT('scan.results.openDetail'))!;
-    await openDetail.trigger('click');
+    const compact = wrapper.getComponent(EvidencePanel);
+    expect(compact.props('detailed')).toBe(false);
+    expect(compact.findAll('[data-testid="evidence-summary"]')).toHaveLength(0);
+    expect(compact.get('[data-testid="evidence-empty-selection"]').text()).toContain(globalT('scan.evidence.presentation.noRecommended'));
+    expect(compact.get('[data-testid="evidence-empty-selection"]').text()).toContain('暂不能为来源判断提供补充依据');
+    await compact.get('[data-testid="evidence-show-all"]').trigger('click');
+    expect(compact.findAll('[data-testid="evidence-summary"]')).toHaveLength(4);
+    expect(compact.find('[data-metric], [data-testid="evidence-route"], [data-testid="evidence-quality"]').exists()).toBe(false);
+    await compact.get('[data-dimension="rhythm"]').trigger('click');
     await flushPromises();
     const panels = wrapper.findAllComponents(EvidencePanel);
     expect(panels).toHaveLength(2);
     for (const panel of panels) {
       expect(panel.props('evidence')).toEqual(evidence);
-      expect(panel.findAll('details')).toHaveLength(4);
-      expect(panel.findAll('[data-metric]')).toHaveLength(22);
-      expect(panel.get('[data-value="coverage"]').text()).toBe('86.4%');
-      expect(panel.get('[data-route="fallbackLevel"]').text()).toBe(globalT('scan.evidence.route.values.fallbackLevel.language_length'));
-      expect(panel.get('[data-confidence="language"]').text()).toBe('0');
-      expect(panel.get('[data-confidence="domain"]').text()).toBe('0.8125');
-      expect(panel.get('[data-metric="mattr"] [data-value="sample-count"]').text()).toBe('10');
-      expect(panel.findAll('[data-testid="evidence-notice"]')).toHaveLength(2);
-      expect(panel.findAll('summary [data-testid="dimension-notice"]')).toHaveLength(1);
     }
-    expect(panels[0].html()).toBe(panels[1].html().replace(' mb-6', ''));
+    const detailed = panels.find((panel) => panel.props('detailed'))!;
+    expect(detailed.get('[data-testid="evidence-show-all"]').attributes('aria-pressed')).toBe('true');
+    expect(getScanPageSetupState(wrapper).isResultDetailOpen).toBe(true);
+    expect(detailed.get('[data-dimension="rhythm"]').attributes('aria-pressed')).toBe('true');
+    expect(detailed.props('submittedText')).toBe(submittedText);
+    expect(detailed.get('[data-summary-metric="sentence_length_median"] [data-axis-min]').attributes('data-axis-min')).toBe('0');
+    expect(detailed.get('[data-summary-metric="sentence_length_median"] [data-axis-max]').attributes('data-axis-max')).toBe('1');
+    const professional = detailed.get('details[data-testid="evidence-professional"]');
+    expect(professional.attributes('open')).toBeUndefined();
+    expect(professional.findAll('[data-metric]')).toHaveLength(22);
+    expect(professional.get('[data-value="coverage"]').text()).toBe('86.3636%');
+    expect(professional.get('[data-route="fallbackLevel"]').text()).toBe(globalT('scan.evidence.route.values.fallbackLevel.language_length'));
+    expect(professional.get('[data-confidence="language"]').text()).toBe('0');
+    expect(professional.get('[data-confidence="domain"]').text()).toBe('0.8125');
+    expect(professional.find('[data-value="sample-count"]').exists()).toBe(false);
+    expect(evidence.signals.find((signal) => signal.metric === 'mattr')!.sampleCount).toBe(10);
+    expect(professional.findAll('[data-testid="evidence-notice"]')).toHaveLength(2);
+    await detailed.get('[data-dimension="phrase_template"]').trigger('click');
+    const excerpt = detailed.get('[data-testid="evidence-examples"]').text();
+    expect(excerpt).toContain('用于');
+    scanStore.setText('编辑中的新草稿不应被用来提取旧检测的词语。'.repeat(20));
+    await flushPromises();
+    expect(detailed.props('submittedText')).toBe(submittedText);
+    expect(detailed.get('[data-testid="evidence-examples"]').text()).toBe(excerpt);
+    await wrapper.get('input[type="search"]').setValue('no-history-matches-this-search');
+    await vi.waitFor(() => expect(scanStore.historyRecords).toHaveLength(0));
+    expect(detailed.props('submittedText')).toBe(submittedText);
+    expect(detailed.get('[data-testid="evidence-examples"]').text()).toBe(excerpt);
+    await wrapper.get('input[type="search"]').setValue('');
+    await vi.waitFor(() => expect(scanStore.historyRecords.some((record) => record.id === historyId)).toBe(true));
     expect(wrapper.get('.text-6xl').text()).toBe(`${ai}%`);
     expect(wrapper.get('.text-5xl').text()).toBe(`${ai}%`);
     expect(scanStore.result?.summary).toEqual({ ai, human: 100 - ai });
     expect(scanStore.result?.sentences[0].type).toBe(label);
     const legacyRecord = await scanStore.addHistoryRecord({
+      id: 93,
       title: 'Legacy without Evidence', text: '旧记录没有证据快照。'.repeat(30), html: '', functions: ['scan'],
       analysis: { summary: { ai, human: 100 - ai }, sentences: [] },
     });
@@ -968,9 +1171,14 @@ describe('ScanPage panel switching', () => {
     await getScanPageSetupState(wrapper).loadHistoryRecord(historyId);
     await flushPromises();
     expect(wrapper.findAll('[data-testid="evidence-panel"]')).toHaveLength(2);
-    expect(wrapper.findAll('[data-testid="evidence-route"]')).toHaveLength(2);
-    expect(wrapper.findAll('[data-testid="evidence-notice"]')).toHaveLength(4);
+    expect(wrapper.findAll('[data-testid="evidence-route"]')).toHaveLength(1);
+    const restoredDetails = wrapper.findAllComponents(EvidencePanel).find((panel) => panel.props('detailed'))!;
+    expect(restoredDetails.get('[data-testid="evidence-show-all"]').attributes('aria-pressed')).toBe('false');
+    await restoredDetails.get('[data-testid="evidence-show-all"]').trigger('click');
+    expect(wrapper.findAll('[data-testid="evidence-notice"]')).toHaveLength(2);
+    expect(wrapper.findAllComponents(EvidencePanel).find((panel) => panel.props('detailed'))!.props('submittedText')).toBe(submittedText);
     expect(scanStore.result?.evidence).toEqual(evidence);
+    expect(scanStore.result?.evidence?.signals[0].referenceExtent).toEqual([0, 1]);
     expect(scanStore.result?.summary).toEqual({ ai, human: 100 - ai });
     expect(scanStore.result?.sentences[0].type).toBe(label);
     expect(wrapper.get('.text-6xl').text()).toBe(`${ai}%`);

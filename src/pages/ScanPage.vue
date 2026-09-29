@@ -517,6 +517,12 @@
               </div>
 
               <div class="mt-5 min-h-0 flex-1 overflow-y-auto pr-1">
+                <div v-if="scanStore.historyLoadFailed" role="alert" class="mb-3 rounded-xl bg-amber-50 p-3 text-xs text-amber-900">
+                  {{ t('scan.history.loadFailed') }}
+                  <button type="button" class="ml-2 font-semibold underline" :disabled="scanStore.isHistoryLoading" @click="retryHistoryLoad">
+                    {{ t('scan.history.retry') }}
+                  </button>
+                </div>
                 <div v-if="historyRecords.length > 0" class="space-y-2">
                   <div
                     v-for="record in historyRecords"
@@ -611,7 +617,8 @@
                     </div>
                   </div>
                 </div>
-                <div v-else class="rounded-2xl border border-dashed border-neutral-200 bg-neutral-50/80 p-5 text-center">
+                <p v-else-if="scanStore.isHistoryLoading" role="status" class="p-5 text-center text-xs text-neutral-500">{{ t('scan.history.loading') }}</p>
+                <div v-else-if="!scanStore.historyLoadFailed" class="rounded-2xl border border-dashed border-neutral-200 bg-neutral-50/80 p-5 text-center">
                   <p class="text-sm font-semibold text-neutral-600">{{ t('scan.history.emptyTitle') }}</p>
                   <p class="mt-2 text-xs leading-5 text-neutral-500">{{ historySearchQuery ? t('scan.history.emptySearch') : t('scan.history.empty') }}</p>
                 </div>
@@ -774,6 +781,12 @@
                   </div>
 
                   <div v-else class="mt-8 space-y-6">
+                    <p
+                      v-if="resultTextMismatch"
+                      role="status"
+                      data-testid="incomplete-text-notice"
+                      class="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm leading-6 text-amber-800"
+                    >{{ t('scan.results.incompleteTextNotice') }}</p>
                     <div class="relative overflow-hidden rounded-2xl border border-neutral-100 bg-white p-6 shadow-premium ring-1 ring-black/5">
                        <div class="absolute top-0 right-0 -mt-4 -mr-4 h-32 w-32 rounded-full bg-primary-100/50 blur-3xl"></div>
                        <div class="absolute bottom-0 left-0 -mb-4 -ml-4 h-32 w-32 rounded-full bg-primary-200/20 blur-3xl"></div>
@@ -813,7 +826,7 @@
                        </div>
                     </div>
 
-                    <EvidencePanel :evidence="scanStore.result?.evidence" />
+                    <EvidencePanel :evidence="scanStore.result?.evidence" @view-details="openEvidenceDetail" />
 
                     <button
                       type="button"
@@ -1084,7 +1097,20 @@
             </aside>
 
             <main class="min-h-0 px-6 py-6">
-              <EvidencePanel :evidence="scanStore.result?.evidence" class="mb-6" />
+              <p
+                v-if="resultTextMismatch"
+                role="status"
+                data-testid="incomplete-text-notice"
+                class="mb-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm leading-6 text-amber-800"
+              >{{ t('scan.results.incompleteTextNotice') }}</p>
+              <EvidencePanel
+                :evidence="scanStore.result?.evidence"
+                :submitted-text="scanStore.resultInputText"
+                :initial-dimension="evidenceDimension"
+                :initial-show-all="evidenceShowAll"
+                detailed
+                class="mb-6"
+              />
               <div v-if="activeResultTab === 'scan'" class="space-y-4">
                 <p v-if="resultHasMergedBlocks" class="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
                   {{ t('scan.results.mergeNotice') }}
@@ -1217,6 +1243,8 @@ import {
   buildHighlightedPreviewHtml,
   buildSentenceParagraphLinkId,
   escapeHtml,
+  extractTextFromHtml,
+  hasTextMismatch,
   plainTextToHtml,
   sanitizeHtmlForEditor,
 } from '../utils/editorContent';
@@ -1263,6 +1291,9 @@ const renameHistoryDraft = ref('');
 const isHistoryActionPending = ref(false);
 const activeSentenceId = ref('');
 const isResultDetailOpen = ref(false);
+const evidenceDimension = ref('lexical');
+const evidenceShowAll = ref(false);
+watch(() => scanStore.result?.evidence, () => { evidenceShowAll.value = false; });
 const headerVariant = computed(() => (activePanel.value === 'document' ? 'scan' : 'standard'));
 const quotaInfo = ref({ actor_type: '', limit: 0, used_today: 0, remaining: 0 });
 const isQuotaLoading = ref(false);
@@ -1672,14 +1703,15 @@ const collapseSummaryForDisplay = (summary) => {
   };
 };
 
+const editorText = computed(() => scanStore.editorHtml ? extractTextFromHtml(scanStore.editorHtml) : scanStore.inputText);
 const characterUsage = computed(() =>
-  t('scan.editor.wordCount', { current: scanStore.characterCount, limit: scanStore.characterLimit })
+  t('scan.editor.wordCount', { current: editorText.value.length, limit: scanStore.characterLimit })
 );
 
-const characterCount = computed(() => scanStore.characterCount);
+const characterCount = computed(() => editorText.value.length);
 const isOverCharacterLimit = computed(() => characterCount.value > scanStore.characterLimit);
 const overflowCharacterCount = computed(() => Math.max(characterCount.value - scanStore.characterLimit, 0));
-const detectableCharacterCount = computed(() => countVisibleCharacters(scanStore.inputText));
+const detectableCharacterCount = computed(() => countVisibleCharacters(editorText.value));
 const remainingToMinDetect = computed(() => Math.max(minDetectChars - detectableCharacterCount.value, 0));
 const canStartScan = computed(() => detectableCharacterCount.value >= minDetectChars && !isOverCharacterLimit.value);
 const scanReadinessCounter = computed(() =>
@@ -1934,6 +1966,7 @@ const loginPromptRegisterTo = computed(() => ({
 }));
 
 const hasResults = computed(() => Boolean(detectionResults.value));
+const resultTextMismatch = computed(() => hasResults.value && hasTextMismatch(editorText.value, scanStore.inputText));
 
 const buildPreviewHtmlForAnalysis = ({ analysis, editorHtml = '', inputText = '' } = {}) => {
   if (!analysis) return '';
@@ -2195,6 +2228,11 @@ const searchHistoryRecords = async () => {
   );
 };
 
+const retryHistoryLoad = async () => {
+  await refreshQuota();
+  await searchHistoryRecords();
+};
+
 const loadHistoryRecord = async (id) => {
   if (id === null || id === undefined || id === '') return;
   if (isHistoryManaging.value) {
@@ -2202,10 +2240,11 @@ const loadHistoryRecord = async (id) => {
     return;
   }
   let record = historyRecords.value.find((item) => String(item.id) === String(id));
-  if (authStore.isAuthenticated && (!record || !record.analysis)) {
+  const context = capturePageActorContext();
+  if (!record || !record.analysis) {
     record = await scanStore.fetchHistoryRecordDetail(id);
   }
-  if (!record) return;
+  if (!record || !isPageActorContextCurrent(context)) return;
 
   activeHistoryId.value = record.id;
   setActivePanel('document');
@@ -2251,7 +2290,14 @@ const closeResultDetail = () => {
   syncDetailRoute('');
 };
 
+const openEvidenceDetail = (dimension, showAll = false) => {
+  evidenceDimension.value = dimension;
+  evidenceShowAll.value = showAll;
+  openResultDetail();
+};
+
 const syncResultDetailFromRoute = async (value) => {
+  const context = capturePageActorContext();
   const detailId = Array.isArray(value) ? value[0] : value;
   if (!detailId) {
     isResultDetailOpen.value = false;
@@ -2261,6 +2307,7 @@ const syncResultDetailFromRoute = async (value) => {
   if (detailId !== 'current' && String(scanStore.currentResultHistoryId || activeHistoryId.value) !== String(detailId)) {
     await loadHistoryRecord(detailId);
   }
+  if (!isPageActorContextCurrent(context)) return;
   isResultDetailOpen.value = hasResults.value;
 };
 
@@ -2363,6 +2410,7 @@ onMounted(async () => {
   syncEditorFromStore();
   maybeShowOnboarding();
   await refreshQuota();
+  await searchHistoryRecords();
   showQuotaNoticeOnce();
   document.addEventListener('click', onGlobalClick);
   document.addEventListener('keydown', onDetailKeydown);
@@ -2473,11 +2521,8 @@ watch(historySearchQuery, () => {
   }, 250);
 });
 
-watch(activeHistoryId, async (newId) => {
+watch(activeHistoryId, () => {
   clearActiveSentence();
-  if (newId && authStore.isAuthenticated) {
-    await scanStore.fetchHistoryRecordDetail(newId);
-  }
 });
 
 watch(
@@ -2704,6 +2749,12 @@ const handleScan = async () => {
   const initialContext = capturePageActorContext();
   const ensuredGuestToken = await ensureActiveGuestToken();
   if (!isPageActorContextCurrent(initialContext)) return;
+
+  if (scanStore.editorHtml && editorText.value !== scanStore.inputText) {
+    scanStore.setEditorHtml(scanStore.editorHtml);
+    scanStore.resetResult();
+    highlightedPreviewHtml.value = '';
+  }
 
   if (!scanStore.selectedFunctions.length) {
     scanStore.setFunctions(['scan']);

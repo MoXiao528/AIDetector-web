@@ -13,7 +13,7 @@ describe('editorContent utils', () => {
       <p>Last line<br>continues</p>
     `;
 
-    expect(extractTextFromHtml(html)).toBe('Title\nFirst item\nSecond item\nLast line\ncontinues');
+    expect(extractTextFromHtml(html)).toBe('Title\n\nFirst item\n\nSecond item\n\nLast line\ncontinues');
   });
 
   it('buildHighlightedPreviewHtml 在原始结构上做高亮，不打平 DOM', () => {
@@ -60,6 +60,8 @@ describe('editorContent utils', () => {
         </li>
       </ul>
     `;
+
+    expect(extractTextFromHtml(html)).toBe('Parent item\n\nChild item');
 
     const output = buildHighlightedPreviewHtml({
       editorHtml: html,
@@ -152,7 +154,7 @@ describe('editorContent utils', () => {
       'D:\\huggingface\\WUJUNCHAO\\DetectRL-X-XLM-RoBERTa-Detector-All',
       'RepreGuard now returns:',
       '{ "score": 0.09459231793880463, "threshold": 0.0028 }',
-    ].join('\n');
+    ].join('\n\n');
 
     expect(extractTextFromHtml(html)).toBe(expectedText);
 
@@ -180,7 +182,36 @@ describe('editorContent utils', () => {
     const html = '<div>First</div><div>Second</div>';
 
     expect(sanitizeHtmlForEditor(html)).toBe('<div>First</div><div>Second</div>');
-    expect(extractTextFromHtml(html)).toBe('First\nSecond');
+    expect(extractTextFromHtml(html)).toBe('First\n\nSecond');
+  });
+
+  it('提取混合容器中头、中、尾的正文，并让新结果覆盖全部段落', () => {
+    const html = '<div>HEAD<div>07:08</div><div>BODY-A</div><span>MIDDLE</span><div>07:23</div><div>BODY-B</div>TAIL</div>';
+    const paragraphs = ['HEAD', '07:08', 'BODY-A', 'MIDDLE', '07:23', 'BODY-B', 'TAIL'];
+    const text = paragraphs.join('\n\n');
+    expect(extractTextFromHtml(html)).toBe(text);
+    const sentences = paragraphs.map((raw, index) => ({
+      id: `new-${index}`, raw, startParagraph: index + 1, endParagraph: index + 1,
+      type: index === 1 ? 'too_short' : 'human', probability: 0.1,
+    }));
+    const output = buildHighlightedPreviewHtml({ editorHtml: html, fallbackText: text, sentences });
+    const doc = new DOMParser().parseFromString(output, 'text/html');
+    expect(Array.from(doc.querySelectorAll('[data-sentence-id]'), (node) => node.textContent)).toEqual(paragraphs);
+    expect(doc.querySelector('[data-sentence-id="new-1"]').classList.contains('bg-slate-100')).toBe(true);
+  });
+
+  it('旧结果漏送正文时保留完整格式原文，移除旧高亮并禁止按旧段号重新着色', () => {
+    const output = buildHighlightedPreviewHtml({
+      editorHtml: '<div style="font-size: 14px">HEAD<div><span class="highlight-chip bg-rose-100" data-sentence-id="old-1">BODY-A</span></div><strong>MIDDLE</strong><div>BODY-B</div></div>',
+      fallbackText: 'BODY-A\nBODY-B',
+      sentences: [{ id: 'old-1', startParagraph: 1, endParagraph: 1, probability: 1 }],
+    });
+    expect(extractTextFromHtml(output)).toBe('HEAD\n\nBODY-A\n\nMIDDLE\n\nBODY-B');
+    expect(output).toContain('<strong>MIDDLE</strong>');
+    expect(output).toContain('font-size: 14px');
+    expect(output).not.toContain('data-sentence');
+    expect(output).not.toContain('highlight-chip');
+    expect(output).not.toContain('bg-rose-100');
   });
 
   it('strips layout classes but keeps generated highlight classes', () => {
