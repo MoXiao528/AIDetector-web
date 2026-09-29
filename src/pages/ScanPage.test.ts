@@ -407,6 +407,42 @@ describe('ScanPage panel switching', () => {
     }
   });
 
+  it('清空历史等待期间打开另一条旧记录，完成后清掉已删除记录的正文和结果', async () => {
+    route.query = { panel: 'document' };
+    const analysis = {
+      summary: { ai: 64, human: 36 }, sentences: [], translation: '', polish: '',
+      citations: [], ai_likely_count: 0, highlighted_html: '',
+    };
+    vi.mocked(historyApi.getHistoryList).mockResolvedValue(makeHistoryResponse([
+      { id: 921, inputText: 'First old text', analysis },
+      { id: 922, inputText: 'Second old text', analysis },
+    ]));
+    const deferred = createDeferred<historyApi.ClearAllResponse>();
+    vi.mocked(historyApi.clearAllHistory).mockReturnValueOnce(deferred.promise);
+    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true);
+    const wrapper = mountScanPage();
+    try {
+      await flushPromises();
+      const scanStore = useScanStore();
+      const state = getScanPageSetupState(wrapper);
+      await state.loadHistoryRecord(921);
+      const clearing = state.clearAllHistoryRecords();
+      await state.loadHistoryRecord(922);
+      expect(scanStore.inputText).toBe('Second old text');
+      deferred.resolve({ deleted_count: 2 });
+      await clearing;
+
+      expect(scanStore.historyRecords).toEqual([]);
+      expect(state.activeHistoryId).toBe('');
+      expect(scanStore.inputText).toBe('');
+      expect(scanStore.result).toBeNull();
+      expect(wrapper.find('.editor-surface').element.innerHTML).toBe('');
+    } finally {
+      confirmSpy.mockRestore();
+      wrapper.unmount();
+    }
+  });
+
   it('清空历史等待期间启动新检测，旧清空不能清掉新结果', async () => {
     route.query = { panel: 'document' };
     vi.mocked(historyApi.getHistoryList).mockResolvedValue(makeHistoryResponse([

@@ -1306,6 +1306,7 @@ const allowedFunctionKeys = new Set(['scan']);
 let lastComingSoonAt = 0;
 let historySearchTimer = null;
 let historySelectionSequence = 0;
+let activeHistoryLoad = null;
 
 const triggerComingSoon = (label) => {
   const now = Date.now();
@@ -2105,6 +2106,7 @@ const isPanelActive = (panel) => activePanel.value === panel;
 
 const clearCurrentHistorySelection = () => {
   historySelectionSequence += 1;
+  activeHistoryLoad = null;
   activeHistoryId.value = '';
   isResultDetailOpen.value = false;
   if ('detail' in route.query) {
@@ -2224,12 +2226,19 @@ const clearAllHistoryRecords = async () => {
   if (!historyRecords.value.length) return;
   if (typeof window !== 'undefined' && !window.confirm(t('scan.history.clearAllConfirm'))) return;
   const selectionSequence = historySelectionSequence;
+  const clearedIds = new Set(historyRecords.value.map((record) => String(record.id)));
   await runHistoryAction(async () => {
     const context = capturePageActorContext();
     await scanStore.clearAllHistoryRecords();
     if (!isPageActorContextCurrent(context)) return;
     clearHistorySelection();
-    if (selectionSequence === historySelectionSequence) await resetEditor();
+    if (selectionSequence === historySelectionSequence || (
+      activeHistoryLoad
+      && clearedIds.has(String(activeHistoryLoad.id))
+      && scanStore.editorHtml === activeHistoryLoad.editorHtml
+      && !scanStore.currentResultHistoryId
+      && !isScanning.value
+    )) await resetEditor();
   });
 };
 
@@ -2264,6 +2273,7 @@ const loadHistoryRecord = async (id) => {
   activeHistoryId.value = record.id;
   setActivePanel('document');
   scanStore.loadHistoryRecord(record);
+  activeHistoryLoad = { id: record.id, editorHtml: scanStore.editorHtml };
   if (record.analysis) {
     syncHighlightedPreviewHtml(record.analysis);
     editorMode.value = 'preview';
@@ -2381,6 +2391,7 @@ const resetPageSessionState = () => {
   renamingHistoryId.value = '';
   renameHistoryDraft.value = '';
   activeHistoryId.value = '';
+  activeHistoryLoad = null;
   isResultDetailOpen.value = false;
   activeSentenceId.value = '';
   highlightedPreviewHtml.value = '';
@@ -2814,6 +2825,7 @@ const handleScan = async () => {
   if (!authStore.isAuthenticated && !ensuredGuestToken) return;
 
   historySelectionSequence += 1;
+  activeHistoryLoad = null;
   isScanning.value = true;
   scanStore.resetResult();
   highlightedPreviewHtml.value = '';

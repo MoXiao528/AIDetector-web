@@ -192,6 +192,25 @@ describe('EvidencePanel', () => {
     }
   });
 
+  it('词组维度只展示当前可推荐指标的示例，查看全部后恢复隐藏指标示例', async () => {
+    const evidence = makeEvidence();
+    evidence.signals.find((signal) => signal.metric === 'sentence_start_repeat')!.referenceRanges = { human: [0, 1], ai: [0, 1] };
+    evidence.patterns = {
+      descriptive_top_tokens: [],
+      repeated_phrases: [{ count: 2, offsets: [{ start: 0, end: 5 }] }],
+      sentence_start_templates: [{ count: 3, offsets: [{ start: 6, end: 10 }] }],
+    };
+    const wrapper = mountPanel(evidence, { submittedText: 'Alpha Beta', initialDimension: 'phrase_template' });
+    expect(wrapper.findAll('[data-summary-metric]')).toHaveLength(1);
+    expect(wrapper.findAll('[data-testid="evidence-examples"]')).toHaveLength(1);
+    expect(wrapper.get('[data-testid="evidence-examples"]').text()).toContain('Alpha');
+    expect(wrapper.text()).not.toContain('Beta');
+
+    await wrapper.get('[data-testid="evidence-show-all"]').trigger('click');
+    expect(wrapper.findAll('[data-testid="evidence-examples"]')).toHaveLength(2);
+    expect(wrapper.text()).toContain('Beta');
+  });
+
   it('词汇多样性三种参考关系使用局部变化文案，不重新解释 AI 参考方向', async () => {
     const evidence = makeEvidence();
     const wrapper = mountPanel(evidence);

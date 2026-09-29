@@ -227,7 +227,7 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue';
 import { ArrowPathIcon, Bars3BottomLeftIcon, BookOpenIcon, ChevronRightIcon, LinkIcon } from '@heroicons/vue/24/outline';
-import type { EvidenceResult, EvidenceSignal, EvidencePatterns } from '../api/modules/scan';
+import type { EvidenceResult, EvidenceSignal } from '../api/modules/scan';
 import { useI18n } from '../i18n';
 import { comparisonReasons, hasDistinctReference, isHighOverlap, observationRequirement, patternExamples, referenceBand, referenceOverlap, summaryMetrics, summaryState } from '../utils/evidencePresentation';
 
@@ -318,9 +318,12 @@ const bands = computed(() => Object.fromEntries(visibleSummaryMetrics(selectedDi
   return [metric, signal && canCompare(metric) ? referenceBand(signal) : null];
 })));
 const exampleGroups = computed(() => {
-  const keys: (keyof EvidencePatterns)[] = selectedDimension.value === 'phrase_template'
-    ? ['repeated_phrases', 'sentence_start_templates'] : [];
-  return keys.map((key) => ({
+  if (selectedDimension.value !== 'phrase_template') return [];
+  const groups = [
+    ['repeated_phrases', 'repeat_ngram_coverage'],
+    ['sentence_start_templates', 'sentence_start_repeat'],
+  ] as const;
+  return groups.filter(([, metric]) => visibleSignals.value.some((signal) => signal.metric === metric)).map(([key]) => ({
     key,
     items: patternExamples(props.evidence?.patterns?.[key], props.submittedText),
   }));
