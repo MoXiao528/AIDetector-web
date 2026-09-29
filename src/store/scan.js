@@ -394,6 +394,7 @@ export const useScanStore = defineStore('scan', () => {
   const historyLoadFailed = ref(false);
   let historyReadSequence = 0;
   let historyRevision = 0;
+  let historySearchFilter = { q: '', pinned: null };
   /** @type {import('vue').Ref<ScanResult | null>} */
   const result = ref(null);
   const resultInputText = ref('');
@@ -676,6 +677,7 @@ export const useScanStore = defineStore('scan', () => {
     clearDetectionAttempt();
     historyRevision += 1;
     historyReadSequence += 1;
+    historySearchFilter = { q: '', pinned: null };
     isHistoryLoading.value = false;
     historyLoadFailed.value = false;
     historyRecords.value = [];
@@ -768,6 +770,7 @@ export const useScanStore = defineStore('scan', () => {
     if (!id) return null;
     const sessionContext = captureScanSessionContext();
     const revision = historyRevision;
+    const readSequence = historyReadSequence;
     try {
       const record = await getHistoryRecord(id, getHistoryGuestToken());
       if (!isScanSessionContextCurrent(sessionContext) || revision !== historyRevision) return null;
@@ -783,6 +786,8 @@ export const useScanStore = defineStore('scan', () => {
         }
         : null;
       if (!fullRecord) return null;
+
+      if (readSequence !== historyReadSequence) return fullRecord;
 
       const index = historyRecords.value.findIndex((item) => String(item.id) === String(fullRecord.id));
       if (index === -1) {
@@ -894,6 +899,7 @@ export const useScanStore = defineStore('scan', () => {
 
   const clearAllHistoryRecords = async () => {
     const sessionContext = captureScanSessionContext();
+    const revision = historyRevision;
     let response;
     try {
       response = await clearAllHistoryRequest(getHistoryGuestToken());
@@ -903,12 +909,26 @@ export const useScanStore = defineStore('scan', () => {
     }
     if (!isScanSessionContextCurrent(sessionContext)) return { deletedCount: 0 };
     const deletedCount = response?.deleted_count ?? response?.deletedCount ?? historyRecords.value.length;
-    clearHistoryRecords();
+    if (revision === historyRevision) {
+      clearHistoryRecords();
+    } else {
+      const readSequence = historyReadSequence + 1;
+      const records = await syncHistoryFromBackend();
+      if (!isScanSessionContextCurrent(sessionContext) || readSequence !== historyReadSequence || historyLoadFailed.value) {
+        return { deletedCount };
+      }
+      if (currentResultHistoryId.value && !records.some((record) => String(record.id) === String(currentResultHistoryId.value))) {
+        currentResultHistoryId.value = null;
+      }
+      const { q, pinned } = historySearchFilter;
+      if (String(q || '').trim() || pinned !== null) await syncHistoryFromBackend({ q, pinned });
+    }
     return { deletedCount };
   };
 
   const searchHistoryRecords = async ({ q = '', pinned = null } = {}) => {
-    return syncHistoryFromBackend({ q, pinned });
+    historySearchFilter = { q, pinned };
+    return syncHistoryFromBackend(historySearchFilter);
   };
 
   const loadHistoryRecord = (record) => {

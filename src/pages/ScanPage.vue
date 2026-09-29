@@ -2183,12 +2183,13 @@ const deleteSingleHistoryRecord = async (record) => {
   if (!record?.id) return;
   if (typeof window !== 'undefined' && !window.confirm(t('scan.history.deleteConfirm'))) return;
   const deletedActiveRecord = String(record.id) === String(activeHistoryId.value);
+  const selectionSequence = historySelectionSequence;
   await runHistoryAction(async () => {
     const context = capturePageActorContext();
     const deleted = await scanStore.deleteHistoryRecord(record.id);
     if (!deleted || !isPageActorContextCurrent(context)) return;
     selectedHistoryIds.value = selectedHistoryIds.value.filter((item) => String(item) !== String(record.id));
-    if (deletedActiveRecord) {
+    if (deletedActiveRecord && selectionSequence === historySelectionSequence) {
       await resetEditor();
     }
   });
@@ -2216,12 +2217,13 @@ const deleteSelectedHistoryRecords = async () => {
 const clearAllHistoryRecords = async () => {
   if (!historyRecords.value.length) return;
   if (typeof window !== 'undefined' && !window.confirm(t('scan.history.clearAllConfirm'))) return;
+  const selectionSequence = historySelectionSequence;
   await runHistoryAction(async () => {
     const context = capturePageActorContext();
     await scanStore.clearAllHistoryRecords();
     if (!isPageActorContextCurrent(context)) return;
     clearHistorySelection();
-    await resetEditor();
+    if (selectionSequence === historySelectionSequence) await resetEditor();
   });
 };
 
@@ -2314,9 +2316,11 @@ const syncResultDetailFromRoute = async (value) => {
   }
   setActivePanel('document');
   if (detailId !== 'current' && String(scanStore.currentResultHistoryId || activeHistoryId.value) !== String(detailId)) {
+    isResultDetailOpen.value = false;
     await loadHistoryRecord(detailId);
   }
   if (!isPageActorContextCurrent(context) || String(route.query.detail || '') !== String(detailId)) return;
+  if (detailId !== 'current' && String(scanStore.currentResultHistoryId || activeHistoryId.value) !== String(detailId)) return;
   isResultDetailOpen.value = hasResults.value;
 };
 
@@ -2521,6 +2525,7 @@ watch(activePanel, async (panel) => {
 });
 
 watch(historySearchQuery, () => {
+  historySelectionSequence += 1;
   if (historySearchTimer) {
     clearTimeout(historySearchTimer);
   }
@@ -2802,6 +2807,7 @@ const handleScan = async () => {
   }
   if (!authStore.isAuthenticated && !ensuredGuestToken) return;
 
+  historySelectionSequence += 1;
   isScanning.value = true;
   scanStore.resetResult();
   highlightedPreviewHtml.value = '';

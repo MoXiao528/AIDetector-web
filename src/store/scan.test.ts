@@ -1212,6 +1212,55 @@ describe('scan store guest history boundary', () => {
     expectNoHistoryStorage();
   });
 
+  it.each(['new-record', 'other-record', 'empty'])('清空请求期间新检测完成后，以服务端最终 %s 列表为准', async (outcome) => {
+    const scanStore = useScanStore();
+    const oldRecord = makeBackendRecord(makeLocalRecord({ inputText: 'old result' }), 813);
+    const newRecord = makeBackendRecord(makeLocalRecord({ inputText: 'new result' }), 814);
+    const otherRecord = makeBackendRecord(makeLocalRecord({ inputText: 'other result' }), 817);
+    historyMocks.getHistoryList.mockResolvedValueOnce({ items: [oldRecord] });
+    await scanStore.syncHistoryFromBackend();
+
+    const clear = createDeferred<{ deleted_count: number }>();
+    historyMocks.clearAllHistory.mockReturnValueOnce(clear.promise);
+    const clearing = scanStore.clearAllHistoryRecords();
+    scanApiMocks.detectText.mockResolvedValueOnce({ historyId: newRecord.id, result: makeAnalysis() });
+    await scanStore.analyzeText('new result', { guestToken: 'guest:sid-a:token' });
+    expect(scanStore.currentResultHistoryId).toBe(newRecord.id);
+
+    const serverRecords = outcome === 'new-record' ? [newRecord] : outcome === 'other-record' ? [otherRecord] : [];
+    historyMocks.getHistoryList.mockResolvedValueOnce({ items: serverRecords });
+    clear.resolve({ deleted_count: 1 });
+    await clearing;
+
+    expect(scanStore.historyRecords.map((record) => record.id)).toEqual(serverRecords.map((record) => record.id));
+    expect(scanStore.currentResultHistoryId).toBe(outcome === 'new-record' ? newRecord.id : null);
+    expect(scanStore.result?.summary).toEqual({ ai: 12, human: 88 });
+  });
+
+  it('清空与新检测并发重查后仍保留当前搜索筛选', async () => {
+    const scanStore = useScanStore();
+    const oldRecord = makeBackendRecord(makeLocalRecord({ inputText: 'old result' }), 815);
+    const newRecord = makeBackendRecord(makeLocalRecord({ inputText: 'new result' }), 816);
+    historyMocks.getHistoryList.mockResolvedValueOnce({ items: [oldRecord] });
+    await scanStore.searchHistoryRecords({ q: 'old' });
+
+    const clear = createDeferred<{ deleted_count: number }>();
+    historyMocks.clearAllHistory.mockReturnValueOnce(clear.promise);
+    const clearing = scanStore.clearAllHistoryRecords();
+    scanApiMocks.detectText.mockResolvedValueOnce({ historyId: newRecord.id, result: makeAnalysis() });
+    await scanStore.analyzeText('new result', { guestToken: 'guest:sid-a:token' });
+
+    historyMocks.getHistoryList
+      .mockResolvedValueOnce({ items: [newRecord] })
+      .mockResolvedValueOnce({ items: [] });
+    clear.resolve({ deleted_count: 1 });
+    await clearing;
+
+    expect(historyMocks.getHistoryList.mock.calls.map(([params]) => params.q)).toEqual(['old', undefined, 'old']);
+    expect(scanStore.historyRecords).toEqual([]);
+    expect(scanStore.currentResultHistoryId).toBe(newRecord.id);
+  });
+
   it.each(['success', 'failure'])('游客列表搜索反序返回时只采纳最后查询，旧 %s 不覆盖新状态', async (outcome) => {
     const scanStore = useScanStore();
     const first = createDeferred<{ items: ReturnType<typeof makeBackendRecord>[] }>();
@@ -1225,6 +1274,24 @@ describe('scan store guest history boundary', () => {
     expect(scanStore.historyRecords.map((record) => record.id)).toEqual([821]);
     expect(scanStore.historyLoadFailed).toBe(false);
     expect(scanStore.isHistoryLoading).toBe(false);
+  });
+
+  it('旧详情请求在新搜索完成后仍返回详情，但不插入新搜索列表', async () => {
+    const scanStore = useScanStore();
+    const first = makeBackendRecord(makeLocalRecord({ title: 'First', inputText: 'first text' }), 823);
+    const second = makeBackendRecord(makeLocalRecord({ title: 'Second', inputText: 'second text' }), 824);
+    historyMocks.getHistoryList.mockResolvedValueOnce({ items: [first] });
+    await scanStore.searchHistoryRecords({ q: 'first' });
+
+    const detail = createDeferred<ReturnType<typeof makeBackendRecord>>();
+    historyMocks.getHistoryRecord.mockReturnValueOnce(detail.promise);
+    const pendingDetail = scanStore.fetchHistoryRecordDetail(first.id);
+    historyMocks.getHistoryList.mockResolvedValueOnce({ items: [second] });
+    await scanStore.searchHistoryRecords({ q: 'second' });
+
+    detail.resolve(first);
+    expect(await pendingDetail).toMatchObject({ id: first.id, inputText: 'first text' });
+    expect(scanStore.historyRecords.map((record) => record.id)).toEqual([second.id]);
   });
 
   it('首次历史列表加载期间完成检测，会重查并同时显示旧记录与新记录', async () => {

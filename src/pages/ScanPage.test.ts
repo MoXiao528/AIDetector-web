@@ -146,6 +146,7 @@ type ScanPageSetupState = {
   selectedHistoryIds: Array<string | number>;
   clearAllHistoryRecords: () => Promise<void>;
   closeResultDetail: () => void;
+  deleteSingleHistoryRecord: (record: { id: number }) => Promise<void>;
   deleteSelectedHistoryRecords: () => Promise<void>;
   handleScan: () => Promise<void>;
   loadHistoryRecord: (id: string | number) => Promise<void>;
@@ -344,6 +345,101 @@ describe('ScanPage panel switching', () => {
     }
   });
 
+  it('单条删除等待期间切到其他历史，旧删除不能清空新选择', async () => {
+    route.query = { panel: 'document' };
+    const analysis = {
+      summary: { ai: 64, human: 36 }, sentences: [], translation: '', polish: '',
+      citations: [], ai_likely_count: 0, highlighted_html: '',
+    };
+    vi.mocked(historyApi.getHistoryList).mockResolvedValue(makeHistoryResponse([
+      { id: 913, inputText: 'Old active text', analysis },
+      { id: 914, inputText: 'New active text', analysis },
+    ]));
+    const deferred = createDeferred<void>();
+    vi.mocked(historyApi.deleteHistoryRecord).mockReturnValueOnce(deferred.promise);
+    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true);
+    const wrapper = mountScanPage();
+    try {
+      await flushPromises();
+      const scanStore = useScanStore();
+      const state = getScanPageSetupState(wrapper);
+      await state.loadHistoryRecord(913);
+      const deleting = state.deleteSingleHistoryRecord({ id: 913 });
+      await state.loadHistoryRecord(914);
+      deferred.resolve();
+      await deleting;
+
+      expect(String(state.activeHistoryId)).toBe('914');
+      expect(scanStore.inputText).toBe('New active text');
+      expect(scanStore.result?.summary).toEqual(analysis.summary);
+    } finally {
+      confirmSpy.mockRestore();
+      wrapper.unmount();
+    }
+  });
+
+  it('清空历史等待期间输入新正文，旧清空不能清掉新草稿', async () => {
+    route.query = { panel: 'document' };
+    vi.mocked(historyApi.getHistoryList).mockResolvedValue(makeHistoryResponse([
+      { id: 915, inputText: 'Old text', analysis: null },
+    ]));
+    const deferred = createDeferred<historyApi.ClearAllResponse>();
+    vi.mocked(historyApi.clearAllHistory).mockReturnValueOnce(deferred.promise);
+    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true);
+    const wrapper = mountScanPage();
+    try {
+      await flushPromises();
+      const scanStore = useScanStore();
+      const state = getScanPageSetupState(wrapper);
+      const clearing = state.clearAllHistoryRecords();
+      const editor = wrapper.find('.editor-surface');
+      editor.element.innerHTML = '<p>New draft text</p>';
+      await editor.trigger('input');
+      deferred.resolve({ deleted_count: 1 });
+      await clearing;
+
+      expect(scanStore.inputText).toBe('New draft text');
+      expect(scanStore.editorHtml).toBe('<p>New draft text</p>');
+      expect(scanStore.historyRecords).toEqual([]);
+    } finally {
+      confirmSpy.mockRestore();
+      wrapper.unmount();
+    }
+  });
+
+  it('清空历史等待期间启动新检测，旧清空不能清掉新结果', async () => {
+    route.query = { panel: 'document' };
+    vi.mocked(historyApi.getHistoryList).mockResolvedValue(makeHistoryResponse([
+      { id: 919, inputText: 'Old text', analysis: null },
+    ]));
+    vi.mocked(scanApi.detectText).mockResolvedValue({
+      historyId: 920,
+      result: { summary: { ai: 71, human: 29 }, sentences: [] },
+    });
+    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true);
+    const wrapper = mountScanPage();
+    try {
+      await flushPromises();
+      const scanStore = useScanStore();
+      const state = getScanPageSetupState(wrapper);
+      const newText = 'New detection text. '.repeat(12);
+      scanStore.setText(newText);
+      const deferred = createDeferred<{ deletedCount: number }>();
+      vi.spyOn(scanStore, 'clearAllHistoryRecords').mockReturnValueOnce(deferred.promise);
+      const clearing = state.clearAllHistoryRecords();
+      await state.handleScan();
+      deferred.resolve({ deletedCount: 1 });
+      await clearing;
+
+      expect(scanApi.detectText).toHaveBeenCalledTimes(1);
+      expect(scanStore.inputText).toBe(newText.trim());
+      expect(scanStore.result?.summary).toEqual({ ai: 71, human: 29 });
+    } finally {
+      confirmSpy.mockRestore();
+      wrapper.unmount();
+    }
+  });
+
   it('快速打开两条游客历史时，较慢的旧详情不能覆盖最后选择', async () => {
     route.query = { panel: 'document' };
     const list = makeHistoryResponse([
@@ -387,6 +483,58 @@ describe('ScanPage panel switching', () => {
       expect(scanStore.result?.summary).toEqual({ ai: 66, human: 34 });
       expect(state.editorMode).toBe('preview');
       expect(wrapper.find('.editor-surface').element.innerHTML).toContain('Second history text');
+    } finally {
+      wrapper.unmount();
+    }
+  });
+
+  it('修改历史搜索词后，旧详情不能覆盖当前正文', async () => {
+    route.query = { panel: 'document' };
+    const list = makeHistoryResponse([{ id: 916, inputText: 'Old matching text', analysis: null }]);
+    vi.mocked(historyApi.getHistoryList).mockResolvedValue(list);
+    const deferred = createDeferred<historyApi.HistoryRecord>();
+    vi.mocked(historyApi.getHistoryRecord).mockReturnValueOnce(deferred.promise);
+    const wrapper = mountScanPage();
+    try {
+      await flushPromises();
+      const scanStore = useScanStore();
+      const state = getScanPageSetupState(wrapper);
+      const loading = state.loadHistoryRecord(916);
+      state.historySearchQuery = 'other';
+      await nextTick();
+      deferred.resolve({ ...list.items[0], analysis: null });
+      await loading;
+
+      expect(scanStore.inputText).toBe('');
+      expect(scanStore.result).toBeNull();
+      expect(state.activeHistoryId).toBe('');
+    } finally {
+      wrapper.unmount();
+    }
+  });
+
+  it('目标 URL 详情读取失败时，不把之前的检测结果错当成目标结果弹出', async () => {
+    route.query = { panel: 'document' };
+    const analysis = {
+      summary: { ai: 64, human: 36 }, sentences: [], translation: '', polish: '',
+      citations: [], ai_likely_count: 0, highlighted_html: '',
+    };
+    vi.mocked(historyApi.getHistoryList).mockResolvedValue(makeHistoryResponse([
+      { id: 917, inputText: 'Existing result text', analysis },
+    ]));
+    const wrapper = mountScanPage();
+    try {
+      await flushPromises();
+      const scanStore = useScanStore();
+      const state = getScanPageSetupState(wrapper);
+      await state.loadHistoryRecord(917);
+      vi.spyOn(scanStore, 'fetchHistoryRecordDetail').mockResolvedValueOnce(null);
+      route.query = { panel: 'document', detail: '918' };
+      await flushPromises();
+
+      expect(scanStore.result?.summary).toEqual(analysis.summary);
+      expect(state.isResultDetailOpen).toBe(false);
+      expect(scanStore.inputText).toBe('Existing result text');
     } finally {
       wrapper.unmount();
     }
