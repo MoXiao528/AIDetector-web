@@ -1,4 +1,4 @@
-import { apiClient } from '../client';
+import { apiClient, type ApiRequestOptions } from '../client';
 import type { EvidenceResult } from './scan';
 
 // ==================== 类型定义 ====================
@@ -37,7 +37,7 @@ export interface Analysis {
 
 export interface HistoryRecord {
     id: number;
-    user_id: number;
+    user_id: number | null;
     title: string;
     created_at: string;
     functions: string[];
@@ -95,10 +95,15 @@ export interface ClaimGuestHistoryResponse {
 
 // ==================== API 调用 ====================
 
+const historyPath = (guestToken = '') => guestToken ? '/api/v1/guest/history' : '/api/v1/history';
+const historyOptions = (guestToken = ''): ApiRequestOptions | undefined => guestToken
+    ? { auth: false, headers: { Authorization: `Bearer ${guestToken}` } }
+    : undefined;
+
 /**
  * 获取历史记录列表（分页）
  */
-export const getHistoryList = async (params?: HistoryListParams): Promise<HistoryListResponse> => {
+export const getHistoryList = async (params?: HistoryListParams, guestToken = ''): Promise<HistoryListResponse> => {
     const queryParams = new URLSearchParams();
 
     if (params?.page) queryParams.set('page', String(params.page));
@@ -109,16 +114,16 @@ export const getHistoryList = async (params?: HistoryListParams): Promise<Histor
     if (typeof params?.pinned === 'boolean') queryParams.set('pinned', String(params.pinned));
 
     const query = queryParams.toString();
-    const path = query ? `/api/v1/history?${query}` : '/api/v1/history';
+    const path = `${historyPath(guestToken)}${query ? `?${query}` : ''}`;
 
-    return apiClient.get<HistoryListResponse>(path);
+    return apiClient.get<HistoryListResponse>(path, historyOptions(guestToken));
 };
 
 /**
  * 获取单条历史记录
  */
-export const getHistoryRecord = async (id: number): Promise<HistoryRecord> => {
-    return apiClient.get<HistoryRecord>(`/api/v1/history/${id}`);
+export const getHistoryRecord = async (id: number, guestToken = ''): Promise<HistoryRecord> => {
+    return apiClient.get<HistoryRecord>(`${historyPath(guestToken)}/${id}`, historyOptions(guestToken));
 };
 
 /**
@@ -129,31 +134,31 @@ export const createHistoryRecord = async (data: CreateHistoryData): Promise<Hist
 };
 
 /**
- * 更新历史记录（仅 title）
+ * 更新历史记录的标题或置顶状态
  */
-export const updateHistoryRecord = async (id: number, data: UpdateHistoryData): Promise<HistoryRecord> => {
-    return apiClient.patch<HistoryRecord>(`/api/v1/history/${id}`, data);
+export const updateHistoryRecord = async (id: number, data: UpdateHistoryData, guestToken = ''): Promise<HistoryRecord> => {
+    return apiClient.patch<HistoryRecord>(`${historyPath(guestToken)}/${id}`, data, historyOptions(guestToken));
 };
 
 /**
  * 删除单条历史记录
  */
-export const deleteHistoryRecord = async (id: number): Promise<void> => {
-    return apiClient.delete<void>(`/api/v1/history/${id}`);
+export const deleteHistoryRecord = async (id: number, guestToken = ''): Promise<void> => {
+    return apiClient.delete<void>(`${historyPath(guestToken)}/${id}`, historyOptions(guestToken));
 };
 
 /**
  * 批量删除历史记录
  */
-export const batchDeleteHistoryRecords = async (ids: number[]): Promise<BatchDeleteResponse> => {
-    return apiClient.post<BatchDeleteResponse>('/api/v1/history/batch-delete', { ids });
+export const batchDeleteHistoryRecords = async (ids: number[], guestToken = ''): Promise<BatchDeleteResponse> => {
+    return apiClient.post<BatchDeleteResponse>(`${historyPath(guestToken)}/batch-delete`, { ids }, historyOptions(guestToken));
 };
 
 /**
  * 清空所有历史记录
  */
-export const clearAllHistory = async (): Promise<ClearAllResponse> => {
-    return apiClient.delete<ClearAllResponse>('/api/v1/history');
+export const clearAllHistory = async (guestToken = ''): Promise<ClearAllResponse> => {
+    return apiClient.delete<ClearAllResponse>(historyPath(guestToken), historyOptions(guestToken));
 };
 
 export const claimGuestHistory = async (guestToken: string): Promise<ClaimGuestHistoryResponse> => {

@@ -394,12 +394,9 @@ const openFeedback = () => {
 
 const openDashboard = () => {
   const target = authStore.isSysAdmin
-    ? router.resolve({ name: 'admin-overview' })
-    : router.resolve({ name: 'dashboard', query: { panel: 'home' } });
-  const url = target.href;
-  if (typeof window !== 'undefined') {
-    window.open(url, '_blank', 'noopener');
-  }
+    ? { name: 'admin-overview' }
+    : { name: 'dashboard', query: { panel: 'home' } };
+  router.push(target);
 };
 
 const openDashboardFromMobile = () => {

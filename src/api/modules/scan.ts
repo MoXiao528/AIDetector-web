@@ -24,6 +24,7 @@ export type EvidenceReason =
   | 'reference_fallback_language'
   | 'missing_observations'
   | 'reference_metrics_unavailable'
+  | 'reference_validation_failed'
   | 'no_comparable_metrics'
   | 'no_valid_source_groups'
   | 'fewer_than_10_source_groups'
@@ -57,7 +58,7 @@ export interface EvidenceRoute {
   language: 'ar' | 'de' | 'en' | 'es' | 'fr' | 'pt' | 'ru' | 'zh';
   domain: 'academic' | 'news' | 'novel' | 'seo' | 'webtext' | 'wiki';
   confidence: EvidenceConfidence;
-  lengthBucket: 'below_minimum' | 'short' | 'medium' | 'long' | 'above_long';
+  lengthBucket: 'below_minimum' | 'brief_200_399' | 'brief_400_599' | 'short' | 'medium' | 'long' | 'above_long';
   fallbackLevel: 'exact' | 'language_length' | 'language' | 'unavailable';
 }
 
@@ -79,6 +80,7 @@ export interface EvidenceSignal {
   humanPercentile: number | null;
   aiPercentile: number | null;
   referenceRanges: EvidenceRanges | null;
+  referenceExtent?: [number, number];
   relation: EvidenceRelation | null;
   notice: 'reference_mismatch' | 'outside_both' | null;
   // Paired, jointly valid source groups for this metric; do not sum across metrics.

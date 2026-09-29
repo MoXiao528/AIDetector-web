@@ -338,6 +338,8 @@ const normalizeHistoryRecordPayload = (record) => {
   const recordId = pickFirst(record.id, record.historyId, record.history_id);
   /** @type {EvidenceResult | undefined} */
   const evidence = record.evidence ?? undefined;
+  const rawAnalysis = pickFirst(record.analysis, record.result);
+  const hasExplicitNullAnalysis = rawAnalysis === undefined && (record.analysis === null || record.result === null);
 
   return {
     id: recordId,
@@ -350,7 +352,7 @@ const normalizeHistoryRecordPayload = (record) => {
     isPinned: Boolean(pickFirst(record.isPinned, record.is_pinned, false)),
     // Keep an explicit missing value so a fresh public projection clears old Evidence on merge.
     evidence,
-    analysis: normalizeAnalysisPayload(pickFirst(record.analysis, record.result), {
+    analysis: hasExplicitNullAnalysis ? null : normalizeAnalysisPayload(rawAnalysis, {
       fallbackText: inputTextValue,
       idPrefix: `history-${recordId || 'record'}`,
       fallbackScore: pickFirst(record.score, record.raw_score),
@@ -373,21 +375,6 @@ const sortHistoryRecords = (records = []) =>
     return getHistoryTimestamp(right) - getHistoryTimestamp(left);
   });
 
-const matchesHistorySearch = (record, query = '') => {
-  const keyword = String(query || '').trim().toLowerCase();
-  if (!keyword) return true;
-  const haystack = [
-    record?.title,
-    record?.inputText,
-    record?.input_text,
-    record?.analysis?.summary ? JSON.stringify(record.analysis.summary) : '',
-  ]
-    .filter(Boolean)
-    .join(' ')
-    .toLowerCase();
-  return haystack.includes(keyword);
-};
-
 export const useScanStore = defineStore('scan', () => {
   const authStore = useAuthStore();
   const examplesLocale = ref(getInitialExamplesLocale());
@@ -403,10 +390,15 @@ export const useScanStore = defineStore('scan', () => {
   const lastUploadedFileName = ref('');
   const selectedFunctions = ref(['scan']);
   const historyRecords = ref([...seedHistoryRecords]);
-  let guestHistoryRecords = [...seedHistoryRecords];
-  let guestHistoryRecordSequence = 0;
+  const isHistoryLoading = ref(false);
+  const historyLoadFailed = ref(false);
+  let historyReadSequence = 0;
+  let historyRevision = 0;
+  let historySearchFilter = { q: '', pinned: null };
   /** @type {import('vue').Ref<ScanResult | null>} */
   const result = ref(null);
+  const resultInputText = ref('');
+  const resultInputHtml = ref('');
   const currentResultHistoryId = ref(null);
   const analysisError = ref({ type: '', message: '' });
   const sessionGeneration = ref(0);
@@ -433,6 +425,17 @@ export const useScanStore = defineStore('scan', () => {
       context.authenticated === currentContext.authenticated &&
       context.userId === currentContext.userId
     );
+  };
+
+  const getHistoryGuestToken = () => {
+    if (authStore.isAuthenticated) return '';
+    const token = getStoredGuestToken();
+    if (!token || !activeGuestSid || getGuestSessionId(token) !== activeGuestSid) {
+      throw Object.assign(new Error('Guest session token is required'), {
+        status: 401, code: 'GUEST_TOKEN_REQUIRED',
+      });
+    }
+    return token;
   };
 
   const getDetectionIdempotencyKey = (actorGeneration, payloadFingerprint) => {
@@ -661,6 +664,8 @@ export const useScanStore = defineStore('scan', () => {
 
   const resetResult = () => {
     result.value = null;
+    resultInputText.value = '';
+    resultInputHtml.value = '';
     currentResultHistoryId.value = null;
     analysisError.value = null;
   };
@@ -672,7 +677,11 @@ export const useScanStore = defineStore('scan', () => {
   const clearScanSessionData = () => {
     sessionGeneration.value += 1;
     clearDetectionAttempt();
-    guestHistoryRecords = [];
+    historyRevision += 1;
+    historyReadSequence += 1;
+    historySearchFilter = { q: '', pinned: null };
+    isHistoryLoading.value = false;
+    historyLoadFailed.value = false;
     historyRecords.value = [];
     activeGuestSid = '';
     isUploading.value = false;
@@ -704,60 +713,69 @@ export const useScanStore = defineStore('scan', () => {
       syncHistoryFromBackend();
       return;
     }
-    historyRecords.value = [...guestHistoryRecords];
   };
 
   const syncHistoryFromBackend = async ({ q = '', pinned = null, strict = false } = {}) => {
     const sessionContext = captureScanSessionContext();
-    if (!authStore.isAuthenticated) {
-      purgePersistedGuestHistory();
-      const localRecords = guestHistoryRecords
-        .filter((record) => matchesHistorySearch(record, q))
-        .filter((record) => (typeof pinned === 'boolean' ? Boolean(record.isPinned) === pinned : true));
-      historyRecords.value = sortHistoryRecords(localRecords);
-      return historyRecords.value;
-    }
-
+    const sequence = ++historyReadSequence;
+    const isCurrent = () => isScanSessionContextCurrent(sessionContext)
+      && sequence === historyReadSequence;
+    purgePersistedGuestHistory();
+    isHistoryLoading.value = true;
+    historyLoadFailed.value = false;
     try {
-      const response = await getHistoryList({
-        page: 1,
-        per_page: 100,
-        sort: 'created_at',
-        order: 'desc',
-        q: String(q || '').trim() || undefined,
-        pinned,
-      });
-      if (!isScanSessionContextCurrent(sessionContext)) return [];
-      const items = response?.items || response?.Items || [];
-      const backendRecords = items
-        .map((item) => {
-          const normalized = normalizeHistoryRecordPayload(item);
-          if (!normalized) return null;
-          return {
-            ...normalized,
-            title: buildHistoryRecordTitle({
-              title: normalized.title,
-              exampleKey: normalized.exampleKey,
-            }),
-          };
-        })
-        .filter((item) => isDisplayableHistoryRecord(item));
+      while (isCurrent()) {
+        const revision = historyRevision;
+        try {
+          const response = await getHistoryList({
+            page: 1,
+            per_page: 100,
+            sort: 'created_at',
+            order: 'desc',
+            q: String(q || '').trim() || undefined,
+            pinned,
+          }, getHistoryGuestToken());
+          if (!isCurrent()) return [];
+          if (revision !== historyRevision) continue;
+          const items = response?.items || response?.Items || [];
+          const backendRecords = items
+            .map((item) => {
+              const normalized = normalizeHistoryRecordPayload(item);
+              if (!normalized) return null;
+              return {
+                ...normalized,
+                title: buildHistoryRecordTitle({
+                  title: normalized.title,
+                  exampleKey: normalized.exampleKey,
+                }),
+              };
+            })
+            .filter((item) => isDisplayableHistoryRecord(item));
 
-      historyRecords.value = sortHistoryRecords(backendRecords);
-      return historyRecords.value;
-    } catch (error) {
-      if (!isScanSessionContextCurrent(sessionContext)) return [];
-      if (strict) throw error;
+          historyRecords.value = sortHistoryRecords(backendRecords);
+          return historyRecords.value;
+        } catch (error) {
+          if (!isCurrent()) return [];
+          if (revision !== historyRevision) continue;
+          historyLoadFailed.value = true;
+          if (strict) throw error;
+          return [];
+        }
+      }
       return [];
+    } finally {
+      if (sequence === historyReadSequence) isHistoryLoading.value = false;
     }
   };
 
   const fetchHistoryRecordDetail = async (id) => {
-    if (!id || !authStore.isAuthenticated) return null;
+    if (!id) return null;
     const sessionContext = captureScanSessionContext();
+    const revision = historyRevision;
+    const readSequence = historyReadSequence;
     try {
-      const record = await getHistoryRecord(id);
-      if (!isScanSessionContextCurrent(sessionContext)) return null;
+      const record = await getHistoryRecord(id, getHistoryGuestToken());
+      if (!isScanSessionContextCurrent(sessionContext) || revision !== historyRevision) return null;
       if (!record) return;
       const normalized = normalizeHistoryRecordPayload(record);
       const fullRecord = normalized
@@ -771,8 +789,11 @@ export const useScanStore = defineStore('scan', () => {
         : null;
       if (!fullRecord) return null;
 
+      if (readSequence !== historyReadSequence) return fullRecord;
+
       const index = historyRecords.value.findIndex((item) => String(item.id) === String(fullRecord.id));
       if (index === -1) {
+        if (String(historySearchFilter.q || '').trim() || historySearchFilter.pinned !== null) return fullRecord;
         historyRecords.value = sortHistoryRecords([fullRecord, ...historyRecords.value]);
       } else {
         historyRecords.value[index] = fullRecord;
@@ -788,6 +809,7 @@ export const useScanStore = defineStore('scan', () => {
   const upsertHistoryRecord = (record) => {
     const normalized = normalizeHistoryRecordPayload(record);
     if (!normalized || !isDisplayableHistoryRecord(normalized)) return null;
+    historyRevision += 1;
 
     const index = historyRecords.value.findIndex((item) => String(item.id) === String(normalized.id));
     if (index === -1) {
@@ -802,77 +824,45 @@ export const useScanStore = defineStore('scan', () => {
     return normalized;
   };
 
-  const updateLocalHistoryRecord = (id, updater) => {
-    const sourceRecords = authStore.isAuthenticated ? [...historyRecords.value] : [...guestHistoryRecords];
-    const sourceIndex = sourceRecords.findIndex((item) => String(item.id) === String(id));
-    if (sourceIndex === -1) return null;
-    const current = sourceRecords[sourceIndex];
-    const next = normalizeHistoryRecordPayload({
-      ...current,
-      ...(typeof updater === 'function' ? updater(current) : updater),
-    });
-    if (!next || !isDisplayableHistoryRecord(next)) return null;
-
-    sourceRecords[sourceIndex] = next;
-    const sortedSource = sortHistoryRecords(sourceRecords);
-    if (!authStore.isAuthenticated) {
-      guestHistoryRecords = sortedSource;
+  const saveHistoryRecord = async (id, changes) => {
+    const sessionContext = captureScanSessionContext();
+    try {
+      const savedRecord = await updateHistoryRecord(id, changes, getHistoryGuestToken());
+      if (!isScanSessionContextCurrent(sessionContext)) return null;
+      const { q, pinned } = historySearchFilter;
+      if (String(q || '').trim() || pinned !== null) {
+        const normalized = normalizeHistoryRecordPayload(savedRecord);
+        if (!normalized || !isDisplayableHistoryRecord(normalized)) return null;
+        historyRevision += 1;
+        await syncHistoryFromBackend({ q, pinned });
+        if (!isScanSessionContextCurrent(sessionContext)) return null;
+        return normalized;
+      }
+      return upsertHistoryRecord(savedRecord);
+    } catch (error) {
+      if (!isScanSessionContextCurrent(sessionContext)) return null;
+      throw error;
     }
-
-    const index = historyRecords.value.findIndex((item) => String(item.id) === String(id));
-    if (index === -1) return null;
-    historyRecords.value[index] = next;
-    historyRecords.value = sortHistoryRecords(historyRecords.value);
-    return next;
   };
 
   const renameHistoryRecord = async (id, title) => {
     const nextTitle = String(title || '').trim();
     if (!id || !nextTitle) return null;
-    const sessionContext = captureScanSessionContext();
-
-    if (authStore.isAuthenticated) {
-      let savedRecord;
-      try {
-        savedRecord = await updateHistoryRecord(id, { title: nextTitle });
-      } catch (error) {
-        if (!isScanSessionContextCurrent(sessionContext)) return null;
-        throw error;
-      }
-      if (!isScanSessionContextCurrent(sessionContext)) return null;
-      return upsertHistoryRecord(savedRecord);
-    }
-
-    return updateLocalHistoryRecord(id, { title: nextTitle });
+    return saveHistoryRecord(id, { title: nextTitle });
   };
 
   const togglePinnedHistoryRecord = async (id, nextPinned = null) => {
     if (!id) return null;
-    const sessionContext = captureScanSessionContext();
     const current = historyRecords.value.find((item) => String(item.id) === String(id));
     const resolvedPinned = typeof nextPinned === 'boolean' ? nextPinned : !current?.isPinned;
 
-    if (authStore.isAuthenticated) {
-      let savedRecord;
-      try {
-        savedRecord = await updateHistoryRecord(id, { is_pinned: resolvedPinned });
-      } catch (error) {
-        if (!isScanSessionContextCurrent(sessionContext)) return null;
-        throw error;
-      }
-      if (!isScanSessionContextCurrent(sessionContext)) return null;
-      return upsertHistoryRecord(savedRecord);
-    }
-
-    return updateLocalHistoryRecord(id, { isPinned: resolvedPinned });
+    return saveHistoryRecord(id, { is_pinned: resolvedPinned });
   };
 
   const removeHistoryIdsFromState = (ids = []) => {
     const idSet = new Set(ids.map((item) => String(item)));
     if (!idSet.size) return 0;
-    if (!authStore.isAuthenticated) {
-      guestHistoryRecords = guestHistoryRecords.filter((item) => !idSet.has(String(item.id)));
-    }
+    historyRevision += 1;
     const beforeCount = historyRecords.value.length;
     historyRecords.value = historyRecords.value.filter((item) => !idSet.has(String(item.id)));
     if (idSet.has(String(currentResultHistoryId.value))) {
@@ -884,15 +874,13 @@ export const useScanStore = defineStore('scan', () => {
   const deleteHistoryRecord = async (id) => {
     if (!id) return false;
     const sessionContext = captureScanSessionContext();
-    if (authStore.isAuthenticated) {
-      try {
-        await deleteHistoryRecordRequest(id);
-      } catch (error) {
-        if (!isScanSessionContextCurrent(sessionContext)) return false;
-        throw error;
-      }
+    try {
+      await deleteHistoryRecordRequest(id, getHistoryGuestToken());
+    } catch (error) {
       if (!isScanSessionContextCurrent(sessionContext)) return false;
+      throw error;
     }
+    if (!isScanSessionContextCurrent(sessionContext)) return false;
     removeHistoryIdsFromState([id]);
     return true;
   };
@@ -904,51 +892,55 @@ export const useScanStore = defineStore('scan', () => {
     }
     const sessionContext = captureScanSessionContext();
 
-    if (authStore.isAuthenticated) {
-      let response;
-      try {
-        response = await batchDeleteHistoryRecordsRequest(normalizedIds);
-      } catch (error) {
-        if (!isScanSessionContextCurrent(sessionContext)) {
-          return { deletedCount: 0, failedIds: [] };
-        }
-        throw error;
-      }
+    let response;
+    try {
+      response = await batchDeleteHistoryRecordsRequest(normalizedIds, getHistoryGuestToken());
+    } catch (error) {
       if (!isScanSessionContextCurrent(sessionContext)) {
         return { deletedCount: 0, failedIds: [] };
       }
-      const failedIds = response?.failed_ids || response?.failedIds || [];
-      const failedSet = new Set(failedIds.map((item) => String(item)));
-      const deletedIds = normalizedIds.filter((id) => !failedSet.has(String(id)));
-      const deletedCount = removeHistoryIdsFromState(deletedIds);
-      return {
-        deletedCount: response?.deleted_count ?? response?.deletedCount ?? deletedCount,
-        failedIds,
-      };
+      throw error;
     }
-
-    const deletedCount = removeHistoryIdsFromState(normalizedIds);
-    return { deletedCount, failedIds: [] };
+    if (!isScanSessionContextCurrent(sessionContext)) return { deletedCount: 0, failedIds: [] };
+    const failedIds = response?.failed_ids || response?.failedIds || [];
+    const failedSet = new Set(failedIds.map((item) => String(item)));
+    const deletedIds = normalizedIds.filter((id) => !failedSet.has(String(id)));
+    const deletedCount = removeHistoryIdsFromState(deletedIds);
+    return { deletedCount: response?.deleted_count ?? response?.deletedCount ?? deletedCount, failedIds };
   };
 
   const clearAllHistoryRecords = async () => {
     const sessionContext = captureScanSessionContext();
-    if (authStore.isAuthenticated) {
-      try {
-        await clearAllHistoryRequest();
-      } catch (error) {
-        if (!isScanSessionContextCurrent(sessionContext)) return { deletedCount: 0 };
-        throw error;
-      }
+    const revision = historyRevision;
+    let response;
+    try {
+      response = await clearAllHistoryRequest(getHistoryGuestToken());
+    } catch (error) {
       if (!isScanSessionContextCurrent(sessionContext)) return { deletedCount: 0 };
+      throw error;
     }
-    const deletedCount = historyRecords.value.length;
-    clearHistoryRecords();
+    if (!isScanSessionContextCurrent(sessionContext)) return { deletedCount: 0 };
+    const deletedCount = response?.deleted_count ?? response?.deletedCount ?? historyRecords.value.length;
+    if (revision === historyRevision) {
+      clearHistoryRecords();
+    } else {
+      const readSequence = historyReadSequence + 1;
+      const records = await syncHistoryFromBackend();
+      if (!isScanSessionContextCurrent(sessionContext) || readSequence !== historyReadSequence || historyLoadFailed.value) {
+        return { deletedCount };
+      }
+      if (currentResultHistoryId.value && !records.some((record) => String(record.id) === String(currentResultHistoryId.value))) {
+        currentResultHistoryId.value = null;
+      }
+      const { q, pinned } = historySearchFilter;
+      if (String(q || '').trim() || pinned !== null) await syncHistoryFromBackend({ q, pinned });
+    }
     return { deletedCount };
   };
 
   const searchHistoryRecords = async ({ q = '', pinned = null } = {}) => {
-    return syncHistoryFromBackend({ q, pinned });
+    historySearchFilter = { q, pinned };
+    return syncHistoryFromBackend(historySearchFilter);
   };
 
   const loadHistoryRecord = (record) => {
@@ -962,7 +954,9 @@ export const useScanStore = defineStore('scan', () => {
       normalized.inputText || ''
     );
     setFunctions(normalized.functions);
-    result.value = { ...normalized.analysis, evidence: normalized.evidence };
+    result.value = normalized.analysis ? { ...normalized.analysis, evidence: normalized.evidence } : null;
+    resultInputText.value = normalized.analysis ? normalized.inputText || '' : '';
+    resultInputHtml.value = normalized.analysis ? normalized.editorHtml || '' : '';
     currentResultHistoryId.value = normalized.id || null;
     selectedExampleKey.value = normalized.exampleKey || '';
     lastUploadedFileName.value = '';
@@ -972,14 +966,14 @@ export const useScanStore = defineStore('scan', () => {
   };
 
   const clearHistoryRecords = () => {
-    guestHistoryRecords = [];
+    historyRevision += 1;
     historyRecords.value = [];
     currentResultHistoryId.value = null;
     purgePersistedGuestHistory();
   };
 
-  const addHistoryRecord = async ({ title, text, html, functions = [], analysis }) => {
-    if (!text || !text.trim()) {
+  const addHistoryRecord = async ({ id, title, text, html, functions = [], analysis }) => {
+    if (!id || !text || !text.trim()) {
       return null;
     }
 
@@ -1005,7 +999,7 @@ export const useScanStore = defineStore('scan', () => {
 
     // 成功的游客检测已经由后端持久化；这里只保留当前页面的展示镜像。
     const record = {
-      id: `history-${Date.now()}-${++guestHistoryRecordSequence}`,
+      id,
       title: recordTitle,
       exampleKey: selectedExampleKey.value,
       createdAt: new Date().toISOString(),
@@ -1017,9 +1011,14 @@ export const useScanStore = defineStore('scan', () => {
       analysis: recordAnalysis,
     };
 
-    guestHistoryRecords = sortHistoryRecords([record, ...guestHistoryRecords]).slice(0, 30);
-    historyRecords.value = [...guestHistoryRecords];
     currentResultHistoryId.value = record.id;
+    const { q, pinned } = historySearchFilter;
+    if (String(q || '').trim() || pinned !== null) {
+      historyRevision += 1;
+      await syncHistoryFromBackend({ q, pinned });
+    } else {
+      upsertHistoryRecord(record);
+    }
     return record;
   };
 
@@ -1088,7 +1087,10 @@ export const useScanStore = defineStore('scan', () => {
         authStore.updateCredits(response.currentCredits);
       }
       const analysis = mapAnalysisResult(response, text);
+      const submittedText = pickFirst(response?.inputText, response?.input_text, text, '');
       result.value = analysis;
+      resultInputText.value = submittedText;
+      resultInputHtml.value = editorHtmlValue;
 
       const historyId = pickFirst(
         response?.historyId,
@@ -1113,7 +1115,7 @@ export const useScanStore = defineStore('scan', () => {
           if (!isScanSessionContextCurrent(sessionContext)) return null;
         }
 
-        const syncedRecords = await syncHistoryFromBackend();
+        const syncedRecords = await syncHistoryFromBackend(historySearchFilter);
         if (!isScanSessionContextCurrent(sessionContext)) return null;
 
         let historyRecord = syncedRecords.find((item) => String(item.id) === String(historyId));
@@ -1124,14 +1126,17 @@ export const useScanStore = defineStore('scan', () => {
 
         if (historyRecord && historyRecord.analysis) {
           result.value = { ...historyRecord.analysis, evidence: historyRecord.evidence };
+          resultInputText.value = historyRecord.inputText || '';
+          resultInputHtml.value = historyRecord.editorHtml || '';
           clearDetectionAttempt(idempotencyKey);
           return result.value;
         }
       } else if (!authStore.isAuthenticated) {
-        // 游客用户：仅保留当前会话内存态
+        // 后端已保存检测；用真实 ID 更新当前页面镜像，重开页面时从服务器恢复。
         await addHistoryRecord({
+          id: historyId,
           title: '', // 使用默认标题
-          text: text,
+          text: submittedText,
           html: editorHtmlValue,
           functions: functions.length ? functions : ['scan'],
           analysis: analysis,
@@ -1158,6 +1163,8 @@ export const useScanStore = defineStore('scan', () => {
         analysisError.value = { type: '', message: error?.message || '' };
       }
       result.value = null;
+      resultInputText.value = '';
+      resultInputHtml.value = '';
       throw error;
     }
   };
@@ -1262,11 +1269,15 @@ export const useScanStore = defineStore('scan', () => {
     resetResult,
     commitDraftToStorage,
     result,
+    resultInputText,
+    resultInputHtml,
     currentResultHistoryId,
     analysisError,
     sessionGeneration,
     analyzeText,
     historyRecords,
+    isHistoryLoading,
+    historyLoadFailed,
     addHistoryRecord,
     loadHistoryRecord,
     clearHistoryRecords,

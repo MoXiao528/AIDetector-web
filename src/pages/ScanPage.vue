@@ -517,6 +517,12 @@
               </div>
 
               <div class="mt-5 min-h-0 flex-1 overflow-y-auto pr-1">
+                <div v-if="scanStore.historyLoadFailed" role="alert" class="mb-3 rounded-xl bg-amber-50 p-3 text-xs text-amber-900">
+                  {{ t('scan.history.loadFailed') }}
+                  <button type="button" class="ml-2 font-semibold underline" :disabled="scanStore.isHistoryLoading" @click="retryHistoryLoad">
+                    {{ t('scan.history.retry') }}
+                  </button>
+                </div>
                 <div v-if="historyRecords.length > 0" class="space-y-2">
                   <div
                     v-for="record in historyRecords"
@@ -611,7 +617,8 @@
                     </div>
                   </div>
                 </div>
-                <div v-else class="rounded-2xl border border-dashed border-neutral-200 bg-neutral-50/80 p-5 text-center">
+                <p v-else-if="scanStore.isHistoryLoading" role="status" class="p-5 text-center text-xs text-neutral-500">{{ t('scan.history.loading') }}</p>
+                <div v-else-if="!scanStore.historyLoadFailed" class="rounded-2xl border border-dashed border-neutral-200 bg-neutral-50/80 p-5 text-center">
                   <p class="text-sm font-semibold text-neutral-600">{{ t('scan.history.emptyTitle') }}</p>
                   <p class="mt-2 text-xs leading-5 text-neutral-500">{{ historySearchQuery ? t('scan.history.emptySearch') : t('scan.history.empty') }}</p>
                 </div>
@@ -774,6 +781,12 @@
                   </div>
 
                   <div v-else class="mt-8 space-y-6">
+                    <p
+                      v-if="resultTextMismatch"
+                      role="status"
+                      data-testid="incomplete-text-notice"
+                      class="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm leading-6 text-amber-800"
+                    >{{ t('scan.results.incompleteTextNotice') }}</p>
                     <div class="relative overflow-hidden rounded-2xl border border-neutral-100 bg-white p-6 shadow-premium ring-1 ring-black/5">
                        <div class="absolute top-0 right-0 -mt-4 -mr-4 h-32 w-32 rounded-full bg-primary-100/50 blur-3xl"></div>
                        <div class="absolute bottom-0 left-0 -mb-4 -ml-4 h-32 w-32 rounded-full bg-primary-200/20 blur-3xl"></div>
@@ -813,7 +826,7 @@
                        </div>
                     </div>
 
-                    <EvidencePanel :evidence="scanStore.result?.evidence" />
+                    <EvidencePanel :evidence="scanStore.result?.evidence" @view-details="openEvidenceDetail" />
 
                     <button
                       type="button"
@@ -1084,7 +1097,20 @@
             </aside>
 
             <main class="min-h-0 px-6 py-6">
-              <EvidencePanel :evidence="scanStore.result?.evidence" class="mb-6" />
+              <p
+                v-if="resultTextMismatch"
+                role="status"
+                data-testid="incomplete-text-notice"
+                class="mb-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm leading-6 text-amber-800"
+              >{{ t('scan.results.incompleteTextNotice') }}</p>
+              <EvidencePanel
+                :evidence="scanStore.result?.evidence"
+                :submitted-text="scanStore.resultInputText"
+                :initial-dimension="evidenceDimension"
+                :initial-show-all="evidenceShowAll"
+                detailed
+                class="mb-6"
+              />
               <div v-if="activeResultTab === 'scan'" class="space-y-4">
                 <p v-if="resultHasMergedBlocks" class="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
                   {{ t('scan.results.mergeNotice') }}
@@ -1217,6 +1243,9 @@ import {
   buildHighlightedPreviewHtml,
   buildSentenceParagraphLinkId,
   escapeHtml,
+  extractTextFromHtml,
+  hasTextContentMismatch,
+  hasTextMismatch,
   plainTextToHtml,
   sanitizeHtmlForEditor,
 } from '../utils/editorContent';
@@ -1263,6 +1292,9 @@ const renameHistoryDraft = ref('');
 const isHistoryActionPending = ref(false);
 const activeSentenceId = ref('');
 const isResultDetailOpen = ref(false);
+const evidenceDimension = ref('lexical');
+const evidenceShowAll = ref(false);
+watch(() => scanStore.result?.evidence, () => { evidenceShowAll.value = false; });
 const headerVariant = computed(() => (activePanel.value === 'document' ? 'scan' : 'standard'));
 const quotaInfo = ref({ actor_type: '', limit: 0, used_today: 0, remaining: 0 });
 const isQuotaLoading = ref(false);
@@ -1273,6 +1305,8 @@ const allowedPanelSet = new Set(['home', 'document', 'profile', 'qa']);
 const allowedFunctionKeys = new Set(['scan']);
 let lastComingSoonAt = 0;
 let historySearchTimer = null;
+let historySelectionSequence = 0;
+let activeHistoryLoad = null;
 
 const triggerComingSoon = (label) => {
   const now = Date.now();
@@ -1672,14 +1706,15 @@ const collapseSummaryForDisplay = (summary) => {
   };
 };
 
+const editorText = computed(() => scanStore.editorHtml ? extractTextFromHtml(scanStore.editorHtml) : scanStore.inputText);
 const characterUsage = computed(() =>
-  t('scan.editor.wordCount', { current: scanStore.characterCount, limit: scanStore.characterLimit })
+  t('scan.editor.wordCount', { current: editorText.value.length, limit: scanStore.characterLimit })
 );
 
-const characterCount = computed(() => scanStore.characterCount);
+const characterCount = computed(() => editorText.value.length);
 const isOverCharacterLimit = computed(() => characterCount.value > scanStore.characterLimit);
 const overflowCharacterCount = computed(() => Math.max(characterCount.value - scanStore.characterLimit, 0));
-const detectableCharacterCount = computed(() => countVisibleCharacters(scanStore.inputText));
+const detectableCharacterCount = computed(() => countVisibleCharacters(editorText.value));
 const remainingToMinDetect = computed(() => Math.max(minDetectChars - detectableCharacterCount.value, 0));
 const canStartScan = computed(() => detectableCharacterCount.value >= minDetectChars && !isOverCharacterLimit.value);
 const scanReadinessCounter = computed(() =>
@@ -1934,6 +1969,12 @@ const loginPromptRegisterTo = computed(() => ({
 }));
 
 const hasResults = computed(() => Boolean(detectionResults.value));
+const resultTextMismatch = computed(() => hasResults.value && (
+  hasTextMismatch(editorText.value, scanStore.resultInputHtml
+    ? extractTextFromHtml(scanStore.resultInputHtml)
+    : scanStore.resultInputText) ||
+  hasTextContentMismatch(editorText.value, scanStore.resultInputText)
+));
 
 const buildPreviewHtmlForAnalysis = ({ analysis, editorHtml = '', inputText = '' } = {}) => {
   if (!analysis) return '';
@@ -1945,11 +1986,11 @@ const buildPreviewHtmlForAnalysis = ({ analysis, editorHtml = '', inputText = ''
   });
 };
 
-const syncHighlightedPreviewHtml = (analysis = detectionResults.value) => {
+const syncHighlightedPreviewHtml = (analysis = detectionResults.value, editorHtml = scanStore.editorHtml || '') => {
   highlightedPreviewHtml.value = buildPreviewHtmlForAnalysis({
     analysis,
-    editorHtml: scanStore.editorHtml || '',
-    inputText: scanStore.inputText || '',
+    editorHtml,
+    inputText: scanStore.resultInputText || '',
   });
 };
 
@@ -2057,12 +2098,15 @@ const setActivePanel = (panel) => {
     return;
   }
   if (activePanel.value === next) return;
+  if (next !== 'document') historySelectionSequence += 1;
   activePanel.value = next;
 };
 
 const isPanelActive = (panel) => activePanel.value === panel;
 
 const clearCurrentHistorySelection = () => {
+  historySelectionSequence += 1;
+  activeHistoryLoad = null;
   activeHistoryId.value = '';
   isResultDetailOpen.value = false;
   if ('detail' in route.query) {
@@ -2147,12 +2191,13 @@ const deleteSingleHistoryRecord = async (record) => {
   if (!record?.id) return;
   if (typeof window !== 'undefined' && !window.confirm(t('scan.history.deleteConfirm'))) return;
   const deletedActiveRecord = String(record.id) === String(activeHistoryId.value);
+  const selectionSequence = historySelectionSequence;
   await runHistoryAction(async () => {
     const context = capturePageActorContext();
     const deleted = await scanStore.deleteHistoryRecord(record.id);
     if (!deleted || !isPageActorContextCurrent(context)) return;
     selectedHistoryIds.value = selectedHistoryIds.value.filter((item) => String(item) !== String(record.id));
-    if (deletedActiveRecord) {
+    if (deletedActiveRecord && selectionSequence === historySelectionSequence) {
       await resetEditor();
     }
   });
@@ -2162,13 +2207,16 @@ const deleteSelectedHistoryRecords = async () => {
   const ids = [...selectedHistoryIds.value];
   if (!ids.length) return;
   if (typeof window !== 'undefined' && !window.confirm(t('scan.history.deleteSelectedConfirm', { value: ids.length }))) return;
-  const shouldResetEditor = ids.some((id) => String(id) === String(activeHistoryId.value));
+  const activeId = activeHistoryId.value;
+  const selectionSequence = historySelectionSequence;
+  const shouldResetEditor = ids.some((id) => String(id) === String(activeId));
   await runHistoryAction(async () => {
     const context = capturePageActorContext();
-    await scanStore.batchDeleteHistoryRecords(ids);
+    const { failedIds } = await scanStore.batchDeleteHistoryRecords(ids);
     if (!isPageActorContextCurrent(context)) return;
-    clearHistorySelection();
-    if (shouldResetEditor) {
+    const failedSet = new Set(failedIds.map((id) => String(id)));
+    selectedHistoryIds.value = ids.filter((id) => failedSet.has(String(id)));
+    if (shouldResetEditor && !failedSet.has(String(activeId)) && selectionSequence === historySelectionSequence) {
       await resetEditor();
     }
   });
@@ -2177,12 +2225,20 @@ const deleteSelectedHistoryRecords = async () => {
 const clearAllHistoryRecords = async () => {
   if (!historyRecords.value.length) return;
   if (typeof window !== 'undefined' && !window.confirm(t('scan.history.clearAllConfirm'))) return;
+  const selectionSequence = historySelectionSequence;
+  const clearedIds = new Set(historyRecords.value.map((record) => String(record.id)));
   await runHistoryAction(async () => {
     const context = capturePageActorContext();
     await scanStore.clearAllHistoryRecords();
     if (!isPageActorContextCurrent(context)) return;
     clearHistorySelection();
-    await resetEditor();
+    if (selectionSequence === historySelectionSequence || (
+      activeHistoryLoad
+      && clearedIds.has(String(activeHistoryLoad.id))
+      && scanStore.editorHtml === activeHistoryLoad.editorHtml
+      && !scanStore.currentResultHistoryId
+      && !isScanning.value
+    )) await resetEditor();
   });
 };
 
@@ -2195,21 +2251,29 @@ const searchHistoryRecords = async () => {
   );
 };
 
+const retryHistoryLoad = async () => {
+  await refreshQuota();
+  await searchHistoryRecords();
+};
+
 const loadHistoryRecord = async (id) => {
   if (id === null || id === undefined || id === '') return;
+  const sequence = ++historySelectionSequence;
   if (isHistoryManaging.value) {
     toggleHistorySelection(id);
     return;
   }
   let record = historyRecords.value.find((item) => String(item.id) === String(id));
-  if (authStore.isAuthenticated && (!record || !record.analysis)) {
+  const context = capturePageActorContext();
+  if (!record || !record.analysis) {
     record = await scanStore.fetchHistoryRecordDetail(id);
   }
-  if (!record) return;
+  if (!record || sequence !== historySelectionSequence || !isPageActorContextCurrent(context)) return;
 
   activeHistoryId.value = record.id;
   setActivePanel('document');
   scanStore.loadHistoryRecord(record);
+  activeHistoryLoad = { id: record.id, editorHtml: scanStore.editorHtml };
   if (record.analysis) {
     syncHighlightedPreviewHtml(record.analysis);
     editorMode.value = 'preview';
@@ -2219,7 +2283,7 @@ const loadHistoryRecord = async (id) => {
   }
   activeResultTab.value = 'scan';
   await nextTick();
-  syncEditorFromStore();
+  if (sequence === historySelectionSequence) syncEditorFromStore();
 };
 
 const openHistoryRecord = async (id) => {
@@ -2247,11 +2311,20 @@ const openResultDetail = () => {
 };
 
 const closeResultDetail = () => {
+  historySelectionSequence += 1;
   isResultDetailOpen.value = false;
   syncDetailRoute('');
 };
 
+const openEvidenceDetail = (dimension, showAll = false) => {
+  evidenceDimension.value = dimension;
+  evidenceShowAll.value = showAll;
+  openResultDetail();
+};
+
 const syncResultDetailFromRoute = async (value) => {
+  historySelectionSequence += 1;
+  const context = capturePageActorContext();
   const detailId = Array.isArray(value) ? value[0] : value;
   if (!detailId) {
     isResultDetailOpen.value = false;
@@ -2259,8 +2332,11 @@ const syncResultDetailFromRoute = async (value) => {
   }
   setActivePanel('document');
   if (detailId !== 'current' && String(scanStore.currentResultHistoryId || activeHistoryId.value) !== String(detailId)) {
+    isResultDetailOpen.value = false;
     await loadHistoryRecord(detailId);
   }
+  if (!isPageActorContextCurrent(context) || String(route.query.detail || '') !== String(detailId)) return;
+  if (detailId !== 'current' && String(scanStore.currentResultHistoryId || activeHistoryId.value) !== String(detailId)) return;
   isResultDetailOpen.value = hasResults.value;
 };
 
@@ -2315,6 +2391,7 @@ const resetPageSessionState = () => {
   renamingHistoryId.value = '';
   renameHistoryDraft.value = '';
   activeHistoryId.value = '';
+  activeHistoryLoad = null;
   isResultDetailOpen.value = false;
   activeSentenceId.value = '';
   highlightedPreviewHtml.value = '';
@@ -2363,6 +2440,7 @@ onMounted(async () => {
   syncEditorFromStore();
   maybeShowOnboarding();
   await refreshQuota();
+  await searchHistoryRecords();
   showQuotaNoticeOnce();
   document.addEventListener('click', onGlobalClick);
   document.addEventListener('keydown', onDetailKeydown);
@@ -2443,9 +2521,11 @@ watch(
       return;
     }
     if (activePanel.value !== next) {
+      if (next !== 'document') historySelectionSequence += 1;
       activePanel.value = next;
     }
-  }
+  },
+  { flush: 'sync' }
 );
 
 watch(activePanel, async (panel) => {
@@ -2462,6 +2542,7 @@ watch(activePanel, async (panel) => {
 });
 
 watch(historySearchQuery, () => {
+  historySelectionSequence += 1;
   if (historySearchTimer) {
     clearTimeout(historySearchTimer);
   }
@@ -2473,18 +2554,16 @@ watch(historySearchQuery, () => {
   }, 250);
 });
 
-watch(activeHistoryId, async (newId) => {
+watch(activeHistoryId, () => {
   clearActiveSentence();
-  if (newId && authStore.isAuthenticated) {
-    await scanStore.fetchHistoryRecordDetail(newId);
-  }
 });
 
 watch(
   () => route.query.detail,
   (value) => {
     syncResultDetailFromRoute(value);
-  }
+  },
+  { flush: 'sync' }
 );
 
 watch(isFeatureModalOpen, (open) => {
@@ -2705,6 +2784,12 @@ const handleScan = async () => {
   const ensuredGuestToken = await ensureActiveGuestToken();
   if (!isPageActorContextCurrent(initialContext)) return;
 
+  if (scanStore.editorHtml && editorText.value !== scanStore.inputText) {
+    scanStore.setEditorHtml(scanStore.editorHtml);
+    scanStore.resetResult();
+    highlightedPreviewHtml.value = '';
+  }
+
   if (!scanStore.selectedFunctions.length) {
     scanStore.setFunctions(['scan']);
   }
@@ -2739,18 +2824,22 @@ const handleScan = async () => {
   }
   if (!authStore.isAuthenticated && !ensuredGuestToken) return;
 
+  historySelectionSequence += 1;
+  activeHistoryLoad = null;
   isScanning.value = true;
   scanStore.resetResult();
   highlightedPreviewHtml.value = '';
   const scanContext = capturePageActorContext();
+  const submittedText = scanStore.inputText;
+  const submittedHtml = scanStore.editorHtml || plainTextToHtml(submittedText);
   try {
-    const analysis = await scanStore.analyzeText(scanStore.inputText, {
+    const analysis = await scanStore.analyzeText(submittedText, {
       functions: scanStore.selectedFunctions,
-      html: scanStore.editorHtml || plainTextToHtml(scanStore.inputText),
+      html: submittedHtml,
       guestToken: scanContext.authenticated ? '' : ensuredGuestToken,
     });
     if (!analysis || !isPageActorContextCurrent(scanContext)) return;
-    syncHighlightedPreviewHtml(analysis);
+    syncHighlightedPreviewHtml(analysis, submittedHtml);
     editorMode.value = 'preview';
     activeResultTab.value = 'scan';
     activeHistoryId.value = scanStore.currentResultHistoryId || historyRecords.value[0]?.id || '';

@@ -1,5 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { apiClient } from './client';
+import {
+  getHistoryList, getHistoryRecord, updateHistoryRecord, deleteHistoryRecord,
+  batchDeleteHistoryRecords, clearAllHistory,
+} from './modules/history';
 
 const createJsonResponse = (payload: unknown, init: ResponseInit = {}) =>
   new Response(JSON.stringify(payload), {
@@ -11,6 +15,35 @@ const createJsonResponse = (payload: unknown, init: ResponseInit = {}) =>
 describe('apiClient guest auth routing', () => {
   beforeEach(() => {
     window.localStorage.clear();
+  });
+
+  it('游客历史各入口固定使用调用者凭证，401 不清除随后登录的用户会话', async () => {
+    const fetchMock = vi.fn().mockImplementation(async () => createJsonResponse({ items: [] }));
+    vi.stubGlobal('fetch', fetchMock);
+    window.localStorage.setItem('guest_token', 'different-tab-token');
+    window.localStorage.setItem('auth_session', '1');
+    await getHistoryList({ q: '参考 文本', pinned: true }, 'captured-token');
+    await getHistoryRecord(462, 'captured-token');
+    await updateHistoryRecord(462, { title: 'renamed' }, 'captured-token');
+    await deleteHistoryRecord(462, 'captured-token');
+    await batchDeleteHistoryRecords([462], 'captured-token');
+    await clearAllHistory('captured-token');
+    const calls = fetchMock.mock.calls as unknown as Array<[string, RequestInit]>;
+    expect(calls.map(([url, options]) => [new URL(url, 'http://localhost').pathname, options.method])).toEqual([
+      ['/api/v1/guest/history', 'GET'], ['/api/v1/guest/history/462', 'GET'],
+      ['/api/v1/guest/history/462', 'PATCH'], ['/api/v1/guest/history/462', 'DELETE'],
+      ['/api/v1/guest/history/batch-delete', 'POST'], ['/api/v1/guest/history', 'DELETE'],
+    ]);
+    expect(new URL(calls[0][0], 'http://localhost').searchParams.get('q')).toBe('参考 文本');
+    for (const [, options] of calls) {
+      expect(new Headers(options.headers).get('Authorization')).toBe('Bearer captured-token');
+    }
+    fetchMock.mockResolvedValueOnce(createJsonResponse({ detail: 'expired' }, { status: 401 }));
+    await expect(getHistoryList({}, 'captured-token')).rejects.toMatchObject({ status: 401 });
+    expect(window.localStorage.getItem('auth_session')).toBe('1');
+    await getHistoryList();
+    expect(String(fetchMock.mock.lastCall?.[0])).toMatch(/\/api\/v1\/history$/);
+    expect(new Headers(fetchMock.mock.lastCall?.[1].headers).has('Authorization')).toBe(false);
   });
 
   it('游客请求会携带 guest token', async () => {

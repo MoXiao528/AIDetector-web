@@ -337,21 +337,6 @@ const hasStructuralChildren = (element) =>
     return isStructuralTagName(tagName);
   });
 
-const extractOwnInlineText = (element) =>
-  Array.from(element.childNodes || [])
-    .map((child) => {
-      if (isElementNode(child)) {
-        const tagName = child.tagName?.toUpperCase?.() || '';
-        if (isStructuralTagName(tagName)) {
-          return '';
-        }
-      }
-      return extractNodeText(child);
-    })
-    .join('');
-
-const hasOwnMeaningfulText = (element) => normalizeBlockText(extractOwnInlineText(element)).length > 0;
-
 const normalizeRootInlineRuns = (root) => {
   if (!root?.ownerDocument) return;
 
@@ -387,11 +372,6 @@ const normalizeRootInlineRuns = (root) => {
     }
 
     const tagName = child.tagName?.toUpperCase?.() || '';
-    if (tagName === 'BR') {
-      flushRun(child);
-      child.remove();
-      return;
-    }
     if (SKIP_TAGS.has(tagName) || isStructuralTagName(tagName)) {
       flushRun(child);
       return;
@@ -415,21 +395,7 @@ const collectRenderableBlocks = (root) => {
     const tagName = node.tagName?.toUpperCase?.() || '';
     if (SKIP_TAGS.has(tagName)) return;
 
-    if (LEAF_BLOCK_TAGS.has(tagName)) {
-      if (tagName === 'LI' && hasStructuralChildren(node)) {
-        if (hasOwnMeaningfulText(node)) {
-          blocks.push(node);
-        }
-        Array.from(node.childNodes || []).forEach((child) => {
-          if (isElementNode(child)) {
-            const childTagName = child.tagName?.toUpperCase?.() || '';
-            if (isStructuralTagName(childTagName)) {
-              visit(child);
-            }
-          }
-        });
-        return;
-      }
+    if (LEAF_BLOCK_TAGS.has(tagName) && !(tagName === 'LI' && hasStructuralChildren(node))) {
       if (hasMeaningfulText(node)) {
         blocks.push(node);
       }
@@ -443,6 +409,7 @@ const collectRenderableBlocks = (root) => {
       return;
     }
 
+    normalizeRootInlineRuns(node);
     Array.from(node.childNodes || []).forEach((child) => {
       if (isElementNode(child)) {
         visit(child);
@@ -476,8 +443,16 @@ export const extractTextFromHtml = (html = '') => {
   return blocks
     .map((block) => normalizeBlockText(extractNodeText(block)))
     .filter(Boolean)
-    .join('\n');
+    // Blank lines preserve real block boundaries; a <br> remains a soft line break.
+    .join('\n\n');
 };
+
+export const hasTextMismatch = (text = '', analyzedText = '') =>
+  normalizeBlockText(text) !== normalizeBlockText(analyzedText);
+
+// Legacy fallback text may replace paragraph breaks with spaces; keep word boundaries.
+export const hasTextContentMismatch = (text = '', analyzedText = '') =>
+  String(text).replace(/\s+/g, ' ').trim() !== String(analyzedText).replace(/\s+/g, ' ').trim();
 
 export const hasParagraphRange = (sentence) => {
   const start = Number(sentence?.startParagraph ?? sentence?.start_paragraph);
@@ -639,6 +614,16 @@ export const buildHighlightedPreviewHtml = ({
   const doc = createDocumentFromHtml(editorHtml);
   if (!doc) {
     return sanitizeHtmlForEditor(fallbackHighlightedHtml || buildPlainHighlightedHtml(fallbackText, normalizedSentences), fallbackText);
+  }
+
+  if (fallbackText && hasTextContentMismatch(extractTextFromHtml(editorHtml), fallbackText)) {
+    // Saved paragraph ranges belong to the submitted text, not recovered HTML content.
+    doc.querySelectorAll('.highlight-chip, [data-sentence-id], [data-sentence-block-id]').forEach((node) => {
+      node.removeAttribute('class');
+      node.removeAttribute('data-sentence-id');
+      node.removeAttribute('data-sentence-block-id');
+    });
+    return sanitizeHtmlForEditor(doc.body.innerHTML, fallbackText);
   }
 
   const blocks = collectRenderableBlocks(doc.body);

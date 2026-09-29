@@ -1,6 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { createPinia, setActivePinia } from 'pinia';
 import { nextTick } from 'vue';
+import { mount, flushPromises } from '@vue/test-utils';
+import { createMemoryHistory, createRouter } from 'vue-router';
+import RegisterPage from '../pages/RegisterPage.vue';
+import { createI18n, globalT } from '../i18n';
 import type { EvidenceResult } from '../api/modules/scan';
 
 const historyMocks = vi.hoisted(() => ({
@@ -222,6 +226,7 @@ describe('scan store guest history boundary', () => {
     vi.clearAllMocks();
     window.localStorage.clear();
     window.sessionStorage.clear();
+    window.localStorage.setItem('guest_token', 'guest:sid-a:token');
     authApiMocks.getStoredGuestToken.mockImplementation(
       () => window.localStorage.getItem('guest_token') || ''
     );
@@ -229,12 +234,68 @@ describe('scan store guest history boundary', () => {
       const [, sid = ''] = String(token).split(':');
       return sid;
     });
+    for (const mock of Object.values(historyMocks)) mock.mockReset();
     historyMocks.getHistoryList.mockResolvedValue({ items: [] });
+  });
+
+  it.each(['inputText', 'input_text', 'request'])(
+    '结果原文取自 %s，搜索与编辑不改变快照，切换历史和重置同步更新',
+    async (source) => {
+      const scanStore = useScanStore();
+      scanStore.activateGuestSession('sid-a');
+      const requestText = 'Submitted request text with 😀 examples.';
+      const resultText = source === 'request' ? requestText : 'Returned original text with 😀 examples.';
+      scanApiMocks.detectText.mockResolvedValueOnce({
+        historyId: 601, result: makeAnalysis(), evidence: makeEvidence(),
+        ...(source === 'request' ? {} : { [source]: resultText }),
+      });
+
+      await scanStore.analyzeText(requestText, { functions: ['scan'], guestToken: 'guest:sid-a:token' });
+      const record = scanStore.historyRecords[0];
+      expect(scanStore.resultInputText).toBe(resultText);
+      expect(record.inputText).toBe(resultText);
+      expect(scanStore.result).not.toHaveProperty('resultInputText');
+      expect(record.analysis).not.toHaveProperty('resultInputText');
+
+      await scanStore.searchHistoryRecords({ q: 'no-matching-history-item' });
+      expect(scanStore.historyRecords).toEqual([]);
+      expect(scanStore.currentResultHistoryId).toBe(record.id);
+      expect(scanStore.resultInputText).toBe(resultText);
+      scanStore.setEditorHtml('<p>Unsubmitted edited text.</p>');
+      expect(scanStore.resultInputText).toBe(resultText);
+
+      scanStore.loadHistoryRecord(makeLocalRecord({ inputText: 'Another result original.' }));
+      expect(scanStore.resultInputText).toBe('Another result original.');
+      scanStore.loadHistoryRecord(record);
+      expect(scanStore.resultInputText).toBe(resultText);
+      scanStore.commitDraftToStorage();
+      for (const storage of [window.localStorage, window.sessionStorage]) {
+        expect(JSON.stringify(getStorageEntries(storage))).not.toContain(resultText);
+        expect(JSON.stringify(getStorageEntries(storage))).not.toContain('resultInputText');
+      }
+      scanStore.resetResult();
+      expect(scanStore.resultInputText).toBe('');
+      expect(scanStore.result).toBeNull();
+    }
+  );
+
+  it('当前检测失败时与结果一起清空原文快照', async () => {
+    const scanStore = useScanStore();
+    scanStore.activateGuestSession('sid-a');
+    scanStore.loadHistoryRecord(makeLocalRecord({ inputText: 'Previous result original.' }));
+    scanApiMocks.detectText.mockRejectedValueOnce(new Error('detection failed'));
+
+    await expect(scanStore.analyzeText('New request', {
+      functions: ['scan'], guestToken: 'guest:sid-a:token',
+    })).rejects.toThrow('detection failed');
+
+    expect(scanStore.result).toBeNull();
+    expect(scanStore.resultInputText).toBe('');
   });
 
   it.each((['ready', 'partial', 'insufficient', 'unsupported', 'failed'] as const)
     .flatMap((status) => [23, 77].map((ai) => ({ status, ai }))))(
-    '$status Evidence 原样穿过游客检测、内存历史、改名、置顶和重开，主分析 AI=$ai 不变',
+    '$status Evidence 原样穿过游客检测、服务器历史、改名、置顶和重开，主分析 AI=$ai 不变',
     async ({ status, ai }) => {
       const scanStore = useScanStore();
       scanStore.activateGuestSession('sid-a');
@@ -254,8 +315,8 @@ describe('scan store guest history boundary', () => {
       const text = '😀 sample sample';
       const request = { functions: ['scan'], html: `<p>${text}</p>`, guestToken: 'guest:sid-a:token' };
       scanApiMocks.detectText
-        .mockResolvedValueOnce({ inputText: text, result: makeAnalysis(ai) })
-        .mockResolvedValueOnce({ inputText: text, result: makeAnalysis(ai), evidence });
+        .mockResolvedValueOnce({ historyId: 700, inputText: text, result: makeAnalysis(ai) })
+        .mockResolvedValueOnce({ historyId: 701, inputText: text, result: makeAnalysis(ai), evidence });
 
       const baseline = await scanStore.analyzeText(text, request);
       const result = await scanStore.analyzeText(text, request);
@@ -265,6 +326,9 @@ describe('scan store guest history boundary', () => {
       const record = scanStore.historyRecords.find((item) => item.id === scanStore.currentResultHistoryId);
       expect(record.evidence).toEqual(evidence);
       expect(record.analysis).not.toHaveProperty('evidence');
+      historyMocks.updateHistoryRecord
+        .mockResolvedValueOnce(makeBackendRecord({ ...record, title: 'Evidence snapshot' }, record.id))
+        .mockResolvedValueOnce(makeBackendRecord({ ...record, title: 'Evidence snapshot', isPinned: true }, record.id));
       await scanStore.renameHistoryRecord(record.id, 'Evidence snapshot');
       await scanStore.togglePinnedHistoryRecord(record.id, true);
       scanStore.resetResult();
@@ -325,6 +389,7 @@ describe('scan store guest history boundary', () => {
     await nextTick();
     const evidence = hasEvidence ? makeEvidence('partial') : undefined;
     const record = makeBackendRecord(makeLocalRecord({
+      inputText: 'Historical response original.',
       analysis: makeAnalysis(91), ...(hasEvidence ? { evidence } : {}),
     }), 501);
     scanApiMocks.detectText.mockResolvedValueOnce({
@@ -338,9 +403,35 @@ describe('scan store guest history boundary', () => {
     expect(result.summary).toEqual({ ai: 91, human: 9 });
     expect(result.evidence).toEqual(evidence);
     expect(scanStore.result).toEqual(result);
+    expect(scanStore.resultInputText).toBe(record.input_text);
     expect(scanStore.historyRecords[0].evidence).toEqual(evidence);
     expect(scanStore.historyRecords[0].analysis).not.toHaveProperty('evidence');
     expect(historyMocks.getHistoryRecord).toHaveBeenCalledTimes(source === 'detail' ? 1 : 0);
+  });
+
+  it('登录检测在历史搜索下仍显示服务端详情，但不把不匹配的新记录插入列表', async () => {
+    setAuthenticatedSession();
+    const scanStore = useScanStore();
+    await nextTick();
+    historyMocks.getHistoryList.mockClear();
+    const matched = makeBackendRecord(makeLocalRecord({ title: 'Needle', inputText: 'needle body' }), 844);
+    const newRecord = makeBackendRecord(makeLocalRecord({
+      title: 'New result', inputText: 'ordinary result', analysis: makeAnalysis(91),
+    }), 845);
+    historyMocks.getHistoryList.mockResolvedValueOnce({ items: [matched] });
+    await scanStore.searchHistoryRecords({ q: 'needle' });
+    scanApiMocks.detectText.mockResolvedValueOnce({ historyId: newRecord.id, result: makeAnalysis(23) });
+    historyMocks.getHistoryList.mockResolvedValueOnce({ items: [matched] });
+    historyMocks.getHistoryRecord.mockResolvedValueOnce(newRecord);
+
+    const result = await scanStore.analyzeText('ordinary result', { functions: ['scan'] });
+
+    expect(result?.summary).toEqual({ ai: 91, human: 9 });
+    expect(scanStore.resultInputText).toBe('ordinary result');
+    expect(scanStore.currentResultHistoryId).toBe(newRecord.id);
+    expect(scanStore.historyRecords.map((record) => record.id)).toEqual([matched.id]);
+    expect(historyMocks.getHistoryList.mock.calls.map(([params]) => params.q)).toEqual(['needle', 'needle']);
+    expect(historyMocks.getHistoryRecord).toHaveBeenCalledWith(newRecord.id, '');
   });
 
   it('历史列表和详情读取失败时，不用旧同 ID 快照覆盖当前无 Evidence 的检测响应', async () => {
@@ -358,7 +449,7 @@ describe('scan store guest history boundary', () => {
 
     const result = await scanStore.analyzeText('sample text', { functions: ['scan'] });
 
-    expect(historyMocks.getHistoryRecord).toHaveBeenCalledWith(501);
+    expect(historyMocks.getHistoryRecord).toHaveBeenCalledWith(501, '');
     expect(result.summary).toEqual({ ai: 23, human: 77 });
     expect(result.evidence).toBeUndefined();
     expect(scanStore.result).toEqual(result);
@@ -373,6 +464,7 @@ describe('scan store guest history boundary', () => {
       const evidence = makeEvidence();
       scanStore.result = { ...makeAnalysis(), evidence };
       const response = {
+        historyId: 702,
         inputText: 'sample text',
         result: source === 'result.analysis.evidence'
           ? { analysis: { ...makeAnalysis(), evidence } }
@@ -530,6 +622,74 @@ describe('scan store guest history boundary', () => {
     expect(useScanStore().historyRecords).toEqual([]);
   });
 
+  it.each([false, true])('游客检测后经注册页的控制台返回，保留历史和额度且不重复检测（手机=%s）', async (mobile) => {
+    const scanStore = useScanStore();
+    const authStore = useAuthStore();
+    scanStore.activateGuestSession('sid-a');
+    scanStore.setEditorHtml('<p>sample text</p>');
+    scanApiMocks.detectText.mockResolvedValueOnce({
+      historyId: 454,
+      currentCredits: 3822,
+      result: makeAnalysis(),
+    });
+    await scanStore.analyzeText(scanStore.inputText, {
+      html: scanStore.editorHtml,
+      guestToken: 'guest:sid-a:token',
+    });
+    const guestQuota = { total: 5000, remaining: 3822, onlyRemaining: false };
+    authStore.setCredits(guestQuota);
+    const record = scanStore.historyRecords[0];
+    const openWindow = vi.spyOn(window, 'open').mockReturnValue(null);
+    const router = createRouter({
+      history: createMemoryHistory(),
+      routes: ['home', 'dashboard', 'login', 'register', 'admin-overview'].map((name) => ({
+        name, path: `/${name}`, component: { template: '<div />' },
+      })),
+    });
+    await router.push('/dashboard?panel=document');
+    await router.push('/register');
+    const wrapper = mount(RegisterPage, {
+      global: { plugins: [router, createI18n()], stubs: { BaseListbox: true } },
+    });
+    try {
+      if (mobile) {
+        await wrapper.findAll('header button').find((button) => button.text() === globalT('common.openMenu'))!.trigger('click');
+      }
+      const label = globalT(`header.buttons.${mobile ? 'mobileDashboard' : 'dashboard'}`);
+      await wrapper.findAll('header button').find((button) => button.text() === label)!.trigger('click');
+      await flushPromises();
+
+      expect(router.currentRoute.value.fullPath).toBe('/dashboard?panel=home');
+      expect(openWindow).not.toHaveBeenCalled();
+      expect(wrapper.findAll('header button').some((button) => button.text() === globalT('header.buttons.mobileDashboard'))).toBe(false);
+      await router.push('/dashboard?panel=document');
+      historyMocks.getHistoryList.mockResolvedValueOnce({ items: [makeBackendRecord(record, 454)] });
+      await scanStore.syncHistoryFromBackend();
+      expect(scanStore.historyRecords).toHaveLength(1);
+      expect(scanStore.historyRecords[0]).toMatchObject({ id: 454, inputText: record.inputText });
+      expect(scanStore.loadHistoryRecord(record)).toBe(true);
+      expect(scanStore.inputText).toBe('sample text');
+      expect(scanStore.result?.summary).toEqual({ ai: 12, human: 88 });
+      expect(authStore.creditUsage).toMatchObject({ total: 5000, remaining: 3822, used: 1178 });
+      expect(scanApiMocks.detectText).toHaveBeenCalledTimes(1);
+      expect(historyMocks.getHistoryList).toHaveBeenCalledWith(expect.any(Object), 'guest:sid-a:token');
+      expectNoHistoryStorage();
+
+      authStore.token = '__cookie__';
+      authStore.user = { id: 1, systemRole: 'SYS_ADMIN' };
+      await router.push('/register');
+      if (mobile) {
+        await wrapper.findAll('header button').find((button) => button.text() === globalT('common.openMenu'))!.trigger('click');
+      }
+      await wrapper.findAll('header button').find((button) => button.text() === label)!.trigger('click');
+      await flushPromises();
+      expect(router.currentRoute.value.name).toBe('admin-overview');
+      expect(openWindow).not.toHaveBeenCalled();
+    } finally {
+      wrapper.unmount();
+    }
+  });
+
   it('初始化会清除 localStorage/sessionStorage 中全部历史旧版本键，但保留无关键', () => {
     for (const storage of [window.localStorage, window.sessionStorage]) {
       storage.setItem(HISTORY_STORAGE_KEY, 'legacy-global');
@@ -549,6 +709,7 @@ describe('scan store guest history boundary', () => {
     const scanStore = useScanStore();
     scanStore.setEditorHtml('<p>owner-a secret</p>');
     scanStore.result = { ...makeAnalysis(91), evidence: makeEvidence() };
+    scanStore.resultInputText = 'owner-a result original';
     scanStore.currentResultHistoryId = 'owner-a-result';
     scanStore.historyRecords.push(makeLocalRecord({ id: 'owner-a-history', inputText: 'owner-a secret', evidence: makeEvidence() }));
     for (const storage of [window.localStorage, window.sessionStorage]) {
@@ -562,6 +723,7 @@ describe('scan store guest history boundary', () => {
     expect(scanStore.inputText).toBe('');
     expect(scanStore.editorHtml).toBe('');
     expect(scanStore.result).toBeNull();
+    expect(scanStore.resultInputText).toBe('');
     expect(scanStore.currentResultHistoryId).toBeNull();
     expect(scanStore.historyRecords).toEqual([]);
     expectNoHistoryStorage();
@@ -574,18 +736,21 @@ describe('scan store guest history boundary', () => {
     expect(scanStore.activateGuestSession('sid-a')).toBe(false);
     scanStore.setEditorHtml('<p>sid-a secret</p>');
     scanStore.result = { ...makeAnalysis(82), evidence: makeEvidence() };
+    scanStore.resultInputText = 'sid-a result original';
     scanStore.currentResultHistoryId = 'sid-a-result';
     scanStore.historyRecords.push(makeLocalRecord({ id: 'sid-a-history', inputText: 'sid-a secret' }));
 
     expect(scanStore.activateGuestSession('sid-a')).toBe(false);
     expect(scanStore.inputText).toBe('sid-a secret');
     expect(scanStore.result.evidence).toEqual(makeEvidence());
+    expect(scanStore.resultInputText).toBe('sid-a result original');
     expect(scanStore.historyRecords).toHaveLength(1);
 
     expect(scanStore.activateGuestSession('sid-b')).toBe(true);
     expect(scanStore.inputText).toBe('');
     expect(scanStore.editorHtml).toBe('');
     expect(scanStore.result).toBeNull();
+    expect(scanStore.resultInputText).toBe('');
     expect(scanStore.currentResultHistoryId).toBeNull();
     expect(scanStore.historyRecords).toEqual([]);
 
@@ -654,7 +819,9 @@ describe('scan store guest history boundary', () => {
     expect(scanStore.activateGuestSession('sid-b')).toBe(true);
     scanStore.setText('sid-b fresh draft');
     scanStore.result = makeAnalysis(17);
+    scanStore.resultInputText = 'sid-b result original';
     const sidBRecord = await scanStore.addHistoryRecord({
+      id: 992,
       title: 'SID B',
       text: 'sid-b fresh draft',
       html: '<p>sid-b fresh draft</p>',
@@ -672,6 +839,7 @@ describe('scan store guest history boundary', () => {
     await expect(pendingAnalysis).resolves.toBeNull();
     expect(scanStore.inputText).toBe('sid-b fresh draft');
     expect(scanStore.result?.summary.ai).toBe(17);
+    expect(scanStore.resultInputText).toBe('sid-b result original');
     expect(scanStore.result.evidence).toBeUndefined();
     expect(scanStore.currentResultHistoryId).toBe(sidBRecord.id);
     expect(scanStore.historyRecords).toHaveLength(1);
@@ -995,7 +1163,7 @@ describe('scan store guest history boundary', () => {
       order: 'desc',
       q: 'needle',
       pinned: null,
-    });
+    }, '');
     expect(scanStore.historyRecords).toHaveLength(1);
     expect(scanStore.historyRecords[0].isPinned).toBe(true);
   });
@@ -1011,22 +1179,15 @@ describe('scan store guest history boundary', () => {
     expect(historyMocks.createHistoryRecord).not.toHaveBeenCalled();
   });
 
-  it('guest search/pin 使用当前内存 canonical，不会重新读旧固定键或丢掉隐藏记录', async () => {
+  it('游客搜索、改名、置顶以服务器为准，新 Pinia 恢复真实 ID、正文和 Evidence，不读旧缓存', async () => {
     const scanStore = useScanStore();
-    scanStore.activateGuestSession?.('sid-a');
-    const matched = await scanStore.addHistoryRecord({
-      title: 'Needle',
-      text: 'needle text',
-      html: '<p>needle text</p>',
-      functions: ['scan'],
-      analysis: makeAnalysis(),
-    });
-    const hidden = await scanStore.addHistoryRecord({
-      title: 'Hidden',
-      text: 'ordinary text',
-      html: '<p>ordinary text</p>',
-      functions: ['scan'],
-      analysis: makeAnalysis(),
+    const matched = makeBackendRecord(makeLocalRecord({ title: 'Needle', inputText: 'needle text', evidence: makeEvidence() }), 801);
+    const hidden = makeBackendRecord(makeLocalRecord({ title: 'Hidden', inputText: 'ordinary text' }), 802);
+    historyMocks.getHistoryList.mockImplementation(async ({ q }) => ({ items: q ? [matched] : [matched, hidden] }));
+    historyMocks.updateHistoryRecord.mockImplementation(async (id, changes) => {
+      expect(id).toBe(matched.id);
+      Object.assign(matched, changes);
+      return matched;
     });
     window.localStorage.setItem(HISTORY_STORAGE_KEY, JSON.stringify([
       makeLocalRecord({ id: 'attacker', inputText: 'must not be read' }),
@@ -1034,38 +1195,302 @@ describe('scan store guest history boundary', () => {
 
     await scanStore.searchHistoryRecords({ q: 'needle' });
     expect(scanStore.historyRecords).toHaveLength(1);
-
+    await scanStore.renameHistoryRecord(matched.id, 'Renamed');
     await scanStore.togglePinnedHistoryRecord(matched.id, true);
-    await scanStore.searchHistoryRecords({ q: '' });
-
-    expect(scanStore.historyRecords).toHaveLength(2);
-    expect(scanStore.historyRecords.find((record) => record.id === matched.id)?.isPinned).toBe(true);
-    expect(scanStore.historyRecords.find((record) => record.id === hidden.id)).toBeTruthy();
-    expect(scanStore.historyRecords.some((record) => record.inputText === 'must not be read')).toBe(false);
+    setActivePinia(createPinia());
+    const refreshedStore = useScanStore();
+    expect(refreshedStore.historyRecords).toEqual([]);
+    await refreshedStore.syncHistoryFromBackend();
+    expect(refreshedStore.historyRecords).toHaveLength(2);
+    expect(refreshedStore.historyRecords[0]).toMatchObject({ id: 801, title: 'Renamed', isPinned: true, inputText: 'needle text', evidence: makeEvidence() });
+    expect(refreshedStore.historyRecords[1].id).toBe(802);
+    expect(refreshedStore.loadHistoryRecord(refreshedStore.historyRecords[0])).toBe(true);
+    expect(refreshedStore.result.evidence).toEqual(makeEvidence());
+    expect(refreshedStore.inputText).toBe('needle text');
+    expect(refreshedStore.historyRecords.some((record) => record.inputText === 'must not be read')).toBe(false);
+    expect(historyMocks.updateHistoryRecord).toHaveBeenCalledWith(801, { title: 'Renamed' }, 'guest:sid-a:token');
+    expect(historyMocks.updateHistoryRecord).toHaveBeenCalledWith(801, { is_pinned: true }, 'guest:sid-a:token');
+    expect(historyMocks.getHistoryList).toHaveBeenLastCalledWith(expect.any(Object), 'guest:sid-a:token');
+    expectNoHistoryStorage();
+    for (const storage of [window.localStorage, window.sessionStorage]) {
+      expect(JSON.stringify(getStorageEntries(storage))).not.toMatch(/needle text|evidence|sample text/);
+    }
   });
 
-  it('guest batch delete 只更新当前内存 canonical，不创建历史 Storage', async () => {
+  it('游客检测在历史搜索下重查当前筛选，保留当前结果但不插入不匹配的新记录', async () => {
     const scanStore = useScanStore();
-    scanStore.activateGuestSession?.('sid-a');
-    const first = await scanStore.addHistoryRecord({
-      title: 'First',
-      text: 'first text',
-      html: '<p>first text</p>',
-      functions: ['scan'],
-      analysis: makeAnalysis(),
-    });
-    const second = await scanStore.addHistoryRecord({
-      title: 'Second',
-      text: 'second text',
-      html: '<p>second text</p>',
-      functions: ['scan'],
-      analysis: makeAnalysis(),
-    });
-    const result = await scanStore.batchDeleteHistoryRecords([first.id]);
+    scanStore.activateGuestSession('sid-a');
+    const matched = makeBackendRecord(makeLocalRecord({ title: 'Needle', inputText: 'needle body' }), 846);
+    historyMocks.getHistoryList.mockResolvedValueOnce({ items: [matched] });
+    await scanStore.searchHistoryRecords({ q: 'needle' });
+    scanApiMocks.detectText.mockResolvedValueOnce({ historyId: 847, result: makeAnalysis(23) });
+    historyMocks.getHistoryList.mockResolvedValueOnce({ items: [matched] });
 
-    expect(result.deletedCount).toBe(1);
+    const result = await scanStore.analyzeText('ordinary result', {
+      functions: ['scan'], guestToken: 'guest:sid-a:token',
+    });
+
+    expect(result?.summary).toEqual({ ai: 23, human: 77 });
+    expect(scanStore.currentResultHistoryId).toBe(847);
+    expect(scanStore.historyRecords.map((record) => record.id)).toEqual([matched.id]);
+    expect(historyMocks.getHistoryList.mock.calls.map(([params]) => params.q)).toEqual(['needle', 'needle']);
+  });
+
+  it.each(['rename', 'pin'])('游客 %s 更新期间切换搜索后，按当前搜索重查且不插回旧记录', async (operation) => {
+    const scanStore = useScanStore();
+    const oldRecord = makeBackendRecord(makeLocalRecord({ title: 'Old', inputText: 'old body' }), 841);
+    const visibleRecord = makeBackendRecord(makeLocalRecord({ title: 'Current', inputText: 'current body' }), 842);
+    historyMocks.getHistoryList.mockResolvedValueOnce({ items: [oldRecord] });
+    await scanStore.searchHistoryRecords({ q: 'old' });
+
+    const update = createDeferred<ReturnType<typeof makeBackendRecord>>();
+    historyMocks.updateHistoryRecord.mockReturnValueOnce(update.promise);
+    const saving = operation === 'rename'
+      ? scanStore.renameHistoryRecord(oldRecord.id, 'Renamed')
+      : scanStore.togglePinnedHistoryRecord(oldRecord.id, true);
+    historyMocks.getHistoryList.mockResolvedValueOnce({ items: [visibleRecord] });
+    await scanStore.searchHistoryRecords({ q: 'current' });
+    historyMocks.getHistoryList.mockResolvedValueOnce({ items: [visibleRecord] });
+    update.resolve({ ...oldRecord, ...(operation === 'rename' ? { title: 'Renamed' } : { is_pinned: true }) });
+
+    expect(await saving).toMatchObject({ id: oldRecord.id });
+    expect(scanStore.historyRecords.map((record) => record.id)).toEqual([visibleRecord.id]);
+    expect(historyMocks.getHistoryList.mock.calls.map(([params]) => params.q)).toEqual(['old', 'current', 'current']);
+  });
+
+  it.each(['rename', 'pin'])('游客 %s 更新后不再匹配原筛选时，从服务端重查列表', async (operation) => {
+    const scanStore = useScanStore();
+    const record = makeBackendRecord(makeLocalRecord({
+      title: 'Needle', inputText: 'ordinary body', isPinned: true,
+    }), 843);
+    const filter = operation === 'rename' ? { q: 'needle' } : { pinned: true };
+    historyMocks.getHistoryList.mockResolvedValueOnce({ items: [record] });
+    await scanStore.searchHistoryRecords(filter);
+    historyMocks.updateHistoryRecord.mockResolvedValueOnce({
+      ...record,
+      ...(operation === 'rename' ? { title: 'Changed' } : { is_pinned: false }),
+    });
+    historyMocks.getHistoryList.mockResolvedValueOnce({ items: [] });
+
+    if (operation === 'rename') await scanStore.renameHistoryRecord(record.id, 'Changed');
+    else await scanStore.togglePinnedHistoryRecord(record.id, false);
+
+    expect(scanStore.historyRecords).toEqual([]);
+    expect(historyMocks.getHistoryList.mock.calls).toHaveLength(2);
+    expect(historyMocks.getHistoryList.mock.calls[1][0]).toMatchObject(filter);
+  });
+
+  it('游客批量删除保留失败项，清空使用服务器结果且不创建历史 Storage', async () => {
+    const scanStore = useScanStore();
+    const first = makeBackendRecord(makeLocalRecord({ inputText: 'first text' }), 811);
+    const second = makeBackendRecord(makeLocalRecord({ inputText: 'second text' }), 812);
+    historyMocks.getHistoryList.mockResolvedValueOnce({ items: [first, second] });
+    await scanStore.syncHistoryFromBackend();
+    historyMocks.batchDeleteHistoryRecords.mockResolvedValueOnce({ deleted_count: 1, failed_ids: [812] });
+    expect(await scanStore.batchDeleteHistoryRecords([811, 812])).toEqual({ deletedCount: 1, failedIds: [812] });
+    expect(historyMocks.batchDeleteHistoryRecords).toHaveBeenCalledWith([811, 812], 'guest:sid-a:token');
     expect(scanStore.historyRecords).toHaveLength(1);
-    expect(scanStore.historyRecords[0].id).toBe(second.id);
+    expect(scanStore.historyRecords[0].id).toBe(812);
+    historyMocks.clearAllHistory.mockResolvedValueOnce({ deletedCount: 7 });
+    expect(await scanStore.clearAllHistoryRecords()).toEqual({ deletedCount: 7 });
+    expect(historyMocks.clearAllHistory).toHaveBeenCalledWith('guest:sid-a:token');
+    setActivePinia(createPinia());
+    await useScanStore().syncHistoryFromBackend();
+    expect(useScanStore().historyRecords).toEqual([]);
     expectNoHistoryStorage();
+  });
+
+  it.each(['new-record', 'other-record', 'empty'])('清空请求期间新检测完成后，以服务端最终 %s 列表为准', async (outcome) => {
+    const scanStore = useScanStore();
+    const oldRecord = makeBackendRecord(makeLocalRecord({ inputText: 'old result' }), 813);
+    const newRecord = makeBackendRecord(makeLocalRecord({ inputText: 'new result' }), 814);
+    const otherRecord = makeBackendRecord(makeLocalRecord({ inputText: 'other result' }), 817);
+    historyMocks.getHistoryList.mockResolvedValueOnce({ items: [oldRecord] });
+    await scanStore.syncHistoryFromBackend();
+
+    const clear = createDeferred<{ deleted_count: number }>();
+    historyMocks.clearAllHistory.mockReturnValueOnce(clear.promise);
+    const clearing = scanStore.clearAllHistoryRecords();
+    scanApiMocks.detectText.mockResolvedValueOnce({ historyId: newRecord.id, result: makeAnalysis() });
+    await scanStore.analyzeText('new result', { guestToken: 'guest:sid-a:token' });
+    expect(scanStore.currentResultHistoryId).toBe(newRecord.id);
+
+    const serverRecords = outcome === 'new-record' ? [newRecord] : outcome === 'other-record' ? [otherRecord] : [];
+    historyMocks.getHistoryList.mockResolvedValueOnce({ items: serverRecords });
+    clear.resolve({ deleted_count: 1 });
+    await clearing;
+
+    expect(scanStore.historyRecords.map((record) => record.id)).toEqual(serverRecords.map((record) => record.id));
+    expect(scanStore.currentResultHistoryId).toBe(outcome === 'new-record' ? newRecord.id : null);
+    expect(scanStore.result?.summary).toEqual({ ai: 12, human: 88 });
+  });
+
+  it('清空与新检测并发重查后仍保留当前搜索筛选', async () => {
+    const scanStore = useScanStore();
+    const oldRecord = makeBackendRecord(makeLocalRecord({ inputText: 'old result' }), 815);
+    const newRecord = makeBackendRecord(makeLocalRecord({ inputText: 'new result' }), 816);
+    historyMocks.getHistoryList.mockResolvedValueOnce({ items: [oldRecord] });
+    await scanStore.searchHistoryRecords({ q: 'old' });
+
+    const clear = createDeferred<{ deleted_count: number }>();
+    historyMocks.clearAllHistory.mockReturnValueOnce(clear.promise);
+    const clearing = scanStore.clearAllHistoryRecords();
+    scanApiMocks.detectText.mockResolvedValueOnce({ historyId: newRecord.id, result: makeAnalysis() });
+    historyMocks.getHistoryList.mockResolvedValueOnce({ items: [] });
+    await scanStore.analyzeText('new result', { guestToken: 'guest:sid-a:token' });
+
+    historyMocks.getHistoryList
+      .mockResolvedValueOnce({ items: [newRecord] })
+      .mockResolvedValueOnce({ items: [] });
+    clear.resolve({ deleted_count: 1 });
+    await clearing;
+
+    expect(historyMocks.getHistoryList.mock.calls.map(([params]) => params.q)).toEqual(['old', 'old', undefined, 'old']);
+    expect(scanStore.historyRecords).toEqual([]);
+    expect(scanStore.currentResultHistoryId).toBe(newRecord.id);
+  });
+
+  it.each(['success', 'failure'])('游客列表搜索反序返回时只采纳最后查询，旧 %s 不覆盖新状态', async (outcome) => {
+    const scanStore = useScanStore();
+    const first = createDeferred<{ items: ReturnType<typeof makeBackendRecord>[] }>();
+    historyMocks.getHistoryList.mockReturnValueOnce(first.promise);
+    const pending = scanStore.searchHistoryRecords({ q: 'first' });
+    historyMocks.getHistoryList.mockResolvedValueOnce({ items: [makeBackendRecord(makeLocalRecord({ title: 'last' }), 821)] });
+    await scanStore.searchHistoryRecords({ q: 'last' });
+    if (outcome === 'failure') first.reject(new Error('old query failed'));
+    else first.resolve({ items: [makeBackendRecord(makeLocalRecord({ title: 'first' }), 820)] });
+    await pending;
+    expect(scanStore.historyRecords.map((record) => record.id)).toEqual([821]);
+    expect(scanStore.historyLoadFailed).toBe(false);
+    expect(scanStore.isHistoryLoading).toBe(false);
+  });
+
+  it('旧详情请求在新搜索完成后仍返回详情，但不插入新搜索列表', async () => {
+    const scanStore = useScanStore();
+    const first = makeBackendRecord(makeLocalRecord({ title: 'First', inputText: 'first text' }), 823);
+    const second = makeBackendRecord(makeLocalRecord({ title: 'Second', inputText: 'second text' }), 824);
+    historyMocks.getHistoryList.mockResolvedValueOnce({ items: [first] });
+    await scanStore.searchHistoryRecords({ q: 'first' });
+
+    const detail = createDeferred<ReturnType<typeof makeBackendRecord>>();
+    historyMocks.getHistoryRecord.mockReturnValueOnce(detail.promise);
+    const pendingDetail = scanStore.fetchHistoryRecordDetail(first.id);
+    historyMocks.getHistoryList.mockResolvedValueOnce({ items: [second] });
+    await scanStore.searchHistoryRecords({ q: 'second' });
+
+    detail.resolve(first);
+    expect(await pendingDetail).toMatchObject({ id: first.id, inputText: 'first text' });
+    expect(scanStore.historyRecords.map((record) => record.id)).toEqual([second.id]);
+  });
+
+  it('首次历史列表加载期间完成检测，会重查并同时显示旧记录与新记录', async () => {
+    const scanStore = useScanStore();
+    const oldRecord = makeBackendRecord(makeLocalRecord({ inputText: 'old result' }), 826);
+    const newRecord = makeBackendRecord(makeLocalRecord({
+      inputText: 'new result', createdAt: '2026-09-29T00:00:00.000Z',
+    }), 827);
+    const stale = createDeferred<{ items: ReturnType<typeof makeBackendRecord>[] }>();
+    const fresh = createDeferred<{ items: ReturnType<typeof makeBackendRecord>[] }>();
+    historyMocks.getHistoryList.mockReturnValueOnce(stale.promise).mockReturnValueOnce(fresh.promise);
+
+    const pending = scanStore.syncHistoryFromBackend();
+    scanApiMocks.detectText.mockResolvedValueOnce({ historyId: 827, result: makeAnalysis() });
+    await scanStore.analyzeText('new result', { guestToken: 'guest:sid-a:token' });
+    stale.resolve({ items: [oldRecord] });
+    await vi.waitFor(() => expect(historyMocks.getHistoryList).toHaveBeenCalledTimes(2));
+    expect(scanStore.isHistoryLoading).toBe(true);
+
+    fresh.resolve({ items: [newRecord, oldRecord] });
+    await pending;
+    expect(scanStore.historyRecords.map((item) => item.id)).toEqual([827, 826]);
+    expect(scanStore.isHistoryLoading).toBe(false);
+    expect(scanStore.historyLoadFailed).toBe(false);
+  });
+
+  it('列表修订后旧请求失败仍按原搜索与置顶条件重查', async () => {
+    const scanStore = useScanStore();
+    const stale = createDeferred<{ items: ReturnType<typeof makeBackendRecord>[] }>();
+    const fresh = createDeferred<{ items: ReturnType<typeof makeBackendRecord>[] }>();
+    historyMocks.getHistoryList.mockReturnValueOnce(stale.promise).mockReturnValueOnce(fresh.promise);
+    const pending = scanStore.syncHistoryFromBackend({ q: '  needle  ', pinned: true, strict: true });
+
+    scanApiMocks.detectText.mockResolvedValueOnce({ historyId: 828, result: makeAnalysis() });
+    await scanStore.analyzeText('new result', { guestToken: 'guest:sid-a:token' });
+    stale.reject(new Error('stale request failed'));
+    await vi.waitFor(() => expect(historyMocks.getHistoryList).toHaveBeenCalledTimes(2));
+    fresh.resolve({ items: [makeBackendRecord(makeLocalRecord({
+      title: 'needle', inputText: 'needle result', isPinned: true,
+    }), 829)] });
+
+    await pending;
+    expect(scanStore.historyRecords.map((item) => item.id)).toEqual([829]);
+    expect(scanStore.historyLoadFailed).toBe(false);
+    expect(historyMocks.getHistoryList.mock.calls.map(([params]) => params)).toEqual([
+      expect.objectContaining({ q: 'needle', pinned: true }),
+      expect.objectContaining({ q: 'needle', pinned: true }),
+    ]);
+  });
+
+  it.each(['delete', 'detect'])('游客 %s 成功后，旧列表响应不能复活删除项或抹掉新检测', async (operation) => {
+    const scanStore = useScanStore();
+    const record = makeBackendRecord(makeLocalRecord(), 831);
+    historyMocks.getHistoryList.mockResolvedValueOnce({ items: [record] });
+    await scanStore.syncHistoryFromBackend();
+    const first = createDeferred<{ items: ReturnType<typeof makeBackendRecord>[] }>();
+    historyMocks.getHistoryList.mockReturnValueOnce(first.promise);
+    const pending = scanStore.syncHistoryFromBackend();
+    if (operation === 'delete') {
+      historyMocks.deleteHistoryRecord.mockResolvedValueOnce(undefined);
+      expect(await scanStore.deleteHistoryRecord(831)).toBe(true);
+      expect(historyMocks.deleteHistoryRecord).toHaveBeenCalledWith(831, 'guest:sid-a:token');
+    } else {
+      scanApiMocks.detectText.mockResolvedValue({ historyId: 832, result: makeAnalysis(), evidence: makeEvidence() });
+      await scanStore.analyzeText('new result', { guestToken: 'guest:sid-a:token' });
+      await scanStore.analyzeText('new result', { guestToken: 'guest:sid-a:token' });
+    }
+    historyMocks.getHistoryList.mockResolvedValueOnce({
+      items: operation === 'delete' ? [] : [makeBackendRecord(makeLocalRecord({
+        inputText: 'new result', createdAt: '2026-09-29T00:00:00.000Z',
+      }), 832), record],
+    });
+    first.resolve({ items: [record] });
+    await pending;
+    expect(scanStore.historyRecords.map((item) => item.id)).toEqual(operation === 'delete' ? [] : [832, 831]);
+    expect(historyMocks.getHistoryList).toHaveBeenCalledTimes(3);
+  });
+
+  it.each(['sid', 'login'])('游客历史读取在 %s 切换后丢弃旧响应，发出的 Bearer 保持原值', async (change) => {
+    const scanStore = useScanStore();
+    const deferred = createDeferred<{ items: ReturnType<typeof makeBackendRecord>[] }>();
+    historyMocks.getHistoryList.mockReturnValueOnce(deferred.promise);
+    const pending = scanStore.syncHistoryFromBackend();
+    expect(historyMocks.getHistoryList).toHaveBeenLastCalledWith(expect.any(Object), 'guest:sid-a:token');
+    if (change === 'sid') {
+      window.localStorage.setItem('guest_token', 'guest:sid-b:token');
+      scanStore.activateGuestSession('sid-b');
+    } else {
+      setAuthenticatedSession().user = { id: 123 };
+    }
+    const freshRecord = makeLocalRecord({ id: 841, inputText: 'new actor text' });
+    scanStore.historyRecords = [freshRecord];
+    deferred.resolve({ items: [makeBackendRecord(makeLocalRecord({ inputText: 'old secret' }), 842)] });
+    await pending;
+    expect(scanStore.historyRecords).toEqual([freshRecord]);
+  });
+
+  it('缺少或错配游客 token 时不发历史请求，失败保留已有记录并支持重试', async () => {
+    const scanStore = useScanStore();
+    const record = makeLocalRecord({ id: 851 });
+    scanStore.historyRecords = [record];
+    window.localStorage.setItem('guest_token', 'guest:sid-b:token');
+    await scanStore.syncHistoryFromBackend();
+    expect(historyMocks.getHistoryList).not.toHaveBeenCalled();
+    expect(scanStore.historyLoadFailed).toBe(true);
+    expect(scanStore.historyRecords).toEqual([record]);
+    window.localStorage.setItem('guest_token', 'guest:sid-a:refreshed');
+    historyMocks.getHistoryList.mockResolvedValueOnce({ items: [makeBackendRecord(record, 851)] });
+    await scanStore.syncHistoryFromBackend();
+    expect(historyMocks.getHistoryList).toHaveBeenLastCalledWith(expect.any(Object), 'guest:sid-a:refreshed');
+    expect(scanStore.historyLoadFailed).toBe(false);
   });
 });
