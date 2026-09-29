@@ -262,6 +262,45 @@ describe('ScanPage panel switching', () => {
     }
   });
 
+  it('游客列表无分析时读取详情，详情仍无分析则只打开正文', async () => {
+    route.query = { panel: 'document' };
+    const list = makeHistoryResponse([
+      { id: 904, inputText: 'Complete detail text', analysis: null },
+      { id: 905, inputText: 'Unanalyzed draft text', analysis: null },
+    ]);
+    vi.mocked(historyApi.getHistoryList).mockResolvedValue(list);
+    vi.mocked(historyApi.getHistoryRecord)
+      .mockResolvedValueOnce({
+        ...list.items[0],
+        analysis: {
+          summary: { ai: 77, human: 23 }, sentences: [], translation: '', polish: '',
+          citations: [], ai_likely_count: 0, highlighted_html: '',
+        },
+      })
+      .mockResolvedValueOnce(list.items[1]);
+    const wrapper = mountScanPage();
+    try {
+      await flushPromises();
+      const scanStore = useScanStore();
+      const state = getScanPageSetupState(wrapper);
+      expect(scanStore.historyRecords.map((record) => record.analysis)).toEqual([null, null]);
+
+      await state.loadHistoryRecord(904);
+      expect(historyApi.getHistoryRecord).toHaveBeenCalledWith(904, 'guest-token');
+      expect(scanStore.result?.summary).toEqual({ ai: 77, human: 23 });
+      expect(state.editorMode).toBe('preview');
+
+      await state.loadHistoryRecord(905);
+      expect(historyApi.getHistoryRecord).toHaveBeenCalledWith(905, 'guest-token');
+      expect(scanStore.inputText).toBe('Unanalyzed draft text');
+      expect(scanStore.result).toBeNull();
+      expect(scanStore.resultInputText).toBe('');
+      expect(state.editorMode).toBe('edit');
+    } finally {
+      wrapper.unmount();
+    }
+  });
+
   it('游客刷新详情 URL 时可读取不在当前列表中的服务器记录和 Evidence', async () => {
     route.query = { panel: 'document', detail: '902' };
     route.fullPath = '/dashboard?panel=document&detail=902';

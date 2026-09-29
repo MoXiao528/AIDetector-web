@@ -338,6 +338,8 @@ const normalizeHistoryRecordPayload = (record) => {
   const recordId = pickFirst(record.id, record.historyId, record.history_id);
   /** @type {EvidenceResult | undefined} */
   const evidence = record.evidence ?? undefined;
+  const rawAnalysis = pickFirst(record.analysis, record.result);
+  const hasExplicitNullAnalysis = rawAnalysis === undefined && (record.analysis === null || record.result === null);
 
   return {
     id: recordId,
@@ -350,7 +352,7 @@ const normalizeHistoryRecordPayload = (record) => {
     isPinned: Boolean(pickFirst(record.isPinned, record.is_pinned, false)),
     // Keep an explicit missing value so a fresh public projection clears old Evidence on merge.
     evidence,
-    analysis: normalizeAnalysisPayload(pickFirst(record.analysis, record.result), {
+    analysis: hasExplicitNullAnalysis ? null : normalizeAnalysisPayload(rawAnalysis, {
       fallbackText: inputTextValue,
       idPrefix: `history-${recordId || 'record'}`,
       fallbackScore: pickFirst(record.score, record.raw_score),
@@ -913,8 +915,8 @@ export const useScanStore = defineStore('scan', () => {
       normalized.inputText || ''
     );
     setFunctions(normalized.functions);
-    result.value = { ...normalized.analysis, evidence: normalized.evidence };
-    resultInputText.value = normalized.inputText || '';
+    result.value = normalized.analysis ? { ...normalized.analysis, evidence: normalized.evidence } : null;
+    resultInputText.value = normalized.analysis ? normalized.inputText || '' : '';
     currentResultHistoryId.value = normalized.id || null;
     selectedExampleKey.value = normalized.exampleKey || '';
     lastUploadedFileName.value = '';
