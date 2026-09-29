@@ -2198,13 +2198,16 @@ const deleteSelectedHistoryRecords = async () => {
   const ids = [...selectedHistoryIds.value];
   if (!ids.length) return;
   if (typeof window !== 'undefined' && !window.confirm(t('scan.history.deleteSelectedConfirm', { value: ids.length }))) return;
-  const shouldResetEditor = ids.some((id) => String(id) === String(activeHistoryId.value));
+  const activeId = activeHistoryId.value;
+  const selectionSequence = historySelectionSequence;
+  const shouldResetEditor = ids.some((id) => String(id) === String(activeId));
   await runHistoryAction(async () => {
     const context = capturePageActorContext();
-    await scanStore.batchDeleteHistoryRecords(ids);
+    const { failedIds } = await scanStore.batchDeleteHistoryRecords(ids);
     if (!isPageActorContextCurrent(context)) return;
-    clearHistorySelection();
-    if (shouldResetEditor) {
+    const failedSet = new Set(failedIds.map((id) => String(id)));
+    selectedHistoryIds.value = ids.filter((id) => failedSet.has(String(id)));
+    if (shouldResetEditor && !failedSet.has(String(activeId)) && selectionSequence === historySelectionSequence) {
       await resetEditor();
     }
   });

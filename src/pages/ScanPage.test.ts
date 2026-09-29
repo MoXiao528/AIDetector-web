@@ -146,6 +146,7 @@ type ScanPageSetupState = {
   selectedHistoryIds: Array<string | number>;
   clearAllHistoryRecords: () => Promise<void>;
   closeResultDetail: () => void;
+  deleteSelectedHistoryRecords: () => Promise<void>;
   handleScan: () => Promise<void>;
   loadHistoryRecord: (id: string | number) => Promise<void>;
   onFileChange: (event: { target: { files: File[]; value: string } }) => Promise<void>;
@@ -300,6 +301,45 @@ describe('ScanPage panel switching', () => {
       expect(scanStore.resultInputText).toBe('');
       expect(state.editorMode).toBe('edit');
     } finally {
+      wrapper.unmount();
+    }
+  });
+
+  it.each([911, 912])('批量删除部分失败 %s 时，仅在当前记录真正删除后清空编辑器', async (failedId) => {
+    route.query = { panel: 'document' };
+    const analysis = {
+      summary: { ai: 64, human: 36 }, sentences: [], translation: '', polish: '',
+      citations: [], ai_likely_count: 0, highlighted_html: '',
+    };
+    vi.mocked(historyApi.getHistoryList).mockResolvedValue(makeHistoryResponse([
+      { id: 911, inputText: 'Active record text', analysis },
+      { id: 912, inputText: 'Other record text', analysis },
+    ]));
+    vi.mocked(historyApi.batchDeleteHistoryRecords).mockResolvedValue({ deleted_count: 1, failed_ids: [failedId] });
+    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true);
+    const wrapper = mountScanPage();
+    try {
+      await flushPromises();
+      const scanStore = useScanStore();
+      const state = getScanPageSetupState(wrapper);
+      await state.loadHistoryRecord(911);
+      state.selectedHistoryIds = [911, 912];
+
+      await state.deleteSelectedHistoryRecords();
+
+      expect(scanStore.historyRecords.map((record) => record.id)).toEqual([failedId]);
+      expect(state.selectedHistoryIds).toEqual([failedId]);
+      if (failedId === 911) {
+        expect(String(state.activeHistoryId)).toBe('911');
+        expect(scanStore.inputText).toBe('Active record text');
+        expect(scanStore.result?.summary).toEqual(analysis.summary);
+      } else {
+        expect(state.activeHistoryId).toBe('');
+        expect(scanStore.inputText).toBe('');
+        expect(scanStore.result).toBeNull();
+      }
+    } finally {
+      confirmSpy.mockRestore();
       wrapper.unmount();
     }
   });
