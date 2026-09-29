@@ -16,6 +16,16 @@ describe('editorContent utils', () => {
     expect(extractTextFromHtml(html)).toBe('Title\n\nFirst item\n\nSecond item\n\nLast line\ncontinues');
   });
 
+  it('根层 Shift+Enter 换行保留为段内单换行', () => {
+    expect(extractTextFromHtml('first<br>second')).toBe('first\nsecond');
+    expect(extractTextFromHtml('<strong>first</strong><br><em>second</em><p>third</p>'))
+      .toBe('first\nsecond\n\nthird');
+    expect(extractTextFromHtml('<div>first<br><span>second</span><p>third</p></div>'))
+      .toBe('first\nsecond\n\nthird');
+    expect(extractTextFromHtml('first<br><br>second')).toBe('first\n\nsecond');
+    expect(extractTextFromHtml('<p>first<br>second</p>')).toBe('first\nsecond');
+  });
+
   it('buildHighlightedPreviewHtml 在原始结构上做高亮，不打平 DOM', () => {
     const html = `
       <h2>Section Title</h2>

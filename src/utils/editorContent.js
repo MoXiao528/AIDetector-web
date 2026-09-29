@@ -372,11 +372,6 @@ const normalizeRootInlineRuns = (root) => {
     }
 
     const tagName = child.tagName?.toUpperCase?.() || '';
-    if (tagName === 'BR') {
-      flushRun(child);
-      child.remove();
-      return;
-    }
     if (SKIP_TAGS.has(tagName) || isStructuralTagName(tagName)) {
       flushRun(child);
       return;
