@@ -296,7 +296,7 @@ const createDocumentFromHtml = (html = '') => {
   return parser.parseFromString(`<body>${html}</body>`, 'text/html');
 };
 
-export const normalizeBlockText = (value = '') =>
+const normalizeBlockText = (value = '') =>
   String(value)
     .replace(/\u00a0/g, ' ')
     .replace(/\r\n/g, '\n')
@@ -453,6 +453,10 @@ export const extractTextFromHtml = (html = '') => {
 };
 
 export const hasTextMismatch = (text = '', analyzedText = '') =>
+  normalizeBlockText(text) !== normalizeBlockText(analyzedText);
+
+// Legacy fallback text may flatten paragraph breaks; this guard checks missing content only.
+const hasTextContentMismatch = (text = '', analyzedText = '') =>
   String(text).replace(/\s+/g, '') !== String(analyzedText).replace(/\s+/g, '');
 
 export const hasParagraphRange = (sentence) => {
@@ -617,7 +621,7 @@ export const buildHighlightedPreviewHtml = ({
     return sanitizeHtmlForEditor(fallbackHighlightedHtml || buildPlainHighlightedHtml(fallbackText, normalizedSentences), fallbackText);
   }
 
-  if (fallbackText && hasTextMismatch(extractTextFromHtml(editorHtml), fallbackText)) {
+  if (fallbackText && hasTextContentMismatch(extractTextFromHtml(editorHtml), fallbackText)) {
     // Saved paragraph ranges belong to the submitted text, not recovered HTML content.
     doc.querySelectorAll('.highlight-chip, [data-sentence-id], [data-sentence-block-id]').forEach((node) => {
       node.removeAttribute('class');
