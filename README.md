@@ -1,8 +1,10 @@
-# AIDetector Web V2.0
+# AIDetector Web v2.1.0
 
-`AIDetector-web` 是 AIDetector V2.0 的前端仓库。当前正式交付的是一个以 AI 文本检测为核心的 Web 工作台，不是完整的学术写作平台。
+`AIDetector-web` 是 AIDetector v2.1.0 的前端仓库。当前正式交付的是一个以 AI 文本检测为核心的 Web 工作台，不是完整的学术写作平台。
 
-V2.0 当前正式提供：
+`v2.1.0` 汇总已合并的写作特点展示、游客历史恢复与编辑正文一致性修复，作为整体项目代码保存点；生产部署状态仍以对应验收记录为准。
+
+v2.1.0 当前正式提供：
 - 首页与产品入口
 - 检测工作台
 - 游客 / 登录 / 注册
@@ -12,7 +14,7 @@ V2.0 当前正式提供：
 - Dashboard 内静态 QA 帮助面板
 - RoBERTa v2.0 概率分数展示、阈值语义摘要和段落高亮
 
-## V2.0 边界
+## v2.1.0 边界
 
 ### 已开放
 - 文本检测 `scan`
@@ -32,7 +34,7 @@ V2.0 当前正式提供：
 
 说明：
 - 代码里如果仍有占位字段或旧页面，不代表功能已上线。
-- V2.0 对外口径只以“已开放”列表为准。
+- v2.1.0 对外口径只以“已开放”列表为准。
 
 ## 技术栈
 
@@ -114,7 +116,7 @@ npm run build
 
 - `dist/`
 
-## V2.0 推荐部署方式
+## v2.1.0 推荐部署方式
 
 推荐结构：
 
@@ -154,7 +156,7 @@ Browser -> https://your-domain.example/api/... -> reverse proxy -> 127.0.0.1:802
 - `/contact`
 - `/pricing`
 
-说明：Dashboard 内的 `qa` 面板是静态帮助内容，当前可访问；独立路径 `/qa` 仍由路由守卫拦截，不作为 V2.0 对外页面。
+说明：Dashboard 内的 `qa` 面板是静态帮助内容，当前可访问；独立路径 `/qa` 仍由路由守卫拦截，不作为 v2.1.0 对外页面。
 
 ## 文件导入和富文本预览
 
@@ -190,7 +192,7 @@ Browser -> https://your-domain.example/api/... -> reverse proxy -> 127.0.0.1:802
 
 CI 使用 Node 22，在 push 和 pull request 上按 `package-lock.json` 执行 `npm ci`、`npm run check`、`npm run build`。本机已有依赖时直接使用下面的验收命令；CI 通过不代表目标 Linux 部署通过。W1 合并前须等待最终 head 的 CI 和 Codex review 完成并处理实际发现。
 
-## V2.0 验收清单
+## v2.1.0 验收清单
 
 ```bash
 npm run check
