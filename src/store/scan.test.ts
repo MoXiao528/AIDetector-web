@@ -917,6 +917,62 @@ describe('scan store guest history boundary', () => {
     expect(scanStore.historyRecords).toEqual([]);
   });
 
+  it.each(['guest', 'user'])('HTTP 缺少 randomUUID 时 %s 检测生成 UUID，重试复用，新检测换键', async (actor) => {
+    const getRandomValues = vi.fn((bytes: Uint8Array) => bytes.fill(0))
+      .mockImplementationOnce((bytes: Uint8Array) => bytes.fill(0))
+      .mockImplementationOnce((bytes: Uint8Array) => bytes.fill(255));
+    vi.stubGlobal('crypto', { getRandomValues });
+    if (actor === 'user') setAuthenticatedSession().user = { id: 92 };
+    const scanStore = useScanStore();
+    if (actor === 'guest') scanStore.activateGuestSession('sid-a');
+    const text = 'HTTP compatible detection text';
+    const request = { functions: ['scan'], guestToken: actor === 'guest' ? 'guest:sid-a:token' : '' };
+    scanApiMocks.detectText
+      .mockRejectedValueOnce(new Error('temporary failure'))
+      .mockResolvedValue({ inputText: text, result: makeAnalysis(23) });
+
+    await expect(scanStore.analyzeText(text, request)).rejects.toThrow('temporary failure');
+    const firstKey = scanApiMocks.detectText.mock.calls[0][2];
+    expect(firstKey).toBe('00000000-0000-4000-8000-000000000000');
+    expect(scanApiMocks.detectText.mock.calls[0][1]).toBe(request.guestToken);
+
+    await scanStore.analyzeText(text, request);
+    expect(scanApiMocks.detectText.mock.calls[1][2]).toBe(firstKey);
+    expect(getRandomValues).toHaveBeenCalledTimes(1);
+
+    await scanStore.analyzeText(text, request);
+    expect(scanApiMocks.detectText.mock.calls[2][2]).toBe('ffffffff-ffff-4fff-bfff-ffffffffffff');
+    expect(getRandomValues).toHaveBeenCalledTimes(2);
+  });
+
+  it('randomUUID 可用时保留浏览器原生生成方式', async () => {
+    const key = '11111111-1111-4111-8111-111111111111';
+    const randomUUID = vi.fn(() => key);
+    const getRandomValues = vi.fn();
+    vi.stubGlobal('crypto', { randomUUID, getRandomValues });
+    const scanStore = useScanStore();
+    scanStore.activateGuestSession('sid-a');
+    scanApiMocks.detectText.mockResolvedValueOnce({ result: makeAnalysis(23) });
+
+    await scanStore.analyzeText('native UUID detection', { guestToken: 'guest:sid-a:token' });
+
+    expect(scanApiMocks.detectText.mock.calls[0][2]).toBe(key);
+    expect(randomUUID).toHaveBeenCalledTimes(1);
+    expect(getRandomValues).not.toHaveBeenCalled();
+  });
+
+  it('安全随机数生成失败时不发送缺少幂等键的检测请求', async () => {
+    vi.stubGlobal('crypto', { getRandomValues: () => { throw new Error('random source unavailable'); } });
+    const scanStore = useScanStore();
+    scanStore.activateGuestSession('sid-a');
+
+    await expect(scanStore.analyzeText('failed UUID detection', {
+      guestToken: 'guest:sid-a:token',
+    })).rejects.toThrow('random source unavailable');
+
+    expect(scanApiMocks.detectText).not.toHaveBeenCalled();
+  });
+
   it('同一账号和 payload 的普通失败重试复用 Idempotency-Key', async () => {
     const authStore = setAuthenticatedSession();
     authStore.user = { id: 83 };

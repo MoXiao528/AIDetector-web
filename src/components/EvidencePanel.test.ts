@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { defineComponent, nextTick, type PropType } from 'vue';
 import { enableAutoUnmount, mount } from '@vue/test-utils';
 import EvidencePanel from './EvidencePanel.vue';
@@ -6,6 +6,8 @@ import type { EvidenceReason, EvidenceResult, EvidenceSignal } from '../api/modu
 import { createI18n, useI18n } from '../i18n';
 
 enableAutoUnmount(afterEach);
+beforeEach(() => vi.stubEnv('VITE_EVIDENCE_ENABLED', 'true'));
+afterEach(() => vi.unstubAllEnvs());
 
 // Independent contract fixture: all 22 public metrics in backend order.
 const metrics = {
@@ -77,6 +79,27 @@ const mountPanel = (
 ) => mount(Harness, { props: { evidence, ...props }, global: { plugins: [createI18n()] } });
 
 describe('EvidencePanel', () => {
+  it.each([false, true])('关闭展示时隐藏概要和详情中的所有 Evidence 内容及入口（detailed=%s）', async (detailed) => {
+    vi.stubEnv('VITE_EVIDENCE_ENABLED', 'false');
+    const evidence = makeEvidence();
+    const original = JSON.stringify(evidence);
+    const wrapper = mountPanel(evidence, { detailed });
+    expect(wrapper.find('[data-testid="evidence-panel"]').exists()).toBe(false);
+    expect(wrapper.find('button, details, a').exists()).toBe(false);
+    expect(wrapper.text()).toBe('');
+    expect(wrapper.getComponent(EvidencePanel).emitted('view-details')).toBeUndefined();
+    await wrapper.setProps({ evidence: makeEvidence('failed') });
+    expect(wrapper.text()).toBe('');
+    expect(JSON.stringify(evidence)).toBe(original);
+  });
+
+  it.each([undefined, 'true'])('未关闭或恢复展示时保留完整 Evidence 面板（开关=%s）', (enabled) => {
+    vi.stubEnv('VITE_EVIDENCE_ENABLED', enabled);
+    const wrapper = mountPanel();
+    expect(wrapper.find('[data-testid="evidence-panel"]').exists()).toBe(true);
+    expect(wrapper.find('[data-testid="evidence-professional"]').exists()).toBe(true);
+  });
+
   it('概要只显示四项可读结论，点击维度或查看依据发出详情导航事件', async () => {
     const wrapper = mountPanel(makeEvidence('partial'), { detailed: false });
     const panel = wrapper.getComponent(EvidencePanel);

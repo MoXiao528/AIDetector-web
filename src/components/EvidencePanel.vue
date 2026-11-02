@@ -1,6 +1,6 @@
 <template>
   <section
-    v-if="evidence"
+    v-if="evidenceEnabled && evidence"
     :aria-label="t('scan.evidence.presentation.title')"
     :class="['min-w-0 space-y-4 break-words', detailed ? '' : 'rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm']"
     data-testid="evidence-panel"
@@ -232,6 +232,7 @@ import { useI18n } from '../i18n';
 import { comparisonReasons, hasDistinctReference, isHighOverlap, observationRequirement, patternExamples, referenceBand, referenceOverlap, summaryMetrics, summaryState } from '../utils/evidencePresentation';
 
 type Dimension = EvidenceSignal['dimension'];
+const evidenceEnabled = import.meta.env.VITE_EVIDENCE_ENABLED !== 'false';
 const props = withDefaults(defineProps<{
   evidence?: EvidenceResult | null;
   submittedText?: string;

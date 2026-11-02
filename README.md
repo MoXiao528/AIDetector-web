@@ -57,7 +57,7 @@ npm run build
 
 ## 环境变量
 
-前端只关心两个变量。
+前端使用以下环境变量。
 
 ### `VITE_API_BASE_URL`
 
@@ -76,6 +76,16 @@ VITE_API_BASE_URL=
 ```env
 VITE_DEV_PROXY_TARGET=http://localhost:8020
 ```
+
+### `VITE_EVIDENCE_ENABLED`
+
+仅控制写作特点（Evidence）的前端展示，不改变主检测结果，也不会阻止后端发送 Router 请求。
+
+- 开发、测试和生产构建未配置时均显示；显式设为 `false` 时隐藏结果摘要、详情和历史中的全部 Evidence 展示及内部入口，包括响应或缓存中已有的数据，不删除历史数据。主检测详情、段落高亮和 PDF 入口保留。
+- 部署时在本地 `.env.production` 或 `.env.production.local` 显式设置 `VITE_EVIDENCE_ENABLED=true`（显示）或 `false`（隐藏），重新执行 `npm run build` 并部署新的 `dist/`。本地部署配置不纳入源码提交，也不代表仓库默认值。
+- 进程环境变量优先级最高，`.env.production.local` 会覆盖 `.env.production`；该开关在构建时生效，修改服务器环境变量不会改变已构建的静态文件。
+
+若要暂停 Evidence 计算和 Router 请求，需另行设置后端 `DETECT_EVIDENCE_MODE=off`；要让新检测返回可展示的 Evidence，需先完成下游协议验收并启用 `serve`。前端开关不能替代后端模式配置。
 
 ## 本地开发
 
