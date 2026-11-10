@@ -570,15 +570,13 @@ export const useScanStore = defineStore('scan', () => {
     }
 
     examplesLocale.value = nextLocale;
-    examples.value = normalizeExamples(getFallbackHeroExamples(nextLocale));
+    examples.value = getFallbackHeroExamples(nextLocale);
     usageExamples.value = normalizeExamples(getFallbackUsageExamples(nextLocale));
     isLoadingExamples.value = true;
 
     try {
       const response = await fetchScanExamples(nextLocale);
-      if (Array.isArray(response?.heroExamples) && response.heroExamples.length) {
-        examples.value = normalizeExamples(response.heroExamples);
-      }
+      // 首页送检示例随前端维护，避免旧接口覆盖已确认的文本与选项。
       if (Array.isArray(response?.usageExamples) && response.usageExamples.length) {
         usageExamples.value = normalizeExamples(response.usageExamples);
       }

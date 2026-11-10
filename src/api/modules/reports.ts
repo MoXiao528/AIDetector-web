@@ -4,6 +4,8 @@ export interface ReportPdfRequest {
   reportType: 'scan' | 'history';
   locale?: string;
   historyId: number;
+  includeEvidence?: boolean;
+  timeZone?: string;
 }
 
 export const exportPdfReport = async (payload: ReportPdfRequest) =>

@@ -9,7 +9,7 @@
           </div>
           <p class="max-w-2xl text-sm text-slate-300">{{ t('appFooter.description') }}</p>
         </div>
-        <p class="text-xs text-slate-500">{{ t('appFooter.copyright', { year: new Date().getFullYear() }) }}</p>
+        <p class="text-xs text-slate-400">{{ t('appFooter.copyright', { year: new Date().getFullYear() }) }}</p>
       </div>
       <div v-else class="grid gap-10 lg:grid-cols-[1.4fr_repeat(3,1fr)]">
         <div class="space-y-4">

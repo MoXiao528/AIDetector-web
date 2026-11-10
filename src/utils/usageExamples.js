@@ -1,34 +1,21 @@
+import detectionExamples from '../data/detectionExamples.json';
+
+const aiSample = detectionExamples.find((example) => example.key === 'chatgpt').text;
+const humanSample = detectionExamples.find((example) => example.key === 'human').text;
+
 export const fallbackHeroExamplesByLocale = {
   'zh-CN': [
     {
       key: 'chatgpt',
-      label: 'ChatGPT',
-      description: '典型的高结构化 AI 说明型段落。',
-      content:
-        '人工智能系统正在以前所未有的速度推动信息生成，这使得教育工作者越来越难以区分真实的学生写作与由生成式模型产出的文本内容。',
-      ai: 88,
-      human: 12,
-      snapshot: '高结构化说明',
-      snippet:
-        '人工智能系统正在以前所未有的速度推动信息生成，这使得教育工作者越来越难以区分真实的学生写作与由生成式模型产出的文本内容。',
-      structure: '高度规整',
-      rhythm: '重复偏高',
-      action: '优先复核',
+      label: 'AI',
+      description: '为展示写作特点专门生成的 AI 文本，结果以实际检测为准。',
+      content: aiSample,
     },
     {
       key: 'human',
       label: '人工写作',
-      description: '带有个人观察、停顿和经验细节的人类表达。',
-      content:
-        '我在访谈每一位学生时，都会留意他们停顿时的迟疑、举例时的生活细节，以及他们如何把课堂讨论和自己的真实经历连接起来。',
-      ai: 14,
-      human: 86,
-      snapshot: '个人经验表达',
-      snippet:
-        '我在访谈每一位学生时，都会留意他们停顿时的迟疑、举例时的生活细节，以及他们如何把课堂讨论和自己的真实经历连接起来。',
-      structure: '自然起伏',
-      rhythm: '较稳定',
-      action: '可直接送检',
+      description: '鲁迅《故乡》原文节选',
+      content: humanSample,
     },
     {
       key: 'hybrid',
@@ -64,33 +51,15 @@ export const fallbackHeroExamplesByLocale = {
   'en-US': [
     {
       key: 'chatgpt',
-      label: 'ChatGPT',
-      description: 'A highly structured AI-generated explanatory passage.',
-      content:
-        'Artificial intelligence systems have rapidly accelerated the pace of information creation, challenging educators to distinguish authentic student work from generated text.',
-      ai: 88,
-      human: 12,
-      snapshot: 'Highly structured explanation',
-      snippet:
-        'Artificial intelligence systems have rapidly accelerated the pace of information creation, challenging educators to distinguish authentic student work from generated text.',
-      structure: 'Highly regular',
-      rhythm: 'Repetitive',
-      action: 'Review first',
+      label: 'AI',
+      description: 'Chinese AI text generated to demonstrate writing characteristics. Run detection for results.',
+      content: aiSample,
     },
     {
       key: 'human',
       label: 'Human',
-      description: 'Human writing with personal observations and lived detail.',
-      content:
-        'When I interviewed each student, I paid attention to their pauses, their personal anecdotes, and the way they connected class discussions to their own experiences.',
-      ai: 14,
-      human: 86,
-      snapshot: 'Personal narrative detail',
-      snippet:
-        'When I interviewed each student, I paid attention to their pauses, their personal anecdotes, and the way they connected class discussions to their own experiences.',
-      structure: 'Natural',
-      rhythm: 'Stable',
-      action: 'Ready to scan',
+      description: 'Lu Xun, “My Old Home” — excerpt in the original Chinese.',
+      content: humanSample,
     },
     {
       key: 'hybrid',
@@ -217,7 +186,8 @@ export const fallbackUsageExamplesByLocale = {
 };
 
 export const getFallbackHeroExamples = (locale = 'zh-CN') =>
-  fallbackHeroExamplesByLocale[locale] || fallbackHeroExamplesByLocale['en-US'];
+  (fallbackHeroExamplesByLocale[locale] || fallbackHeroExamplesByLocale['en-US'])
+    .filter((example) => example.key === 'chatgpt' || example.key === 'human');
 
 export const getFallbackUsageExamples = (locale = 'zh-CN') =>
   fallbackUsageExamplesByLocale[locale] || fallbackUsageExamplesByLocale['en-US'];

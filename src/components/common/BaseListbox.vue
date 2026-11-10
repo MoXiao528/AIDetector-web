@@ -16,6 +16,7 @@
       <transition name="fade">
         <ListboxOptions
           class="absolute z-20 mt-2 w-full rounded-2xl border border-slate-200 bg-white p-2 text-sm text-slate-600 shadow-xl focus:outline-none"
+          :class="optionsClass"
         >
           <ListboxOption
             v-for="option in options"
@@ -74,6 +75,10 @@ const props = defineProps({
     default: false,
   },
   buttonClass: {
+    type: String,
+    default: '',
+  },
+  optionsClass: {
     type: String,
     default: '',
   },

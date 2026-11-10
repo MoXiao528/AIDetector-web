@@ -1,25 +1,24 @@
 <template>
-  <section class="relative overflow-hidden bg-[linear-gradient(180deg,#faf9f7_0%,#fcfbf9_58%,#ffffff_100%)] text-slate-950 before:absolute before:inset-0 before:bg-[linear-gradient(rgba(17,24,39,0.024)_1px,transparent_1px),linear-gradient(90deg,rgba(17,24,39,0.024)_1px,transparent_1px)] before:bg-[size:56px_56px] before:opacity-60">
-    <div class="relative mx-auto flex min-h-[calc(100vh-4.5rem)] max-w-5xl flex-col justify-center px-4 py-10 sm:px-6 lg:px-8 lg:py-12">
+  <section class="relative overflow-hidden bg-[linear-gradient(180deg,#e6effd_0%,#f4f7fb_80%)] text-slate-950">
+    <div class="relative mx-auto flex max-w-7xl flex-col px-4 py-10 sm:px-6 lg:px-8 lg:py-12 2xl:max-w-[100rem]">
       <div class="mx-auto max-w-3xl text-center">
-        <h1 class="text-[2rem] font-semibold leading-tight tracking-tight text-slate-950 sm:text-5xl lg:text-6xl">
+        <h1 class="hero-title text-[2rem] font-semibold leading-tight tracking-tight text-slate-950 sm:text-5xl lg:text-6xl">
           <span class="block sm:inline">{{ t('hero.titlePrefix') }}</span>
-          <span class="block text-primary-700 sm:ml-2 sm:inline">{{ t('hero.titleHighlight') }}</span>
+          <span class="hero-title-highlight block text-primary-700 sm:ml-2 sm:inline">{{ t('hero.titleHighlight') }}</span>
         </h1>
-        <p class="mx-auto mt-4 max-w-2xl text-base leading-7 text-slate-500 sm:text-lg">
+        <p class="mx-auto mt-4 max-w-2xl text-base leading-7 text-slate-600 sm:text-lg">
           {{ t('hero.subtitle') }}
         </p>
       </div>
 
-      <div class="mt-8 rounded-[1.25rem] border border-slate-200/80 bg-white/90 p-4 shadow-[0_24px_80px_-55px_rgba(15,23,42,0.55),0_1px_2px_rgba(15,23,42,0.06)] ring-1 ring-white/80 backdrop-blur sm:p-5 lg:p-6">
+      <div class="hero-form mt-8 rounded-2xl border border-primary-200/80 bg-white p-4 shadow-[0_6px_24px_rgba(24,34,48,0.06)] sm:p-5 lg:p-6">
         <div class="flex items-center justify-between gap-3">
-          <label class="inline-flex items-center text-sm font-semibold text-slate-800">
-            <span class="mr-2 h-2 w-2 rounded-full bg-primary-500 shadow-[0_0_0_4px_rgba(91,107,98,0.12)]"></span>
+          <label for="hero-text-input" class="inline-flex items-center text-sm font-semibold text-slate-800">
             <span>{{ t('hero.form.label') }}</span>
           </label>
           <button
             type="button"
-            class="inline-flex items-center rounded-lg border border-slate-200/80 bg-white/70 px-3 py-1.5 text-xs font-semibold text-slate-500 transition hover:border-slate-300 hover:bg-white hover:text-slate-700"
+            class="liquid-glass inline-flex items-center rounded-full px-3 py-1.5 text-xs font-semibold"
             @click="resetInput"
           >
             {{ t('hero.form.reset') }}
@@ -27,9 +26,10 @@
         </div>
 
         <textarea
+          id="hero-text-input"
           v-model="heroText"
-          rows="10"
-          class="mt-4 min-h-[34vh] w-full resize-y rounded-2xl border border-slate-200/90 bg-[#f8f8f7] p-5 text-base leading-8 text-slate-800 shadow-[inset_0_1px_2px_rgba(17,24,39,0.035)] transition placeholder:text-slate-400 focus:border-slate-300 focus:bg-white focus:outline-none focus:ring-4 focus:ring-slate-100 sm:min-h-[36vh] lg:min-h-[40vh]"
+          rows="8"
+          class="mt-4 min-h-[240px] w-full resize-y rounded-xl border border-slate-200 bg-white p-4 text-base leading-7 text-slate-800 transition-colors placeholder:text-slate-500 focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-100 sm:min-h-[280px] sm:p-5 lg:min-h-[clamp(320px,38vh,560px)]"
           :placeholder="t('hero.form.placeholder')"
           @input="syncDraftFromHero"
           @dragover.prevent
@@ -46,7 +46,7 @@
           />
           <button
             type="button"
-            class="inline-flex items-center justify-center rounded-xl border border-slate-200 bg-white px-5 py-3 text-sm font-semibold text-slate-700 shadow-sm shadow-slate-200/40 transition hover:border-slate-300 hover:bg-slate-50 hover:text-slate-900"
+            class="liquid-glass inline-flex items-center justify-center rounded-full px-5 py-3 text-sm font-semibold"
             @click="triggerUpload"
           >
             <ArrowUpTrayIcon class="mr-2 h-5 w-5" />
@@ -54,7 +54,7 @@
           </button>
           <button
             type="button"
-            class="inline-flex items-center justify-center rounded-xl bg-primary-600 px-7 py-3 text-sm font-semibold text-white shadow-[0_10px_24px_-16px_rgba(17,24,39,0.7)] transition hover:bg-primary-700 focus:outline-none focus:ring-4 focus:ring-primary-100"
+            class="primary-action liquid-glass inline-flex items-center justify-center rounded-full px-7 py-3 text-sm font-semibold"
             @click="handleScan"
           >
             <ShieldCheckIcon class="mr-2 h-5 w-5" />
@@ -62,7 +62,7 @@
           </button>
         </div>
 
-        <div class="mt-4 rounded-2xl border border-slate-100 bg-slate-50/75 px-3 py-3 text-xs text-slate-500 sm:flex sm:flex-wrap sm:items-center sm:justify-between sm:gap-3">
+        <div class="mt-5 border-t border-slate-200 pt-4 text-xs text-slate-600 sm:flex sm:flex-wrap sm:items-center sm:justify-between sm:gap-3">
           <div class="flex flex-wrap items-center gap-2">
             <span class="font-medium text-slate-500">{{ t('hero.examples.title') }}</span>
             <button
@@ -70,20 +70,22 @@
               :key="example.key"
               type="button"
               :class="[
-                'rounded-lg border px-2.5 py-1 font-medium transition',
+                'liquid-glass rounded-full px-3 py-1.5 font-medium',
                 scanStore.selectedExampleKey === example.key
-                  ? 'border-primary-200 bg-primary-50 text-primary-700'
-                  : 'border-slate-200/80 bg-white text-slate-500 hover:border-slate-300 hover:text-slate-800',
+                  ? 'liquid-glass-selected'
+                  : '',
               ]"
+              :aria-pressed="scanStore.selectedExampleKey === example.key"
               @click="applyExample(example.key)"
             >
               {{ example.label }}
             </button>
           </div>
-          <div class="mt-3 flex flex-wrap items-center gap-3 tabular-nums sm:mt-0">
+          <div class="mt-3 flex min-w-0 flex-wrap items-center gap-3 break-all tabular-nums sm:mt-0">
             <span>{{ t('hero.examples.wordCount', { current: heroText.length, limit: scanStore.characterLimit }) }}</span>
             <span v-if="scanStore.lastUploadedFileName">{{ t('hero.examples.uploaded', { name: scanStore.lastUploadedFileName }) }}</span>
           </div>
+          <p v-if="selectedExample" class="mt-2 w-full leading-5 text-slate-500" aria-live="polite">{{ selectedExample.description }}</p>
           <div v-if="scanStore.uploadError" class="flex items-center space-x-2 rounded-2xl bg-rose-50 px-3 py-2 text-rose-600">
             <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v4m0 4h.01M5.22 5.22l13.56 13.56M19 13a7 7 0 11-14 0 7 7 0 0114 0z" />
@@ -129,6 +131,7 @@ const props = defineProps({
 const emit = defineEmits(['update:modelValue', 'scan']);
 
 const scanStore = useScanStore();
+const selectedExample = computed(() => scanStore.examples.find((example) => example.key === scanStore.selectedExampleKey));
 const fileInput = ref(null);
 const { t } = useI18n();
 const isParsing = ref(false);
@@ -160,6 +163,7 @@ const applyExample = (key) => {
   const content = scanStore.applyExample(key);
   if (content) {
     heroText.value = content;
+    scanStore.selectedExampleKey = key;
   }
 };
 
@@ -234,3 +238,55 @@ const handleScan = () => {
   emit('scan');
 };
 </script>
+
+<style scoped>
+@media (prefers-reduced-motion: no-preference) {
+  .hero-title {
+    animation: hero-title-enter 560ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+
+  @supports (background-clip: text) or (-webkit-background-clip: text) {
+    .hero-title-highlight {
+      background-image: linear-gradient(
+        110deg,
+        rgb(var(--primary-700)) 40%,
+        #4778d2 50%,
+        rgb(var(--primary-700)) 60%
+      );
+      background-size: 300% 100%;
+      background-clip: text;
+      -webkit-background-clip: text;
+      color: transparent;
+      animation: hero-title-sheen 1800ms ease-in-out 240ms both;
+    }
+  }
+}
+
+@keyframes hero-title-enter {
+  from {
+    opacity: 0.65;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes hero-title-sheen {
+  from {
+    background-position: 100% 50%;
+  }
+  to {
+    background-position: 0% 50%;
+  }
+}
+
+@media (forced-colors: active) {
+  .hero-title-highlight {
+    color: LinkText;
+    background: none;
+    animation: none;
+  }
+}
+</style>

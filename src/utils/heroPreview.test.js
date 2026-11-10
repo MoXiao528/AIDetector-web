@@ -65,7 +65,10 @@ describe('heroPreview utils', () => {
   });
 
   it('范例优先使用预设快照而不是长度公式', () => {
-    const examples = getFallbackHeroExamples('zh-CN');
+    const examples = [
+      { key: 'chatgpt', content: '旧版 AI 预设快照。', ai: 88, human: 12 },
+      { key: 'human', content: '旧版人工预设快照。', ai: 14, human: 86 },
+    ];
 
     const chatgptOutput = buildHeroLandingPreview({
       text: examples.find((item) => item.key === 'chatgpt')?.content || '',
@@ -91,6 +94,20 @@ describe('heroPreview utils', () => {
     expect(humanOutput.ai).toBe(14);
     expect(humanOutput.human).toBe(86);
     expect(chatgptOutput.hasQuantitativeSnapshot).toBe(true);
+  });
+
+  it('首页送检示例在检测前不带预设分数', () => {
+    for (const example of getFallbackHeroExamples('zh-CN')) {
+      const output = buildHeroLandingPreview({
+        text: example.content,
+        selectedExampleKey: example.key,
+        examples: getFallbackHeroExamples('zh-CN'),
+        copy: zhCopy,
+      });
+      expect(output.mode).toBe('draft');
+      expect(output.hasQuantitativeSnapshot).toBe(false);
+      expect(output.scoreDisplay).toBe('--');
+    }
   });
 
   it('普通输入只显示中性预览，不贴伪高风险标签', () => {

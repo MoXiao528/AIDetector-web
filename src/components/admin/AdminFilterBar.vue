@@ -1,32 +1,33 @@
 <template>
-  <form class="rounded-3xl border border-white/10 bg-slate-900/70 p-4 shadow-lg shadow-slate-950/20" @submit.prevent="emit('search')">
-    <div class="flex flex-col gap-4 xl:flex-row xl:items-end">
-      <div v-if="showSearch" class="flex-1">
-        <label class="mb-2 block text-xs font-semibold uppercase tracking-[0.24em] text-slate-400">{{ searchLabel }}</label>
+  <form class="rounded-2xl border border-slate-200 bg-white p-4" @submit.prevent="emit('search')">
+    <div class="grid min-w-0 grid-cols-1 gap-4 md:grid-cols-[minmax(0,1fr)_auto] md:items-end">
+      <div v-if="showSearch" class="order-1 min-w-0">
+        <label class="mb-2 block text-xs font-medium text-slate-600">{{ searchLabel }}</label>
         <input
           :value="searchValue"
           type="search"
           :placeholder="searchPlaceholder"
-          class="w-full rounded-2xl border border-white/10 bg-slate-950/70 px-4 py-3 text-sm text-slate-100 shadow-sm outline-none transition focus:border-amber-300 focus:ring-2 focus:ring-amber-200/40"
+          class="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-800 outline-none transition placeholder:text-slate-400 focus:border-primary-500 focus:ring-2 focus:ring-primary-100"
+          :aria-label="searchLabel"
           @input="emit('update:searchValue', $event.target.value)"
         />
       </div>
 
-      <div class="grid flex-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
+      <div class="order-2 grid min-w-0 gap-4 md:order-3 md:col-span-2 md:grid-cols-2 xl:grid-cols-3">
         <slot name="filters" />
       </div>
 
-      <div class="flex flex-wrap items-center gap-3 xl:justify-end">
+      <div class="order-3 flex flex-wrap items-center justify-end gap-2 md:order-2">
         <slot name="actions" />
         <button
           v-if="showReset"
           type="button"
-          class="rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm font-semibold text-slate-200 transition hover:border-white/20 hover:bg-white/10"
+          class="liquid-glass rounded-full px-4 py-2.5 text-sm font-semibold"
           @click="emit('reset')"
         >
           {{ resetLabel }}
         </button>
-        <button type="submit" class="rounded-2xl bg-amber-400 px-5 py-3 text-sm font-semibold text-slate-950 transition hover:bg-amber-300">
+        <button type="submit" class="liquid-glass primary-action rounded-full px-5 py-2.5 text-sm font-semibold">
           {{ submitLabel }}
         </button>
       </div>

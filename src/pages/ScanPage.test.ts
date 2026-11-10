@@ -4,13 +4,16 @@ import { reactive, nextTick } from 'vue';
 import { mount, flushPromises } from '@vue/test-utils';
 import ScanPage from './ScanPage.vue';
 import EvidencePanel from '../components/EvidencePanel.vue';
-import { createI18n, globalT } from '../i18n';
+import OnboardingStepsBar from '../components/dashboard/OnboardingStepsBar.vue';
+import { createI18n, globalT, useI18n } from '../i18n';
 import { useAuthStore } from '../store/auth';
 import { useScanStore } from '../store/scan';
 import * as authApi from '../api/modules/auth';
 import * as quotaApi from '../api/modules/quota';
 import * as scanApi from '../api/modules/scan';
 import * as historyApi from '../api/modules/history';
+import * as reportsApi from '../api/modules/reports';
+import { showToast } from '../utils/toast';
 
 const route = reactive({
   name: 'dashboard',
@@ -51,9 +54,10 @@ vi.mock('../api/modules/auth', () => ({
 
 vi.mock('../api/modules/quota', () => ({
   fetchQuota: vi.fn(async () => ({
+    actorType: 'guest',
     limit: 5000,
     remaining: 5000,
-    used_today: 0,
+    usedToday: 0,
   })),
 }));
 
@@ -139,6 +143,7 @@ type ScanPageSetupState = {
   isQuotaReady: boolean;
   isResultDetailOpen: boolean;
   isScanning: boolean;
+  isExportingReport: boolean;
   localText: string;
   quotaInfo: { actor_type: string; limit: number; used_today: number; remaining: number };
   renameHistoryDraft: string;
@@ -146,9 +151,11 @@ type ScanPageSetupState = {
   selectedHistoryIds: Array<string | number>;
   clearAllHistoryRecords: () => Promise<void>;
   closeResultDetail: () => void;
+  openResultDetail: () => void;
   deleteSingleHistoryRecord: (record: { id: number }) => Promise<void>;
   deleteSelectedHistoryRecords: () => Promise<void>;
   handleScan: () => Promise<void>;
+  exportReport: () => Promise<void>;
   loadHistoryRecord: (id: string | number) => Promise<void>;
   onFileChange: (event: { target: { files: File[]; value: string } }) => Promise<void>;
   setActivePanel: (panel: string) => void;
@@ -186,12 +193,14 @@ describe('ScanPage panel switching', () => {
     window.localStorage.setItem('guest_token', 'guest-token');
     vi.mocked(authApi.getStoredGuestToken).mockImplementation(() => window.localStorage.getItem('guest_token') || '');
     vi.mocked(scanApi.detectText).mockReset();
+    vi.mocked(reportsApi.exportPdfReport).mockReset();
     vi.mocked(historyApi.getHistoryList).mockReset().mockResolvedValue(makeHistoryResponse());
     vi.mocked(historyApi.getHistoryRecord).mockReset();
     vi.mocked(quotaApi.fetchQuota).mockResolvedValue({
+      actorType: 'guest',
       limit: 5000,
       remaining: 5000,
-      used_today: 0,
+      usedToday: 0,
     });
     route.name = 'dashboard';
     route.query = { panel: 'home' };
@@ -204,12 +213,166 @@ describe('ScanPage panel switching', () => {
     vi.unstubAllEnvs();
   });
 
+  const mountExportPage = async (authenticated = true) => {
+    route.query = { panel: 'document' };
+    route.fullPath = '/dashboard?panel=document';
+    if (authenticated) {
+      const authStore = useAuthStore();
+      authStore.token = '__cookie__';
+      authStore.user = { id: 42, email: 'pdf@example.com' };
+    }
+    const wrapper = mountScanPage();
+    await flushPromises();
+    const scanStore = useScanStore();
+    scanStore.result = { summary: { ai: 75, human: 25 }, sentences: [] };
+    scanStore.resultInputText = 'The saved detection text.';
+    scanStore.currentResultHistoryId = 42;
+    scanStore.setText('Edited draft that has not been scanned.');
+    await nextTick();
+    return wrapper;
+  };
+
+  it.each([
+    { evidenceEnabled: 'true', serverName: 'repreguard-42.pdf', expectedName: 'repreguard-42.pdf' },
+    { evidenceEnabled: 'false', serverName: null, expectedName: 'repreguard-report.pdf' },
+  ])('PDF 复用历史快照、Evidence=$evidenceEnabled，两入口防重并下载 $expectedName', async ({ evidenceEnabled, serverName, expectedName }) => {
+    vi.stubEnv('VITE_EVIDENCE_ENABLED', evidenceEnabled);
+    const request = createDeferred<{ blob: Blob; fileName: string | null; contentType: string }>();
+    vi.mocked(reportsApi.exportPdfReport).mockReturnValueOnce(request.promise);
+    const createUrl = vi.spyOn(window.URL, 'createObjectURL').mockReturnValue('blob:report-test');
+    const downloads: string[] = [];
+    const click = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(function (this: HTMLAnchorElement) {
+      downloads.push(this.download);
+    });
+    const wrapper = await mountExportPage();
+    try {
+      const state = getScanPageSetupState(wrapper);
+      state.openResultDetail();
+      await nextTick();
+      const exportButtons = wrapper.findAll('[data-testid="result-export"], [data-testid="detail-export"]');
+      expect(exportButtons).toHaveLength(2);
+      expect(wrapper.get('[data-testid="incomplete-text-notice"]').text()).toContain(globalT('scan.results.exportSnapshotNotice'));
+      await exportButtons[0].trigger('click');
+      await state.exportReport();
+      expect(reportsApi.exportPdfReport).toHaveBeenCalledExactlyOnceWith({
+        reportType: 'scan', locale: expect.any(String), historyId: 42,
+        includeEvidence: evidenceEnabled === 'true',
+        timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC',
+      });
+      for (const button of exportButtons) {
+        expect(button.attributes('disabled')).toBeDefined();
+        expect(button.attributes('aria-busy')).toBe('true');
+        expect(button.text()).toBe(globalT('scan.results.exporting'));
+      }
+      const blob = new Blob(['pdf']);
+      request.resolve({ blob, fileName: serverName, contentType: 'application/pdf' });
+      await flushPromises();
+      expect(createUrl).toHaveBeenCalledWith(blob);
+      expect(downloads).toEqual([expectedName]);
+      expect(state.isExportingReport).toBe(false);
+      for (const button of exportButtons) expect(button.attributes('disabled')).toBeUndefined();
+      expect(useScanStore().resultInputText).toBe('The saved detection text.');
+    } finally {
+      wrapper.unmount();
+      createUrl.mockRestore();
+      click.mockRestore();
+    }
+  });
+
+  it('游客导出提示先登录并导入记录，不发送 PDF 请求', async () => {
+    const wrapper = await mountExportPage(false);
+    try {
+      await getScanPageSetupState(wrapper).exportReport();
+      expect(reportsApi.exportPdfReport).not.toHaveBeenCalled();
+      expect(showToast).toHaveBeenLastCalledWith({
+        title: globalT('scan.results.exportLoginTitle'),
+        message: globalT('scan.results.exportLoginMessage'),
+      });
+    } finally {
+      wrapper.unmount();
+    }
+  });
+
+  it('没有有效账号记录 ID 时说明记录不可导出，不发送 PDF 请求', async () => {
+    const wrapper = await mountExportPage();
+    try {
+      useScanStore().currentResultHistoryId = 1.5;
+      await getScanPageSetupState(wrapper).exportReport();
+      expect(reportsApi.exportPdfReport).not.toHaveBeenCalled();
+      expect(showToast).toHaveBeenLastCalledWith({
+        title: globalT('scan.results.exportErrorTitle'),
+        message: globalT('scan.results.exportRecordUnavailable'),
+      });
+    } finally {
+      wrapper.unmount();
+    }
+  });
+
+  it.each([
+    { status: 401, code: 'UNAUTHORIZED', key: 'exportSessionExpired' },
+    { status: 404, code: 'HISTORY_NOT_FOUND', key: 'exportRecordUnavailable' },
+    { status: 422, code: 'REPORT_SOURCE_INVALID', key: 'exportRecordUnavailable' },
+    { status: 408, code: 'UNKNOWN_ERROR', key: 'exportTimeout' },
+    { status: 0, code: 'NETWORK_ERROR', key: 'exportNetworkError' },
+    { status: 500, code: 'SERVER_ERROR', key: 'exportErrorMessage' },
+  ])('PDF 错误 $status 显示 $key 并允许重试', async ({ status, code, key }) => {
+    vi.mocked(reportsApi.exportPdfReport).mockRejectedValueOnce({ status, code, message: 'Internal server details' });
+    const wrapper = await mountExportPage();
+    try {
+      await getScanPageSetupState(wrapper).exportReport();
+      expect(showToast).toHaveBeenLastCalledWith({
+        title: globalT('scan.results.exportErrorTitle'), message: globalT(`scan.results.${key}`),
+      });
+      expect(getScanPageSetupState(wrapper).isExportingReport).toBe(false);
+    } finally {
+      wrapper.unmount();
+    }
+  });
+
+  it('PDF 生成期间切换账号时丢弃旧账号响应', async () => {
+    const request = createDeferred<{ blob: Blob; fileName: string | null; contentType: string }>();
+    vi.mocked(reportsApi.exportPdfReport).mockReturnValueOnce(request.promise);
+    const createUrl = vi.spyOn(window.URL, 'createObjectURL').mockReturnValue('blob:report-test');
+    const wrapper = await mountExportPage();
+    try {
+      const state = getScanPageSetupState(wrapper);
+      const exporting = state.exportReport();
+      useAuthStore().user = { id: 43, email: 'another@example.com' };
+      request.resolve({ blob: new Blob(['pdf']), fileName: 'previous-account.pdf', contentType: 'application/pdf' });
+      await exporting;
+      expect(createUrl).not.toHaveBeenCalled();
+      expect(state.isExportingReport).toBe(false);
+    } finally {
+      wrapper.unmount();
+      createUrl.mockRestore();
+    }
+  });
+
+  it.each([
+    ['settings', 'profile'],
+    ['qa', 'qa'],
+  ])('游客可通过侧栏 %s 进入 %s 面板', async (labelKey, panel) => {
+    const wrapper = mountScanPage();
+    try {
+      await flushPromises();
+      expect(useAuthStore().isAuthenticated).toBe(false);
+      const entry = wrapper.findAll('aside button').find((button) => button.text() === globalT(`scan.nav.${labelKey}`));
+      expect(entry).toBeDefined();
+      await entry!.trigger('click');
+      await flushPromises();
+      expect(getScanPageSetupState(wrapper).activePanel).toBe(panel);
+      expect(route.query.panel).toBe(panel);
+    } finally {
+      wrapper.unmount();
+    }
+  });
+
   it('从 home 点击 Document 后应切换到 document 面板', async () => {
     const wrapper = mountScanPage();
 
     await flushPromises();
 
-    const navButtons = wrapper.findAll('aside nav > button');
+    const navButtons = wrapper.findAll('.workbench-panel-navigation > button');
     expect(navButtons).toHaveLength(2);
 
     await navButtons[1].trigger('click');
@@ -231,7 +394,7 @@ describe('ScanPage panel switching', () => {
     const scanStore = useScanStore();
     scanStore.uploadError = 'This file is too long';
 
-    const navButtons = wrapper.findAll('aside nav > button');
+    const navButtons = wrapper.findAll('.workbench-panel-navigation > button');
     await navButtons[1].trigger('click');
     await nextTick();
     await flushPromises();
@@ -242,6 +405,361 @@ describe('ScanPage panel switching', () => {
 
     expect(scanStore.uploadError).toBe('');
     wrapper.unmount();
+  });
+
+  it('首页历史加载和失败不伪装为空记录，重试后显示恢复的记录', async () => {
+    const pendingHistory = createDeferred<ReturnType<typeof makeHistoryResponse>>();
+    vi.mocked(historyApi.getHistoryList).mockReturnValueOnce(pendingHistory.promise);
+    const wrapper = mountScanPage();
+    try {
+      await flushPromises();
+      const home = wrapper.get('.dashboard-home');
+      expect(home.get('[role="status"]').text()).toContain(globalT('scan.history.loading'));
+      expect(home.text()).not.toContain(globalT('scan.dashboard.activity.emptyTitle'));
+      const recordsLabel = home.findAll('p').find((item) => item.text() === globalT('scan.dashboard.stats.records'))!;
+      expect(recordsLabel.element.nextElementSibling?.textContent).toBe('--');
+
+      pendingHistory.reject(Object.assign(new Error('History unavailable'), { status: 503 }));
+      await flushPromises();
+      expect(home.get('[role="alert"]').text()).toContain(globalT('scan.history.loadFailed'));
+      expect(home.find('[role="status"]').exists()).toBe(false);
+      expect(home.text()).not.toContain(globalT('scan.dashboard.activity.emptyTitle'));
+      expect(recordsLabel.element.nextElementSibling?.textContent).toBe('--');
+
+      vi.mocked(historyApi.getHistoryList).mockResolvedValue(makeHistoryResponse([
+        { id: 904, title: 'Recovered homepage record', inputText: 'Recovered document' },
+      ]));
+      await home.get('[role="alert"] button').trigger('click');
+      await flushPromises();
+      expect(home.find('[role="alert"]').exists()).toBe(false);
+      expect(home.text()).toContain('Recovered homepage record');
+      expect(recordsLabel.element.nextElementSibling?.textContent).toBe('1 条');
+    } finally {
+      wrapper.unmount();
+    }
+  });
+
+  it('首页额度加载和失败显示未知值及原因，不显示成已用或剩余零额度', async () => {
+    const pendingQuota = createDeferred<Awaited<ReturnType<typeof quotaApi.fetchQuota>>>();
+    vi.mocked(quotaApi.fetchQuota).mockReturnValueOnce(pendingQuota.promise);
+    const wrapper = mountScanPage();
+    try {
+      await flushPromises();
+      const overview = wrapper.get('.home-overview');
+      const quotaLabels = ['remaining', 'used'].map((key) =>
+        overview.findAll('p').find((item) => item.text() === globalT(`scan.dashboard.stats.${key}`))!
+      );
+      expect(overview.text()).toContain(globalT('scan.results.loading'));
+      quotaLabels.forEach((label) => expect(label.element.nextElementSibling?.textContent).toBe('--'));
+
+      pendingQuota.reject(Object.assign(new Error('Quota unavailable'), { status: 503 }));
+      await flushPromises();
+      expect(overview.text()).toContain(globalT('scan.results.error'));
+      expect(overview.text()).not.toContain(globalT('scan.results.loading'));
+      quotaLabels.forEach((label) => expect(label.element.nextElementSibling?.textContent).toBe('--'));
+      await overview.get('.home-quota-retry').trigger('click');
+      await flushPromises();
+      expect(overview.find('.home-quota-retry').exists()).toBe(false);
+      expect(quotaLabels[0].element.nextElementSibling?.textContent).toBe((5000).toLocaleString());
+      expect(quotaLabels[1].element.nextElementSibling?.textContent).toBe('0');
+    } finally {
+      wrapper.unmount();
+    }
+  });
+
+  it('首页读取正式额度字段 usedToday，并在检测成功后刷新今日已用', async () => {
+    vi.mocked(quotaApi.fetchQuota)
+      .mockResolvedValueOnce({ actorType: 'guest', limit: 5000, remaining: 4784, usedToday: 216 })
+      .mockResolvedValueOnce({ actorType: 'guest', limit: 5000, remaining: 4568, usedToday: 432 });
+    vi.mocked(scanApi.detectText).mockResolvedValue({
+      historyId: 905,
+      result: { summary: { ai: 67, human: 33 }, sentences: [] },
+    });
+    const wrapper = mountScanPage();
+    try {
+      await flushPromises();
+      const statValue = (key: string) => wrapper.get('.home-overview').findAll('p')
+        .find((item) => item.text() === globalT(`scan.dashboard.stats.${key}`))!
+        .element.nextElementSibling?.textContent;
+      expect(statValue('remaining')).toBe((4784).toLocaleString());
+      expect(statValue('used')).toBe('216');
+      const state = getScanPageSetupState(wrapper);
+      expect(state.quotaInfo.actor_type).toBe('guest');
+
+      await wrapper.get('.home-primary').trigger('click');
+      await flushPromises();
+      useScanStore().setText('A'.repeat(216));
+      await state.handleScan();
+      await flushPromises();
+      expect(scanApi.detectText).toHaveBeenCalledTimes(1);
+      expect(quotaApi.fetchQuota).toHaveBeenCalledTimes(2);
+      state.setActivePanel('home');
+      await flushPromises();
+      await vi.waitFor(() => expect(statValue('used')).toBe('432'));
+      expect(statValue('remaining')).toBe((4568).toLocaleString());
+    } finally {
+      wrapper.unmount();
+    }
+  });
+
+  it('首页正确显示尚未使用额度时的 usedToday 零值', async () => {
+    vi.mocked(quotaApi.fetchQuota).mockResolvedValue({
+      actorType: 'guest', limit: 5000, remaining: 5000, usedToday: 0,
+    });
+    const wrapper = mountScanPage();
+    try {
+      await flushPromises();
+      const usedLabel = wrapper.get('.home-overview').findAll('p')
+        .find((item) => item.text() === globalT('scan.dashboard.stats.used'))!;
+      expect(usedLabel.element.nextElementSibling?.textContent).toBe('0');
+      expect(getScanPageSetupState(wrapper).quotaInfo.used_today).toBe(0);
+    } finally {
+      wrapper.unmount();
+    }
+  });
+
+  it('首页额度更新经过中间值，快速更新以最后响应为准，失败后恢复不沿用旧动画', async () => {
+    vi.mocked(quotaApi.fetchQuota).mockResolvedValue({
+      actorType: 'guest', limit: 5000, remaining: 4784, usedToday: 216,
+    });
+    const wrapper = mountScanPage();
+    try {
+      await flushPromises();
+      const state = getScanPageSetupState(wrapper);
+      const values = () => wrapper.findAll('.home-overview .grid > div > p:nth-child(2)')
+        .slice(0, 2).map((node) => Number(node.text().replace(/,/g, '')));
+      expect(values()).toEqual([4784, 216]);
+      vi.useFakeTimers({ toFake: ['Date', 'requestAnimationFrame', 'cancelAnimationFrame'] });
+      state.quotaInfo = { actor_type: 'guest', limit: 5000, remaining: 4524, used_today: 476 };
+      await nextTick();
+      await vi.advanceTimersByTimeAsync(100);
+      expect(values()[1]).toBeGreaterThan(216);
+      expect(values()[1]).toBeLessThan(476);
+      state.quotaInfo = { actor_type: 'guest', limit: 5000, remaining: 4300, used_today: 700 };
+      await nextTick();
+      await vi.advanceTimersByTimeAsync(400);
+      expect(values()).toEqual([4300, 700]);
+      state.isQuotaReady = false;
+      await nextTick();
+      state.quotaInfo = { actor_type: 'guest', limit: 5000, remaining: 4200, used_today: 800 };
+      state.isQuotaReady = true;
+      await nextTick();
+      expect(values()).toEqual([4200, 800]);
+    } finally {
+      wrapper.unmount();
+      vi.useRealTimers();
+    }
+  });
+
+  it('减少动态效果时首页额度直接显示新值', async () => {
+    const matchMedia = window.matchMedia.bind(window);
+    const mediaSpy = vi.spyOn(window, 'matchMedia').mockImplementation((query) => {
+      const media = matchMedia(query);
+      if (query === '(prefers-reduced-motion: reduce)') {
+        Object.defineProperty(media, 'matches', { value: true });
+      }
+      return media;
+    });
+    const wrapper = mountScanPage();
+    try {
+      await flushPromises();
+      getScanPageSetupState(wrapper).quotaInfo = { actor_type: 'guest', limit: 5000, remaining: 4784, used_today: 216 };
+      await nextTick();
+      const values = wrapper.findAll('.home-overview .grid > div > p:nth-child(2)').slice(0, 2).map((node) => node.text());
+      expect(values).toEqual([(4784).toLocaleString(), '216']);
+    } finally {
+      wrapper.unmount();
+      mediaSpy.mockRestore();
+    }
+  });
+
+  it('首页切换语言同步更新引用和引导文案，保留已完成步骤', async () => {
+    const authStore = useAuthStore();
+    authStore.token = '__cookie__';
+    authStore.user = { id: 12, email: 'onboarding@example.com' };
+    let restoreLocale = () => {};
+    const wrapper = mount(ScanPage, {
+      global: {
+        plugins: [createI18n()],
+        stubs: {
+          ...pageStubs,
+          OnboardingStepsBar: false,
+          AppHeader: {
+            setup() {
+              const i18n = useI18n();
+              const previousLocale = i18n.locale.value;
+              restoreLocale = () => i18n.setLocale(previousLocale);
+              i18n.setLocale('zh-CN');
+              return i18n;
+            },
+            template: '<button data-testid="switch-english" @click="setLocale(\'en-US\')">English</button>',
+          },
+        },
+      },
+    });
+    const readFile = vi.spyOn(useScanStore(), 'readFile').mockResolvedValue(true);
+    try {
+      await flushPromises();
+      const initialQuote = wrapper.get('.dashboard-home header p').text();
+      expect(globalT('scan.quotes')).toContain(initialQuote);
+      expect(wrapper.getComponent(OnboardingStepsBar).text()).toContain(globalT('scan.onboarding.upload.label'));
+
+      await getScanPageSetupState(wrapper).onFileChange({
+        target: { files: [new File(['Text'], 'draft.txt', { type: 'text/plain' })], value: 'draft.txt' },
+      });
+      await wrapper.get('[data-testid="switch-english"]').trigger('click');
+      await flushPromises();
+
+      const translatedQuote = wrapper.get('.dashboard-home header p').text();
+      expect(translatedQuote).not.toBe(initialQuote);
+      expect(globalT('scan.quotes')).toContain(translatedQuote);
+      const guide = wrapper.getComponent(OnboardingStepsBar);
+      for (const key of ['upload', 'scan', 'review', 'export']) {
+        expect(guide.text()).toContain(globalT(`scan.onboarding.${key}.label`));
+        expect(guide.text()).toContain(globalT(`scan.onboarding.${key}.description`));
+      }
+      expect(guide.props('steps').map((step: { status: string }) => step.status)).toEqual([
+        'done', 'current', 'upcoming', 'upcoming',
+      ]);
+    } finally {
+      readFile.mockRestore();
+      wrapper.unmount();
+      restoreLocale();
+    }
+  });
+
+  it('模式按钮的选中状态对应正文展示，仅实际编辑才清除结果', async () => {
+    route.query = { panel: 'document' };
+    const text = 'A document with a saved detection result.';
+    const analysis = { summary: { ai: 67, human: 33 }, sentences: [] };
+    vi.mocked(historyApi.getHistoryList).mockResolvedValue(makeHistoryResponse([
+      { id: 960, inputText: text, analysis },
+    ]));
+    const wrapper = mountScanPage();
+    document.body.appendChild(wrapper.element);
+    try {
+      await flushPromises();
+      const scanStore = useScanStore();
+      const [edit, preview] = wrapper.findAll('.mode-button');
+      const editorSurface = wrapper.get('.editor-surface');
+      const previewSurface = wrapper.get('.preview-surface');
+
+      expect(preview.attributes('disabled')).toBeDefined();
+      expect(wrapper.find('.scan-readiness').exists()).toBe(true);
+      expect(wrapper.find('[data-testid="result-export"]').exists()).toBe(false);
+      await preview.trigger('click');
+      expect(edit.attributes('aria-pressed')).toBe('true');
+      expect(preview.attributes('aria-pressed')).toBe('false');
+      expect(editorSurface.isVisible()).toBe(true);
+      expect(previewSurface.isVisible()).toBe(false);
+
+      await getScanPageSetupState(wrapper).loadHistoryRecord(960);
+      await flushPromises();
+      expect(preview.attributes('disabled')).toBeUndefined();
+      expect(preview.attributes('aria-pressed')).toBe('true');
+      expect(edit.attributes('aria-pressed')).toBe('false');
+      expect(previewSurface.isVisible()).toBe(true);
+      expect(editorSurface.isVisible()).toBe(false);
+      expect(previewSurface.text()).toContain(text);
+      expect(wrapper.find('.scan-readiness').exists()).toBe(false);
+      expect(wrapper.find('[data-testid="result-export"]').exists()).toBe(true);
+      expect(wrapper.find('[data-testid="result-segments"]').exists()).toBe(true);
+
+      await edit.trigger('click');
+      expect(edit.attributes('aria-pressed')).toBe('true');
+      expect(preview.attributes('aria-pressed')).toBe('false');
+      expect(editorSurface.isVisible()).toBe(true);
+      expect(previewSurface.isVisible()).toBe(false);
+      expect(scanStore.result?.summary).toEqual(analysis.summary);
+
+      await preview.trigger('click');
+      expect(preview.attributes('aria-pressed')).toBe('true');
+      expect(edit.attributes('aria-pressed')).toBe('false');
+      expect(previewSurface.isVisible()).toBe(true);
+      expect(editorSurface.isVisible()).toBe(false);
+
+      await edit.trigger('click');
+      editorSurface.element.innerHTML = '<p>Changed document</p>';
+      await editorSurface.trigger('input');
+      expect(scanStore.result).toBeNull();
+      expect(wrapper.find('.scan-readiness').exists()).toBe(true);
+      expect(wrapper.find('[data-testid="result-export"]').exists()).toBe(false);
+      expect(preview.attributes('disabled')).toBeDefined();
+      expect(edit.attributes('aria-pressed')).toBe('true');
+    } finally {
+      wrapper.unmount();
+    }
+  });
+
+  it.each(['preview', 'edit'])('历史正文在 %s 模式往返首页后，首次切编辑仍完整', async (initialMode) => {
+    route.query = { panel: 'document' };
+    const text = '第一段有加粗文本。\n第二段保持完整。';
+    const editorHtml = '<p>第一段有<strong>加粗</strong>文本。</p><p>第二段保持完整。</p>';
+    const analysis = { summary: { ai: 67, human: 33 }, sentences: [] };
+    vi.mocked(historyApi.getHistoryList).mockResolvedValue(makeHistoryResponse([
+      { id: 961, inputText: text, editorHtml, analysis },
+    ]));
+    const wrapper = mountScanPage();
+    document.body.appendChild(wrapper.element);
+    try {
+      await flushPromises();
+      const state = getScanPageSetupState(wrapper);
+      const scanStore = useScanStore();
+      await state.loadHistoryRecord(961);
+      await flushPromises();
+      if (initialMode === 'edit') await wrapper.findAll('.mode-button')[0].trigger('click');
+      const originalEditor = wrapper.get('.editor-surface').element;
+      const originalResult = JSON.stringify(scanStore.result);
+      const savedHtml = scanStore.editorHtml;
+
+      state.setActivePanel('home');
+      await flushPromises();
+      expect(wrapper.find('.editor-surface').exists()).toBe(false);
+      state.setActivePanel('document');
+      await flushPromises();
+      expect(wrapper.get('.editor-surface').element).not.toBe(originalEditor);
+      expect(state.editorMode).toBe(initialMode);
+      expect(scanStore.editorHtml).toBe(savedHtml);
+      expect(wrapper.get('.preview-surface').text()).toContain('第二段保持完整。');
+
+      await wrapper.findAll('.mode-button')[0].trigger('click');
+      const editor = wrapper.get('.editor-surface');
+      expect(editor.isVisible()).toBe(true);
+      expect(editor.element.innerHTML).toBe(savedHtml);
+      expect(editor.get('strong').text()).toBe('加粗');
+      expect(JSON.stringify(scanStore.result)).toBe(originalResult);
+      expect(String(state.activeHistoryId)).toBe('961');
+      expect(scanApi.detectText).not.toHaveBeenCalled();
+    } finally {
+      wrapper.unmount();
+    }
+  });
+
+  it('未检测草稿在首页往返后恢复，隐藏期间更新则显示最新正文', async () => {
+    route.query = { panel: 'document' };
+    const wrapper = mountScanPage();
+    try {
+      await flushPromises();
+      const state = getScanPageSetupState(wrapper);
+      const scanStore = useScanStore();
+      const editor = wrapper.get('.editor-surface');
+      editor.element.innerHTML = '<p>未检测的<strong>草稿</strong>。</p>';
+      await editor.trigger('input');
+      for (const updateWhileHidden of [false, true]) {
+        state.setActivePanel('home');
+        await flushPromises();
+        if (updateWhileHidden) scanStore.setText('隐藏期间更新的最新正文。');
+        const expectedHtml = scanStore.editorHtml;
+        state.setActivePanel('document');
+        await flushPromises();
+        expect(state.editorMode).toBe('edit');
+        expect(wrapper.get('.editor-surface').element.innerHTML).toBe(expectedHtml);
+        expect(scanStore.result).toBeNull();
+      }
+      expect(scanApi.detectText).not.toHaveBeenCalled();
+    } finally {
+      wrapper.unmount();
+    }
   });
 
   it.each(['home', 'document'])('游客进入 %s 后取得凭据并从服务器恢复历史，不恢复浏览器正文缓存', async (panel) => {
@@ -869,9 +1387,10 @@ describe('ScanPage panel switching', () => {
         throw { status: 401, code: 'GUEST_TOKEN_REQUIRED' };
       })
       .mockResolvedValueOnce({
+        actorType: 'guest',
         limit: 5000,
         remaining: 5000,
-        used_today: 0,
+        usedToday: 0,
       });
 
     const wrapper = mountScanPage();
@@ -903,10 +1422,10 @@ describe('ScanPage panel switching', () => {
       .mockResolvedValue('guest-a-access-2');
     vi.mocked(authApi.getGuestSessionId).mockImplementation((token) => (token?.startsWith('guest-a-') ? 'sid-a' : ''));
     vi.mocked(authApi.clearGuestToken).mockReturnValueOnce(false);
-    const oldQuota = createDeferred<{ limit: number; remaining: number; used_today: number }>();
+    const oldQuota = createDeferred<{ actorType: string; limit: number; remaining: number; usedToday: number }>();
     vi.mocked(quotaApi.fetchQuota)
       .mockReturnValueOnce(oldQuota.promise)
-      .mockResolvedValueOnce({ limit: 5000, remaining: 4321, used_today: 679 });
+      .mockResolvedValueOnce({ actorType: 'guest', limit: 5000, remaining: 4321, usedToday: 679 });
     const wrapper = mountScanPage();
     await vi.waitFor(() => expect(quotaApi.fetchQuota).toHaveBeenCalledTimes(1));
     const scanStore = useScanStore();
@@ -1208,7 +1727,7 @@ describe('ScanPage panel switching', () => {
     vi.mocked(authApi.getStoredGuestToken).mockReturnValue('guest-a-access-1');
     vi.mocked(authApi.ensureGuestToken).mockResolvedValue('guest-a-access-1');
     vi.mocked(authApi.getGuestSessionId).mockImplementation((token) => (token?.startsWith('guest-a-') ? 'sid-a' : ''));
-    const deferred = createDeferred<{ limit: number; remaining: number; used_today: number }>();
+    const deferred = createDeferred<{ actorType: string; limit: number; remaining: number; usedToday: number }>();
     vi.mocked(quotaApi.fetchQuota).mockReturnValue(deferred.promise);
 
     const wrapper = mountScanPage();
@@ -1217,7 +1736,7 @@ describe('ScanPage panel switching', () => {
     const authStore = useAuthStore();
     const state = getScanPageSetupState(wrapper);
     scanStore.activateGuestSession('sid-b');
-    deferred.resolve({ limit: 5000, remaining: 1234, used_today: 3766 });
+    deferred.resolve({ actorType: 'guest', limit: 5000, remaining: 1234, usedToday: 3766 });
     await flushPromises();
 
     expect(state.isQuotaReady).toBe(false);
@@ -1266,8 +1785,8 @@ describe('ScanPage panel switching', () => {
     vi.mocked(authApi.getStoredGuestToken).mockReturnValue('guest-a-access-1');
     vi.mocked(authApi.ensureGuestToken).mockResolvedValue('guest-a-access-1');
     vi.mocked(authApi.getGuestSessionId).mockImplementation((token) => (token?.startsWith('guest-a-') ? 'sid-a' : ''));
-    const guestRequest = createDeferred<{ limit: number; remaining: number; used_today: number }>();
-    const userRequest = createDeferred<{ limit: number; remaining: number; used_today: number }>();
+    const guestRequest = createDeferred<{ actorType: string; limit: number; remaining: number; usedToday: number }>();
+    const userRequest = createDeferred<{ actorType: string; limit: number; remaining: number; usedToday: number }>();
     vi.mocked(quotaApi.fetchQuota)
       .mockReturnValueOnce(guestRequest.promise)
       .mockReturnValueOnce(userRequest.promise);
@@ -1279,7 +1798,7 @@ describe('ScanPage panel switching', () => {
     authStore.token = '__cookie__';
     authStore.user = { id: 7, email: 'signed-in@example.com', credits: 9000 };
     await vi.waitFor(() => expect(quotaApi.fetchQuota).toHaveBeenCalledTimes(2));
-    guestRequest.resolve({ limit: 5000, remaining: 1234, used_today: 3766 });
+    guestRequest.resolve({ actorType: 'guest', limit: 5000, remaining: 1234, usedToday: 3766 });
     await flushPromises();
 
     expect(state.isQuotaReady).toBe(false);
@@ -1294,8 +1813,8 @@ describe('ScanPage panel switching', () => {
     const authStore = useAuthStore();
     authStore.token = '__cookie__';
     authStore.user = { id: 9, email: 'before-logout@example.com', credits: 8000 };
-    const userRequest = createDeferred<{ limit: number; remaining: number; used_today: number }>();
-    const guestRequest = createDeferred<{ limit: number; remaining: number; used_today: number }>();
+    const userRequest = createDeferred<{ actorType: string; limit: number; remaining: number; usedToday: number }>();
+    const guestRequest = createDeferred<{ actorType: string; limit: number; remaining: number; usedToday: number }>();
     vi.mocked(quotaApi.fetchQuota)
       .mockReturnValueOnce(userRequest.promise)
       .mockReturnValueOnce(guestRequest.promise);
@@ -1307,7 +1826,7 @@ describe('ScanPage panel switching', () => {
     authStore.user = null;
     window.localStorage.removeItem('auth_session');
     await vi.waitFor(() => expect(quotaApi.fetchQuota).toHaveBeenCalledTimes(2));
-    userRequest.resolve({ limit: 10000, remaining: 4321, used_today: 5679 });
+    userRequest.resolve({ actorType: 'user', limit: 10000, remaining: 4321, usedToday: 5679 });
     await flushPromises();
 
     expect(state.isQuotaReady).toBe(false);
@@ -1585,7 +2104,7 @@ describe('ScanPage panel switching', () => {
     wrapper.unmount();
   });
 
-  it.each([23, 77])('侧栏摘要导航到分维度详情，专业快照随历史回放且主结果 AI=%i 不受提示影响', async (ai) => {
+  it.each([23, 77])('侧栏摘要导航到精简详情，原始快照随历史回放且主结果 AI=%i 不受提示影响', async (ai) => {
     route.query = { panel: 'document' };
     route.fullPath = '/dashboard?panel=document';
     const label = ai === 77 ? 'ai' : 'human';
@@ -1655,6 +2174,14 @@ describe('ScanPage panel switching', () => {
     await compact.get('[data-testid="evidence-show-all"]').trigger('click');
     expect(compact.findAll('[data-testid="evidence-summary"]')).toHaveLength(4);
     expect(compact.find('[data-metric], [data-testid="evidence-route"], [data-testid="evidence-quality"]').exists()).toBe(false);
+    getScanPageSetupState(wrapper).openResultDetail();
+    await flushPromises();
+    const generalDetails = wrapper.findAllComponents(EvidencePanel).find((panel) => panel.props('detailed'))!;
+    expect(generalDetails.props('initialShowAll')).toBe(true);
+    expect(generalDetails.findAll('[data-testid="evidence-dimension"]')).toHaveLength(4);
+    expect(generalDetails.get('[data-testid="evidence-professional"]').attributes('open')).toBeUndefined();
+    getScanPageSetupState(wrapper).closeResultDetail();
+    await flushPromises();
     await compact.get('[data-dimension="rhythm"]').trigger('click');
     await flushPromises();
     const panels = wrapper.findAllComponents(EvidencePanel);
@@ -1663,22 +2190,43 @@ describe('ScanPage panel switching', () => {
       expect(panel.props('evidence')).toEqual(evidence);
     }
     const detailed = panels.find((panel) => panel.props('detailed'))!;
+    expect(detailed.props('initialShowAll')).toBe(true);
     expect(detailed.get('[data-testid="evidence-show-all"]').attributes('aria-pressed')).toBe('true');
     expect(getScanPageSetupState(wrapper).isResultDetailOpen).toBe(true);
+    const detailHeader = wrapper.get('section.h-full > header');
+    expect(detailHeader.text()).toContain(`字符数：${submittedText.length}/${scanStore.characterLimit}`);
+    expect(detailHeader.text()).not.toContain('已选：');
+    expect(wrapper.findAll('section.h-full > div > aside button')).toHaveLength(0);
     expect(detailed.get('[data-dimension="rhythm"]').attributes('aria-pressed')).toBe('true');
     expect(detailed.props('submittedText')).toBe(submittedText);
-    expect(detailed.get('[data-summary-metric="sentence_length_median"] [data-axis-min]').attributes('data-axis-min')).toBe('0');
-    expect(detailed.get('[data-summary-metric="sentence_length_median"] [data-axis-max]').attributes('data-axis-max')).toBe('1');
+    expect(detailed.get('[data-summary-metric="sentence_length_median"] [data-testid="observed-marker"]').attributes('style')).toContain('left: 0%');
+    expect(detailed.find('[data-testid="reference-ticks"]').exists()).toBe(false);
     const professional = detailed.get('details[data-testid="evidence-professional"]');
     expect(professional.attributes('open')).toBeUndefined();
     expect(professional.findAll('[data-metric]')).toHaveLength(22);
-    expect(professional.get('[data-value="coverage"]').text()).toBe('86.3636%');
-    expect(professional.get('[data-route="fallbackLevel"]').text()).toBe(globalT('scan.evidence.route.values.fallbackLevel.language_length'));
-    expect(professional.get('[data-confidence="language"]').text()).toBe('0');
-    expect(professional.get('[data-confidence="domain"]').text()).toBe('0.8125');
+    expect(professional.find('[data-value="coverage"], [data-confidence]').exists()).toBe(false);
+    expect(professional.get('[data-testid="reference-group"]').text()).toContain(globalT('scan.evidence.route.values.fallbackLevel.language_length'));
+    expect(scanStore.result?.evidence?.quality).toEqual(evidence.quality);
+    expect(scanStore.result?.evidence?.route).toEqual(evidence.route);
     expect(professional.find('[data-value="sample-count"]').exists()).toBe(false);
     expect(evidence.signals.find((signal) => signal.metric === 'mattr')!.sampleCount).toBe(10);
     expect(professional.findAll('[data-testid="evidence-notice"]')).toHaveLength(2);
+    await detailed.get('[data-testid="evidence-show-recommended"]').trigger('click');
+    await flushPromises();
+    expect(compact.get('[data-testid="evidence-show-all"]').attributes('aria-pressed')).toBe('false');
+    expect(compact.findAll('[data-testid="evidence-summary"]')).toHaveLength(0);
+    expect(detailed.findAll('[data-testid="evidence-dimension"]')).toHaveLength(0);
+    (professional.element as HTMLDetailsElement).open = true;
+    await professional.trigger('toggle');
+    expect(detailed.findAll('[data-testid="evidence-dimension"]')).toHaveLength(0);
+    expect(detailed.get('[data-testid="evidence-show-all"]').attributes('aria-pressed')).toBe('false');
+    (professional.element as HTMLDetailsElement).open = false;
+    await professional.trigger('toggle');
+    await detailed.get('[data-testid="evidence-show-all"]').trigger('click');
+    await flushPromises();
+    expect(compact.get('[data-testid="evidence-show-all"]').attributes('aria-pressed')).toBe('true');
+    expect(compact.findAll('[data-testid="evidence-summary"]')).toHaveLength(4);
+    expect(professional.attributes('open')).toBeUndefined();
     await detailed.get('[data-dimension="phrase_template"]').trigger('click');
     const excerpt = detailed.get('[data-testid="evidence-examples"]').text();
     expect(excerpt).toContain('用于');
@@ -1713,10 +2261,12 @@ describe('ScanPage panel switching', () => {
     await getScanPageSetupState(wrapper).loadHistoryRecord(historyId);
     await flushPromises();
     expect(wrapper.findAll('[data-testid="evidence-panel"]')).toHaveLength(2);
-    expect(wrapper.findAll('[data-testid="evidence-route"]')).toHaveLength(1);
+    expect(wrapper.find('[data-testid="evidence-route"]').exists()).toBe(false);
     const restoredDetails = wrapper.findAllComponents(EvidencePanel).find((panel) => panel.props('detailed'))!;
     expect(restoredDetails.get('[data-testid="evidence-show-all"]').attributes('aria-pressed')).toBe('false');
-    await restoredDetails.get('[data-testid="evidence-show-all"]').trigger('click');
+    expect(wrapper.findAllComponents(EvidencePanel).find((panel) => !panel.props('detailed'))!.get('[data-testid="evidence-show-all"]').attributes('aria-pressed')).toBe('false');
+    expect(restoredDetails.get('details[data-testid="evidence-professional"]').attributes('open')).toBeUndefined();
+    expect(restoredDetails.findAll('[data-metric]')).toHaveLength(22);
     expect(wrapper.findAll('[data-testid="evidence-notice"]')).toHaveLength(2);
     expect(wrapper.findAllComponents(EvidencePanel).find((panel) => panel.props('detailed'))!.props('submittedText')).toBe(submittedText);
     expect(scanStore.result?.evidence).toEqual(evidence);

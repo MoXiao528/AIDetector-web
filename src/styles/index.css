@@ -48,3 +48,288 @@ a {
 .section-subtitle {
   @apply mt-4 text-lg text-neutral-600 max-w-3xl;
 }
+
+/* Share the approved palette across the workbench and public pages. */
+.workbench-theme,
+.public-theme {
+  --primary-50: 242 246 255;
+  --primary-100: 230 238 255;
+  --primary-200: 204 220 250;
+  --primary-300: 165 191 239;
+  --primary-400: 107 150 226;
+  --primary-500: 58 111 213;
+  --primary-600: 36 86 199;
+  --primary-700: 30 69 163;
+  --primary-800: 28 58 132;
+  --primary-900: 26 47 104;
+  --primary-950: 19 31 65;
+  color: #182230;
+  background: #f4f7fb;
+}
+
+.liquid-glass {
+  isolation: isolate;
+  border: 1px solid rgb(255 255 255 / 0.65);
+  border-bottom-color: rgb(151 170 197 / 0.2);
+  color: #344054;
+  background: linear-gradient(155deg, rgb(255 255 255 / 0.72), rgb(255 255 255 / 0.28) 48%, rgb(229 237 249 / 0.42));
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.55), 0 3px 10px rgb(30 50 85 / 0.06);
+  -webkit-backdrop-filter: blur(12px) saturate(155%);
+  backdrop-filter: blur(12px) saturate(155%);
+  transition: background-color 160ms ease, box-shadow 160ms ease, color 160ms ease;
+}
+
+button.liquid-glass,
+a.liquid-glass {
+  position: relative;
+}
+
+button.liquid-glass:hover:not(:disabled),
+a.liquid-glass:hover {
+  background-color: rgb(255 255 255 / 0.45);
+  color: #182230;
+}
+
+.liquid-glass.liquid-glass-selected {
+  color: #2456c7;
+  background: linear-gradient(145deg, rgb(231 240 255 / 0.84), rgb(193 214 255 / 0.5));
+  border-color: rgb(119 156 228 / 0.18);
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.65), 0 2px 6px rgb(36 86 199 / 0.06);
+}
+
+.liquid-glass.liquid-glass-selected:hover:not(:disabled) {
+  color: #1e45a3;
+  background-color: rgb(184 209 255 / 0.5);
+}
+
+:is(.workbench-theme, .public-theme) :is(button, a, input, textarea, [contenteditable='true']):focus-visible {
+  outline: 2px solid #2456c7;
+  outline-offset: 3px;
+}
+
+.liquid-glass:disabled {
+  cursor: not-allowed;
+  color: #667085;
+  background: rgb(237 241 247 / 0.8);
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.8);
+}
+
+/* Primary actions share the approved home treatment. */
+:is(.workbench-home .home-primary, .public-theme .primary-action).liquid-glass {
+  min-height: 46px;
+  padding-inline: 22px;
+  color: #fff;
+  border-color: rgb(255 255 255 / 0.55);
+  border-bottom-color: rgb(26 65 145 / 0.24);
+  background: linear-gradient(160deg, rgb(43 96 203 / 0.94), rgb(30 73 179 / 0.96));
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.42), inset 0 -1px 0 rgb(19 50 121 / 0.16), 0 4px 10px rgb(36 86 199 / 0.18);
+  transition: transform 160ms ease, box-shadow 180ms ease;
+}
+
+:is(.workbench-home .home-primary, .public-theme .primary-action).liquid-glass:hover:not(:disabled) {
+  color: #fff;
+  background: linear-gradient(160deg, rgb(50 103 206 / 0.97), rgb(36 86 199 / 0.97));
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.6), inset 0 -1px 0 rgb(19 50 121 / 0.12), 0 6px 14px rgb(36 86 199 / 0.23);
+}
+
+:is(.workbench-home .home-primary, .public-theme .primary-action).liquid-glass:active:not(:disabled) {
+  color: #fff;
+  transform: scale(0.98);
+  box-shadow: inset 0 2px 5px rgb(15 42 109 / 0.22), 0 2px 5px rgb(36 86 199 / 0.14);
+}
+
+@media (hover: hover) and (pointer: fine) and (prefers-reduced-motion: no-preference) {
+  :is(.workbench-home .home-primary, .public-theme .primary-action).liquid-glass:hover:not(:active):not(:disabled) {
+    transform: translateY(-1px);
+  }
+
+  @supports ((mask-composite: exclude) or (-webkit-mask-composite: xor)) {
+    .workbench-home :is(.home-primary, .nav-item[aria-current='page'], .workbench-language-trigger, .workbench-language-menu)::after,
+    .public-theme :is(.primary-action, .workbench-language-trigger, .workbench-language-menu)::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      padding: 1px;
+      border-radius: inherit;
+      pointer-events: none;
+      background: linear-gradient(110deg, transparent 28%, rgb(255 255 255 / 0.95) 43%, rgb(189 221 255 / 0.8) 49%, transparent 66%);
+      background-size: 250% 100%;
+      background-position: 140% 0;
+      opacity: 0;
+      -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+      -webkit-mask-composite: xor;
+      mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+      mask-composite: exclude;
+    }
+
+    .workbench-home :is(.home-primary, .nav-item[aria-current='page'], .workbench-language-trigger, .workbench-language-menu):hover::after,
+    .public-theme :is(.primary-action, .workbench-language-trigger, .workbench-language-menu):hover::after {
+      animation: home-glass-reflection 750ms ease-out both;
+    }
+  }
+}
+
+@keyframes home-glass-reflection {
+  0% { opacity: 0; background-position: 140% 0; }
+  18%, 72% { opacity: 1; }
+  100% { opacity: 0; background-position: -40% 0; }
+}
+
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .liquid-glass {
+    background: #f8fafc;
+  }
+  .liquid-glass.liquid-glass-selected {
+    background: #e5eeff;
+  }
+  :is(.workbench-home .home-primary, .public-theme .primary-action).liquid-glass,
+  :is(.workbench-home .home-primary, .public-theme .primary-action).liquid-glass:hover:not(:disabled) {
+    background: #2456c7;
+  }
+}
+
+@media (prefers-reduced-transparency: reduce) {
+  .liquid-glass {
+    background: #f8fafc;
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
+  .liquid-glass.liquid-glass-selected {
+    background: #e5eeff;
+  }
+  :is(.workbench-home .home-primary, .public-theme .primary-action).liquid-glass,
+  :is(.workbench-home .home-primary, .public-theme .primary-action).liquid-glass:hover:not(:disabled) {
+    background: #2456c7;
+  }
+  .workbench-home :is(.home-primary, .nav-item[aria-current='page'], .workbench-language-trigger, .workbench-language-menu)::after,
+  .public-theme :is(.primary-action, .workbench-language-trigger, .workbench-language-menu)::after {
+    display: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :is(.workbench-theme, .public-theme) *,
+  :is(.workbench-theme, .public-theme) *::before,
+  :is(.workbench-theme, .public-theme) *::after {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+  }
+  :is(.workbench-home .home-primary, .public-theme .primary-action).liquid-glass:active:not(:disabled) {
+    transform: none;
+  }
+}
+
+.auth-page {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  min-height: 100dvh;
+}
+
+.auth-main {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  background: linear-gradient(180deg, #e9f0fc, #f4f7fb 75%);
+}
+
+.auth-form-panel,
+.auth-overview {
+  min-width: 0;
+  padding: 24px;
+  border: 1px solid #e0e8f3;
+  border-radius: 24px;
+}
+
+.auth-form-panel {
+  background: #fff;
+  box-shadow: 0 8px 28px rgb(30 50 85 / 0.06);
+}
+
+.auth-overview {
+  display: flex;
+  flex-direction: column;
+  border-color: #bdd1f1;
+  background: linear-gradient(145deg, #d7e6fc, #bdd2f2);
+}
+
+.auth-field {
+  display: grid;
+  gap: 8px;
+}
+
+.auth-field label {
+  color: #344054;
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 20px;
+}
+
+.auth-field input {
+  width: 100%;
+  min-width: 0;
+  min-height: 48px;
+  padding: 11px 14px;
+  border: 1px solid #ced8e7;
+  border-radius: 12px;
+  background: #fbfcff;
+  color: #182230;
+  font-size: 16px;
+  line-height: 24px;
+  transition: border-color 160ms ease, background-color 160ms ease, box-shadow 160ms ease;
+}
+
+.auth-field input::placeholder {
+  color: #66758b;
+}
+
+.auth-field input:hover {
+  border-color: #9eafd0;
+}
+
+.auth-field input:focus {
+  border-color: #2456c7;
+  background: #fff;
+  box-shadow: 0 0 0 3px rgb(36 86 199 / 0.08);
+}
+
+.auth-error {
+  padding: 12px 14px;
+  border: 1px solid #fecdd3;
+  border-radius: 12px;
+  color: #9f1239;
+  background: #fff1f2;
+  font-size: 14px;
+  line-height: 22px;
+  overflow-wrap: anywhere;
+}
+
+.auth-page .auth-submit.liquid-glass:disabled {
+  cursor: wait;
+  color: #fff;
+  background: #526ca4;
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.3);
+}
+
+@media (min-width: 640px) {
+  .auth-layout { max-width: 580px; }
+  .auth-form-panel,
+  .auth-overview { padding: 32px; }
+}
+
+@media (min-width: 1024px) {
+  .auth-layout { max-width: 1080px; }
+  .auth-form-panel { order: 2; padding: 40px; }
+  .auth-overview { order: 1; padding: 40px; }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .auth-form-panel,
+  .auth-overview { animation: auth-enter 420ms cubic-bezier(0.22, 1, 0.36, 1) both; }
+}
+
+@keyframes auth-enter {
+  from { opacity: 0.7; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}

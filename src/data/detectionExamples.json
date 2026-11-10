@@ -1,0 +1,2101 @@
+[
+  {
+    "key": "chatgpt",
+    "title": "AI 特征演示：简短书房布置指南",
+    "sourceUrl": "",
+    "detectedAt": "2026-11-09T12:25:42.291128+00:00",
+    "modelName": "v2.0-roberta",
+    "text": "布置居家书房时，可以先观察每天使用最多的物品和工作动作。桌面需要容纳电脑、书本与笔记，也应留出自然移动手臂的空间。把不常使用的设备移到侧边，能够减少视线里的杂乱。家具尺寸应结合房间测量结果选择，尤其要确认座椅后方和抽屉前方是否方便通行。\n\n照明安排可以从窗户位置和屏幕朝向开始。白天让光线从侧面进入，夜间则用均匀的环境光配合阅读灯，避免桌面与周围形成过强反差。选择座椅时，应当检查靠背支撑和高度调节范围。试坐过程中模拟打字、翻阅资料和转身取物，才能发现静坐时不容易察觉的不便。\n\n收纳可以按照使用频率分层安排，把当天需要的资料放在伸手可及的位置。充电线、转接头和备用文具最好各有固定归处。完成布置之后，用一次完整的工作流程检查动线，再依据真实感受调整局部位置。舒适的书房不依赖一次购齐所有用品，而是在光线、坐姿与日常秩序之间找到适合自己的平衡。",
+    "analysis": {
+      "summary": {
+        "ai": 100,
+        "human": 0
+      },
+      "sentences": [
+        {
+          "id": "para-0",
+          "text": "布置居家书房时，可以先观察每天使用最多的物品和工作动作。桌面需要容纳电脑、书本与笔记，也应留出自然移动手臂的空间。把不常使用的设备移到侧边，能够减少视线里的杂乱。家具尺寸应结合房间测量结果选择，尤其要确认座椅后方和抽屉前方是否方便通行。",
+          "raw": "布置居家书房时，可以先观察每天使用最多的物品和工作动作。桌面需要容纳电脑、书本与笔记，也应留出自然移动手臂的空间。把不常使用的设备移到侧边，能够减少视线里的杂乱。家具尺寸应结合房间测量结果选择，尤其要确认座椅后方和抽屉前方是否方便通行。",
+          "startParagraph": 1,
+          "endParagraph": 1,
+          "type": "ai",
+          "probability": 0.8416688808752169,
+          "score": 84,
+          "reason": "This segment is highly patterned and is more likely to be machine-generated.",
+          "suggestion": "Add concrete facts, distinctive examples, and less templated phrasing.",
+          "tokenCount": 82,
+          "visibleChars": 118,
+          "isTruncated": false
+        },
+        {
+          "id": "para-1",
+          "text": "照明安排可以从窗户位置和屏幕朝向开始。白天让光线从侧面进入，夜间则用均匀的环境光配合阅读灯，避免桌面与周围形成过强反差。选择座椅时，应当检查靠背支撑和高度调节范围。试坐过程中模拟打字、翻阅资料和转身取物，才能发现静坐时不容易察觉的不便。",
+          "raw": "照明安排可以从窗户位置和屏幕朝向开始。白天让光线从侧面进入，夜间则用均匀的环境光配合阅读灯，避免桌面与周围形成过强反差。选择座椅时，应当检查靠背支撑和高度调节范围。试坐过程中模拟打字、翻阅资料和转身取物，才能发现静坐时不容易察觉的不便。",
+          "startParagraph": 2,
+          "endParagraph": 2,
+          "type": "ai",
+          "probability": 0.9999779082664371,
+          "score": 100,
+          "reason": "This segment is highly patterned and is more likely to be machine-generated.",
+          "suggestion": "Add concrete facts, distinctive examples, and less templated phrasing.",
+          "tokenCount": 86,
+          "visibleChars": 118,
+          "isTruncated": false
+        },
+        {
+          "id": "para-2",
+          "text": "收纳可以按照使用频率分层安排，把当天需要的资料放在伸手可及的位置。充电线、转接头和备用文具最好各有固定归处。完成布置之后，用一次完整的工作流程检查动线，再依据真实感受调整局部位置。舒适的书房不依赖一次购齐所有用品，而是在光线、坐姿与日常秩序之间找到适合自己的平衡。",
+          "raw": "收纳可以按照使用频率分层安排，把当天需要的资料放在伸手可及的位置。充电线、转接头和备用文具最好各有固定归处。完成布置之后，用一次完整的工作流程检查动线，再依据真实感受调整局部位置。舒适的书房不依赖一次购齐所有用品，而是在光线、坐姿与日常秩序之间找到适合自己的平衡。",
+          "startParagraph": 3,
+          "endParagraph": 3,
+          "type": "ai",
+          "probability": 0.9999954238551906,
+          "score": 100,
+          "reason": "This segment is highly patterned and is more likely to be machine-generated.",
+          "suggestion": "Add concrete facts, distinctive examples, and less templated phrasing.",
+          "tokenCount": 91,
+          "visibleChars": 132,
+          "isTruncated": false
+        }
+      ],
+      "translation": "",
+      "polish": "",
+      "citations": [],
+      "aiLikelyCount": 3,
+      "highlightedHtml": "<p><span class=\"highlight-chip bg-rose-100 text-rose-900\" data-sentence-id=\"para-0\">布置居家书房时，可以先观察每天使用最多的物品和工作动作。桌面需要容纳电脑、书本与笔记，也应留出自然移动手臂的空间。把不常使用的设备移到侧边，能够减少视线里的杂乱。家具尺寸应结合房间测量结果选择，尤其要确认座椅后方和抽屉前方是否方便通行。</span></p><p><span class=\"highlight-chip bg-rose-100 text-rose-900\" data-sentence-id=\"para-1\">照明安排可以从窗户位置和屏幕朝向开始。白天让光线从侧面进入，夜间则用均匀的环境光配合阅读灯，避免桌面与周围形成过强反差。选择座椅时，应当检查靠背支撑和高度调节范围。试坐过程中模拟打字、翻阅资料和转身取物，才能发现静坐时不容易察觉的不便。</span></p><p><span class=\"highlight-chip bg-rose-100 text-rose-900\" data-sentence-id=\"para-2\">收纳可以按照使用频率分层安排，把当天需要的资料放在伸手可及的位置。充电线、转接头和备用文具最好各有固定归处。完成布置之后，用一次完整的工作流程检查动线，再依据真实感受调整局部位置。舒适的书房不依赖一次购齐所有用品，而是在光线、坐姿与日常秩序之间找到适合自己的平衡。</span></p>"
+    },
+    "evidence": {
+      "status": "partial",
+      "artifactVersion": "f04fee602a09850adae31e5e78ea9926a27cd96663aeeeaeaafb11d8a959fb0e",
+      "featureSchemaVersion": 1,
+      "route": {
+        "language": "zh",
+        "domain": "novel",
+        "confidence": {
+          "language": 0.9998016374660181,
+          "domain": 0.9831406335921236
+        },
+        "lengthBucket": "brief_200_399",
+        "fallbackLevel": "language_length"
+      },
+      "quality": {
+        "level": "partial",
+        "coverage": 0.7727272727272727,
+        "reasons": [
+          "reference_fallback_language_length",
+          "reference_metrics_unavailable"
+        ]
+      },
+      "signals": [
+        {
+          "dimension": "lexical",
+          "metric": "mattr",
+          "observed": 0.8714893617021279,
+          "humanPercentile": 96.5,
+          "aiPercentile": 75.5,
+          "referenceRanges": {
+            "human": [
+              0.5522500000000001,
+              0.8581188118811881
+            ],
+            "ai": [
+              0.7427118644067797,
+              0.9132467532467535
+            ]
+          },
+          "referenceExtent": [
+            0.11484375000000002,
+            0.9877272727272725
+          ],
+          "relation": {
+            "human": "above",
+            "ai": "within"
+          },
+          "notice": null,
+          "sampleCount": 1443,
+          "offsets": [],
+          "reasons": []
+        },
+        {
+          "dimension": "lexical",
+          "metric": "token_entropy",
+          "observed": 7.015576413847589,
+          "humanPercentile": 95.5,
+          "aiPercentile": 90.5,
+          "referenceRanges": {
+            "human": [
+              5.7407259247132565,
+              7.010691882151532
+            ],
+            "ai": [
+              6.3487970251934165,
+              7.0925285657751855
+            ]
+          },
+          "referenceExtent": [
+            3.7450558610652775,
+            9.191069178332842
+          ],
+          "relation": {
+            "human": "above",
+            "ai": "within"
+          },
+          "notice": null,
+          "sampleCount": 1443,
+          "offsets": [],
+          "reasons": []
+        },
+        {
+          "dimension": "lexical",
+          "metric": "entropy_per_log_vocab",
+          "observed": 0.9692158239968403,
+          "humanPercentile": 74.5,
+          "aiPercentile": 65.5,
+          "referenceRanges": {
+            "human": [
+              0.9094313344689393,
+              0.9795903335022269
+            ],
+            "ai": [
+              0.9372548313595195,
+              0.983915085240338
+            ]
+          },
+          "referenceExtent": [
+            0.758245355510867,
+            0.9964030002068344
+          ],
+          "relation": {
+            "human": "within",
+            "ai": "within"
+          },
+          "notice": null,
+          "sampleCount": 1443,
+          "offsets": [],
+          "reasons": []
+        },
+        {
+          "dimension": "lexical",
+          "metric": "hapax_type_ratio",
+          "observed": 0.8410596026490066,
+          "humanPercentile": 86.5,
+          "aiPercentile": 44.5,
+          "referenceRanges": {
+            "human": [
+              0.5959595959595959,
+              0.8695652173913043
+            ],
+            "ai": [
+              0.7596899224806202,
+              0.9117647058823529
+            ]
+          },
+          "referenceExtent": [
+            0,
+            0.9663865546218487
+          ],
+          "relation": {
+            "human": "within",
+            "ai": "within"
+          },
+          "notice": null,
+          "sampleCount": 1443,
+          "offsets": [],
+          "reasons": []
+        },
+        {
+          "dimension": "lexical",
+          "metric": "top_token_concentration",
+          "observed": 0.3005181347150259,
+          "humanPercentile": 6.5,
+          "aiPercentile": 18.5,
+          "referenceRanges": {
+            "human": [
+              0.2937853107344633,
+              0.5771812080536913
+            ],
+            "ai": [
+              0.26875,
+              0.42727272727272725
+            ]
+          },
+          "referenceExtent": [
+            0.125,
+            0.9642857142857143
+          ],
+          "relation": {
+            "human": "within",
+            "ai": "within"
+          },
+          "notice": null,
+          "sampleCount": 1443,
+          "offsets": [],
+          "reasons": []
+        },
+        {
+          "dimension": "phrase_template",
+          "metric": "repeat_ngram_coverage",
+          "observed": 0,
+          "humanPercentile": 25,
+          "aiPercentile": 43,
+          "referenceRanges": {
+            "human": [
+              0,
+              0.3724137931034483
+            ],
+            "ai": [
+              0,
+              0.05925925925925926
+            ]
+          },
+          "referenceExtent": [
+            0,
+            1
+          ],
+          "relation": {
+            "human": "within",
+            "ai": "within"
+          },
+          "notice": null,
+          "sampleCount": 1443,
+          "offsets": [],
+          "reasons": []
+        },
+        {
+          "dimension": "phrase_template",
+          "metric": "sentence_start_repeat",
+          "observed": 0,
+          "humanPercentile": 46.5,
+          "aiPercentile": 49,
+          "referenceRanges": {
+            "human": [
+              0,
+              0.16666666666666666
+            ],
+            "ai": [
+              0,
+              0
+            ]
+          },
+          "referenceExtent": [
+            0,
+            1
+          ],
+          "relation": {
+            "human": "within",
+            "ai": "within"
+          },
+          "notice": null,
+          "sampleCount": 1344,
+          "offsets": [],
+          "reasons": []
+        },
+        {
+          "dimension": "rhythm",
+          "metric": "sentence_length_median",
+          "observed": 28.5,
+          "humanPercentile": 34.5,
+          "aiPercentile": 18,
+          "referenceRanges": {
+            "human": [
+              15.5,
+              265
+            ],
+            "ai": [
+              24,
+              48.5
+            ]
+          },
+          "referenceExtent": [
+            2,
+            564
+          ],
+          "relation": {
+            "human": "within",
+            "ai": "within"
+          },
+          "notice": null,
+          "sampleCount": 1443,
+          "offsets": [],
+          "reasons": []
+        },
+        {
+          "dimension": "rhythm",
+          "metric": "sentence_length_iqr",
+          "observed": 12,
+          "humanPercentile": 15,
+          "aiPercentile": 35.5,
+          "referenceRanges": {
+            "human": [
+              8.5,
+              73.5
+            ],
+            "ai": [
+              6,
+              29
+            ]
+          },
+          "referenceExtent": [
+            0,
+            265
+          ],
+          "relation": {
+            "human": "within",
+            "ai": "within"
+          },
+          "notice": null,
+          "sampleCount": 1344,
+          "offsets": [],
+          "reasons": []
+        },
+        {
+          "dimension": "rhythm",
+          "metric": "sentence_length_cv",
+          "observed": 0.25300956667772434,
+          "humanPercentile": 2.5,
+          "aiPercentile": 20.5,
+          "referenceRanges": {
+            "human": [
+              0.2909561634122459,
+              1.0337923928822297
+            ],
+            "ai": [
+              0.181869820856614,
+              0.5826810355673441
+            ]
+          },
+          "referenceExtent": [
+            0,
+            2.39423015443942
+          ],
+          "relation": {
+            "human": "below",
+            "ai": "within"
+          },
+          "notice": null,
+          "sampleCount": 1344,
+          "offsets": [],
+          "reasons": []
+        },
+        {
+          "dimension": "rhythm",
+          "metric": "sentence_adjacent_change_median",
+          "observed": 13,
+          "humanPercentile": 31,
+          "aiPercentile": 59,
+          "referenceRanges": {
+            "human": [
+              6,
+              91
+            ],
+            "ai": [
+              5,
+              26
+            ]
+          },
+          "referenceExtent": [
+            0,
+            521
+          ],
+          "relation": {
+            "human": "within",
+            "ai": "within"
+          },
+          "notice": null,
+          "sampleCount": 1343,
+          "offsets": [],
+          "reasons": []
+        },
+        {
+          "dimension": "rhythm",
+          "metric": "paragraph_length_median",
+          "observed": 109,
+          "humanPercentile": 0,
+          "aiPercentile": 0,
+          "referenceRanges": {
+            "human": [
+              255,
+              387
+            ],
+            "ai": [
+              230,
+              384
+            ]
+          },
+          "referenceExtent": [
+            202,
+            2419
+          ],
+          "relation": {
+            "human": "below",
+            "ai": "below"
+          },
+          "notice": "outside_both",
+          "sampleCount": 1443,
+          "offsets": [],
+          "reasons": []
+        },
+        {
+          "dimension": "rhythm",
+          "metric": "paragraph_length_iqr",
+          "observed": 6.5,
+          "humanPercentile": null,
+          "aiPercentile": null,
+          "referenceRanges": null,
+          "relation": null,
+          "notice": null,
+          "sampleCount": 0,
+          "offsets": [],
+          "reasons": [
+            "no_valid_source_groups"
+          ]
+        },
+        {
+          "dimension": "rhythm",
+          "metric": "paragraph_length_cv",
+          "observed": 0.054072871502500695,
+          "humanPercentile": null,
+          "aiPercentile": null,
+          "referenceRanges": null,
+          "relation": null,
+          "notice": null,
+          "sampleCount": 0,
+          "offsets": [],
+          "reasons": [
+            "no_valid_source_groups"
+          ]
+        },
+        {
+          "dimension": "rhythm",
+          "metric": "punctuation_per_1k",
+          "observed": 35.294117647058826,
+          "humanPercentile": 3.5,
+          "aiPercentile": 0.5,
+          "referenceRanges": {
+            "human": [
+              41.23711340206186,
+              156.25
+            ],
+            "ai": [
+              44.44444444444444,
+              101.39860139860139
+            ]
+          },
+          "referenceExtent": [
+            0,
+            348.9208633093525
+          ],
+          "relation": {
+            "human": "below",
+            "ai": "below"
+          },
+          "notice": "outside_both",
+          "sampleCount": 1443,
+          "offsets": [],
+          "reasons": []
+        },
+        {
+          "dimension": "rhythm",
+          "metric": "punctuation_entropy",
+          "observed": 0,
+          "humanPercentile": 1.5,
+          "aiPercentile": 4.5,
+          "referenceRanges": {
+            "human": [
+              0.35335933502142136,
+              2.273766646952153
+            ],
+            "ai": [
+              0,
+              2.0580531366523855
+            ]
+          },
+          "referenceExtent": [
+            0,
+            2.723060616885778
+          ],
+          "relation": {
+            "human": "below",
+            "ai": "within"
+          },
+          "notice": null,
+          "sampleCount": 1437,
+          "offsets": [],
+          "reasons": []
+        },
+        {
+          "dimension": "discourse",
+          "metric": "transition_per_1k",
+          "observed": 0,
+          "humanPercentile": 37,
+          "aiPercentile": 25.5,
+          "referenceRanges": {
+            "human": [
+              0,
+              10.81081081081081
+            ],
+            "ai": [
+              0,
+              15.384615384615385
+            ]
+          },
+          "referenceExtent": [
+            0,
+            32.05128205128205
+          ],
+          "relation": {
+            "human": "within",
+            "ai": "within"
+          },
+          "notice": null,
+          "sampleCount": 1443,
+          "offsets": [],
+          "reasons": []
+        },
+        {
+          "dimension": "discourse",
+          "metric": "transition_diversity",
+          "observed": 0,
+          "humanPercentile": 37,
+          "aiPercentile": 25.5,
+          "referenceRanges": {
+            "human": [
+              0,
+              0.07142857142857142
+            ],
+            "ai": [
+              0,
+              0.14285714285714285
+            ]
+          },
+          "referenceExtent": [
+            0,
+            0.7857142857142857
+          ],
+          "relation": {
+            "human": "within",
+            "ai": "within"
+          },
+          "notice": null,
+          "sampleCount": 1443,
+          "offsets": [],
+          "reasons": []
+        },
+        {
+          "dimension": "discourse",
+          "metric": "paragraph_adjacent_jaccard",
+          "observed": 0.08830910349601938,
+          "humanPercentile": null,
+          "aiPercentile": null,
+          "referenceRanges": null,
+          "relation": null,
+          "notice": null,
+          "sampleCount": 0,
+          "offsets": [],
+          "reasons": [
+            "no_valid_source_groups"
+          ]
+        },
+        {
+          "dimension": "discourse",
+          "metric": "paragraph_nonadjacent_jaccard_q90",
+          "observed": 0.09259259259259259,
+          "humanPercentile": null,
+          "aiPercentile": null,
+          "referenceRanges": null,
+          "relation": null,
+          "notice": null,
+          "sampleCount": 0,
+          "offsets": [],
+          "reasons": [
+            "no_valid_source_groups"
+          ]
+        },
+        {
+          "dimension": "discourse",
+          "metric": "intro_conclusion_jaccard",
+          "observed": 0.09259259259259259,
+          "humanPercentile": null,
+          "aiPercentile": null,
+          "referenceRanges": null,
+          "relation": null,
+          "notice": null,
+          "sampleCount": 0,
+          "offsets": [],
+          "reasons": [
+            "no_valid_source_groups"
+          ]
+        },
+        {
+          "dimension": "discourse",
+          "metric": "section_heading_count",
+          "observed": 0,
+          "humanPercentile": 50,
+          "aiPercentile": 50,
+          "referenceRanges": {
+            "human": [
+              0,
+              0
+            ],
+            "ai": [
+              0,
+              0
+            ]
+          },
+          "referenceExtent": [
+            0,
+            0
+          ],
+          "relation": {
+            "human": "within",
+            "ai": "within"
+          },
+          "notice": null,
+          "sampleCount": 1443,
+          "offsets": [],
+          "reasons": []
+        }
+      ],
+      "patterns": {
+        "descriptive_top_tokens": [
+          {
+            "count": 11,
+            "offsets": [
+              {
+                "start": 19,
+                "end": 20
+              },
+              {
+                "start": 53,
+                "end": 54
+              },
+              {
+                "start": 62,
+                "end": 63
+              },
+              {
+                "start": 77,
+                "end": 78
+              },
+              {
+                "start": 156,
+                "end": 157
+              },
+              {
+                "start": 234,
+                "end": 235
+              },
+              {
+                "start": 260,
+                "end": 261
+              },
+              {
+                "start": 269,
+                "end": 270
+              },
+              {
+                "start": 306,
+                "end": 307
+              },
+              {
+                "start": 332,
+                "end": 333
+              },
+              {
+                "start": 368,
+                "end": 369
+              }
+            ]
+          },
+          {
+            "count": 6,
+            "offsets": [
+              {
+                "start": 22,
+                "end": 23
+              },
+              {
+                "start": 106,
+                "end": 107
+              },
+              {
+                "start": 131,
+                "end": 132
+              },
+              {
+                "start": 194,
+                "end": 195
+              },
+              {
+                "start": 216,
+                "end": 217
+              },
+              {
+                "start": 280,
+                "end": 281
+              }
+            ]
+          },
+          {
+            "count": 3,
+            "offsets": [
+              {
+                "start": 6,
+                "end": 7
+              },
+              {
+                "start": 184,
+                "end": 185
+              },
+              {
+                "start": 228,
+                "end": 229
+              }
+            ]
+          },
+          {
+            "count": 3,
+            "offsets": [
+              {
+                "start": 8,
+                "end": 10
+              },
+              {
+                "start": 124,
+                "end": 126
+              },
+              {
+                "start": 242,
+                "end": 244
+              }
+            ]
+          },
+          {
+            "count": 3,
+            "offsets": [
+              {
+                "start": 15,
+                "end": 17
+              },
+              {
+                "start": 60,
+                "end": 62
+              },
+              {
+                "start": 246,
+                "end": 248
+              }
+            ]
+          },
+          {
+            "count": 3,
+            "offsets": [
+              {
+                "start": 39,
+                "end": 40
+              },
+              {
+                "start": 170,
+                "end": 171
+              },
+              {
+                "start": 355,
+                "end": 356
+              }
+            ]
+          },
+          {
+            "count": 3,
+            "offsets": [
+              {
+                "start": 129,
+                "end": 131
+              },
+              {
+                "start": 270,
+                "end": 272
+              },
+              {
+                "start": 327,
+                "end": 329
+              }
+            ]
+          },
+          {
+            "count": 2,
+            "offsets": [
+              {
+                "start": 0,
+                "end": 2
+              },
+              {
+                "start": 296,
+                "end": 298
+              }
+            ]
+          },
+          {
+            "count": 2,
+            "offsets": [
+              {
+                "start": 4,
+                "end": 6
+              },
+              {
+                "start": 333,
+                "end": 335
+              }
+            ]
+          },
+          {
+            "count": 2,
+            "offsets": [
+              {
+                "start": 23,
+                "end": 25
+              },
+              {
+                "start": 307,
+                "end": 309
+              }
+            ]
+          },
+          {
+            "count": 2,
+            "offsets": [
+              {
+                "start": 28,
+                "end": 30
+              },
+              {
+                "start": 168,
+                "end": 170
+              }
+            ]
+          },
+          {
+            "count": 2,
+            "offsets": [
+              {
+                "start": 30,
+                "end": 32
+              },
+              {
+                "start": 258,
+                "end": 260
+              }
+            ]
+          },
+          {
+            "count": 2,
+            "offsets": [
+              {
+                "start": 44,
+                "end": 45
+              },
+              {
+                "start": 85,
+                "end": 86
+              }
+            ]
+          },
+          {
+            "count": 2,
+            "offsets": [
+              {
+                "start": 57,
+                "end": 58
+              },
+              {
+                "start": 255,
+                "end": 256
+              }
+            ]
+          },
+          {
+            "count": 2,
+            "offsets": [
+              {
+                "start": 94,
+                "end": 96
+              },
+              {
+                "start": 180,
+                "end": 182
+              }
+            ]
+          },
+          {
+            "count": 2,
+            "offsets": [
+              {
+                "start": 102,
+                "end": 104
+              },
+              {
+                "start": 182,
+                "end": 184
+              }
+            ]
+          },
+          {
+            "count": 2,
+            "offsets": [
+              {
+                "start": 122,
+                "end": 124
+              },
+              {
+                "start": 252,
+                "end": 254
+              }
+            ]
+          },
+          {
+            "count": 2,
+            "offsets": [
+              {
+                "start": 126,
+                "end": 127
+              },
+              {
+                "start": 144,
+                "end": 145
+              }
+            ]
+          },
+          {
+            "count": 2,
+            "offsets": [
+              {
+                "start": 142,
+                "end": 144
+              },
+              {
+                "start": 350,
+                "end": 352
+              }
+            ]
+          },
+          {
+            "count": 2,
+            "offsets": [
+              {
+                "start": 153,
+                "end": 154
+              },
+              {
+                "start": 301,
+                "end": 302
+              }
+            ]
+          }
+        ],
+        "repeated_phrases": [],
+        "sentence_start_templates": []
+      }
+    },
+    "label": "ai",
+    "threshold": 0.0028,
+    "rawScore": 0.8486851119241224
+  },
+  {
+    "key": "human",
+    "title": "鲁迅《故乡》连续三段节选",
+    "sourceUrl": "https://zh.wikisource.org/zh-hans/故鄉",
+    "detectedAt": "2026-11-09T12:07:50.250206+00:00",
+    "modelName": "v2.0-roberta",
+    "text": "我所记得的故乡全不如此。我的故乡好得多了。但要我记起他的美丽，说出他的佳处来，却又没有影像，没有言辞了。仿佛也就如此。于是我自己解释说：故乡本也如此，——虽然没有进步，也未必有如我所感的悲凉，这只是我自己心情的改变罢了，因为我这次回乡，本没有什么好心绪。\n\n我这次是专为了别他而来的。我们多年聚族而居的老屋，已经公同卖给别姓了，交屋的期限，只在本年，所以必须赶在正月初一以前，永别了熟识的老屋，而且远离了熟识的故乡，搬家到我在谋食的异地去。\n\n第二日清早晨我到了我家的门口了。瓦楞上许多枯草的断茎当风抖着，正在说明这老屋难免易主的原因。几房的本家大约已经搬走了，所以很寂静。我到了自家的房外，我的母亲早已迎着出来了，接着便飞出了八岁的侄儿宏儿。",
+    "analysis": {
+      "summary": {
+        "ai": 0,
+        "human": 100
+      },
+      "sentences": [
+        {
+          "id": "para-0",
+          "text": "我所记得的故乡全不如此。我的故乡好得多了。但要我记起他的美丽，说出他的佳处来，却又没有影像，没有言辞了。仿佛也就如此。于是我自己解释说：故乡本也如此，——虽然没有进步，也未必有如我所感的悲凉，这只是我自己心情的改变罢了，因为我这次回乡，本没有什么好心绪。",
+          "raw": "我所记得的故乡全不如此。我的故乡好得多了。但要我记起他的美丽，说出他的佳处来，却又没有影像，没有言辞了。仿佛也就如此。于是我自己解释说：故乡本也如此，——虽然没有进步，也未必有如我所感的悲凉，这只是我自己心情的改变罢了，因为我这次回乡，本没有什么好心绪。",
+          "startParagraph": 1,
+          "endParagraph": 1,
+          "type": "human",
+          "probability": 0.11176877908707997,
+          "score": 11,
+          "reason": "This segment reads more like natural human writing.",
+          "suggestion": "This segment already looks relatively natural.",
+          "tokenCount": 95,
+          "visibleChars": 127,
+          "isTruncated": false
+        },
+        {
+          "id": "para-1",
+          "text": "我这次是专为了别他而来的。我们多年聚族而居的老屋，已经公同卖给别姓了，交屋的期限，只在本年，所以必须赶在正月初一以前，永别了熟识的老屋，而且远离了熟识的故乡，搬家到我在谋食的异地去。",
+          "raw": "我这次是专为了别他而来的。我们多年聚族而居的老屋，已经公同卖给别姓了，交屋的期限，只在本年，所以必须赶在正月初一以前，永别了熟识的老屋，而且远离了熟识的故乡，搬家到我在谋食的异地去。",
+          "startParagraph": 2,
+          "endParagraph": 2,
+          "type": "human",
+          "probability": 0.0010941976175412754,
+          "score": 0,
+          "reason": "This segment reads more like natural human writing.",
+          "suggestion": "This segment already looks relatively natural.",
+          "tokenCount": 75,
+          "visibleChars": 91,
+          "isTruncated": false
+        },
+        {
+          "id": "para-2",
+          "text": "第二日清早晨我到了我家的门口了。瓦楞上许多枯草的断茎当风抖着，正在说明这老屋难免易主的原因。几房的本家大约已经搬走了，所以很寂静。我到了自家的房外，我的母亲早已迎着出来了，接着便飞出了八岁的侄儿宏儿。",
+          "raw": "第二日清早晨我到了我家的门口了。瓦楞上许多枯草的断茎当风抖着，正在说明这老屋难免易主的原因。几房的本家大约已经搬走了，所以很寂静。我到了自家的房外，我的母亲早已迎着出来了，接着便飞出了八岁的侄儿宏儿。",
+          "startParagraph": 3,
+          "endParagraph": 3,
+          "type": "human",
+          "probability": 0.03129864323584895,
+          "score": 3,
+          "reason": "This segment reads more like natural human writing.",
+          "suggestion": "This segment already looks relatively natural.",
+          "tokenCount": 78,
+          "visibleChars": 100,
+          "isTruncated": false
+        }
+      ],
+      "translation": "",
+      "polish": "",
+      "citations": [],
+      "aiLikelyCount": 0,
+      "highlightedHtml": "<p><span class=\"highlight-chip bg-emerald-100 text-emerald-900\" data-sentence-id=\"para-0\">我所记得的故乡全不如此。我的故乡好得多了。但要我记起他的美丽，说出他的佳处来，却又没有影像，没有言辞了。仿佛也就如此。于是我自己解释说：故乡本也如此，——虽然没有进步，也未必有如我所感的悲凉，这只是我自己心情的改变罢了，因为我这次回乡，本没有什么好心绪。</span></p><p><span class=\"highlight-chip bg-emerald-100 text-emerald-900\" data-sentence-id=\"para-1\">我这次是专为了别他而来的。我们多年聚族而居的老屋，已经公同卖给别姓了，交屋的期限，只在本年，所以必须赶在正月初一以前，永别了熟识的老屋，而且远离了熟识的故乡，搬家到我在谋食的异地去。</span></p><p><span class=\"highlight-chip bg-emerald-100 text-emerald-900\" data-sentence-id=\"para-2\">第二日清早晨我到了我家的门口了。瓦楞上许多枯草的断茎当风抖着，正在说明这老屋难免易主的原因。几房的本家大约已经搬走了，所以很寂静。我到了自家的房外，我的母亲早已迎着出来了，接着便飞出了八岁的侄儿宏儿。</span></p>"
+    },
+    "evidence": {
+      "status": "partial",
+      "artifactVersion": "f04fee602a09850adae31e5e78ea9926a27cd96663aeeeaeaafb11d8a959fb0e",
+      "featureSchemaVersion": 1,
+      "route": {
+        "language": "zh",
+        "domain": "novel",
+        "confidence": {
+          "language": 0.9996272744496001,
+          "domain": 0.9981356999070018
+        },
+        "lengthBucket": "brief_200_399",
+        "fallbackLevel": "language_length"
+      },
+      "quality": {
+        "level": "partial",
+        "coverage": 0.7727272727272727,
+        "reasons": [
+          "reference_fallback_language_length",
+          "reference_metrics_unavailable"
+        ]
+      },
+      "signals": [
+        {
+          "dimension": "lexical",
+          "metric": "mattr",
+          "observed": 0.711190476190476,
+          "humanPercentile": 29.5,
+          "aiPercentile": 1.5,
+          "referenceRanges": {
+            "human": [
+              0.5522500000000001,
+              0.8581188118811881
+            ],
+            "ai": [
+              0.7427118644067797,
+              0.9132467532467535
+            ]
+          },
+          "referenceExtent": [
+            0.11484375000000002,
+            0.9877272727272725
+          ],
+          "relation": {
+            "human": "within",
+            "ai": "below"
+          },
+          "notice": null,
+          "sampleCount": 1443,
+          "offsets": [],
+          "reasons": []
+        },
+        {
+          "dimension": "lexical",
+          "metric": "token_entropy",
+          "observed": 6.300873359693478,
+          "humanPercentile": 20.5,
+          "aiPercentile": 3.5,
+          "referenceRanges": {
+            "human": [
+              5.7407259247132565,
+              7.010691882151532
+            ],
+            "ai": [
+              6.3487970251934165,
+              7.0925285657751855
+            ]
+          },
+          "referenceExtent": [
+            3.7450558610652775,
+            9.191069178332842
+          ],
+          "relation": {
+            "human": "within",
+            "ai": "below"
+          },
+          "notice": null,
+          "sampleCount": 1443,
+          "offsets": [],
+          "reasons": []
+        },
+        {
+          "dimension": "lexical",
+          "metric": "entropy_per_log_vocab",
+          "observed": 0.9154729243553745,
+          "humanPercentile": 6.5,
+          "aiPercentile": 0.5,
+          "referenceRanges": {
+            "human": [
+              0.9094313344689393,
+              0.9795903335022269
+            ],
+            "ai": [
+              0.9372548313595195,
+              0.983915085240338
+            ]
+          },
+          "referenceExtent": [
+            0.758245355510867,
+            0.9964030002068344
+          ],
+          "relation": {
+            "human": "within",
+            "ai": "below"
+          },
+          "notice": null,
+          "sampleCount": 1443,
+          "offsets": [],
+          "reasons": []
+        },
+        {
+          "dimension": "lexical",
+          "metric": "hapax_type_ratio",
+          "observed": 0.8389830508474576,
+          "humanPercentile": 85.5,
+          "aiPercentile": 42.5,
+          "referenceRanges": {
+            "human": [
+              0.5959595959595959,
+              0.8695652173913043
+            ],
+            "ai": [
+              0.7596899224806202,
+              0.9117647058823529
+            ]
+          },
+          "referenceExtent": [
+            0,
+            0.9663865546218487
+          ],
+          "relation": {
+            "human": "within",
+            "ai": "within"
+          },
+          "notice": null,
+          "sampleCount": 1443,
+          "offsets": [],
+          "reasons": []
+        },
+        {
+          "dimension": "lexical",
+          "metric": "top_token_concentration",
+          "observed": 0.4644808743169399,
+          "humanPercentile": 83.5,
+          "aiPercentile": 99.5,
+          "referenceRanges": {
+            "human": [
+              0.2937853107344633,
+              0.5771812080536913
+            ],
+            "ai": [
+              0.26875,
+              0.42727272727272725
+            ]
+          },
+          "referenceExtent": [
+            0.125,
+            0.9642857142857143
+          ],
+          "relation": {
+            "human": "within",
+            "ai": "above"
+          },
+          "notice": null,
+          "sampleCount": 1443,
+          "offsets": [],
+          "reasons": []
+        },
+        {
+          "dimension": "phrase_template",
+          "metric": "repeat_ngram_coverage",
+          "observed": 0,
+          "humanPercentile": 25,
+          "aiPercentile": 43,
+          "referenceRanges": {
+            "human": [
+              0,
+              0.3724137931034483
+            ],
+            "ai": [
+              0,
+              0.05925925925925926
+            ]
+          },
+          "referenceExtent": [
+            0,
+            1
+          ],
+          "relation": {
+            "human": "within",
+            "ai": "within"
+          },
+          "notice": null,
+          "sampleCount": 1443,
+          "offsets": [],
+          "reasons": []
+        },
+        {
+          "dimension": "phrase_template",
+          "metric": "sentence_start_repeat",
+          "observed": 0,
+          "humanPercentile": 46.5,
+          "aiPercentile": 49,
+          "referenceRanges": {
+            "human": [
+              0,
+              0.16666666666666666
+            ],
+            "ai": [
+              0,
+              0
+            ]
+          },
+          "referenceExtent": [
+            0,
+            1
+          ],
+          "relation": {
+            "human": "within",
+            "ai": "within"
+          },
+          "notice": null,
+          "sampleCount": 1344,
+          "offsets": [],
+          "reasons": []
+        },
+        {
+          "dimension": "rhythm",
+          "metric": "sentence_length_median",
+          "observed": 17,
+          "humanPercentile": 7,
+          "aiPercentile": 0.5,
+          "referenceRanges": {
+            "human": [
+              15.5,
+              265
+            ],
+            "ai": [
+              24,
+              48.5
+            ]
+          },
+          "referenceExtent": [
+            2,
+            564
+          ],
+          "relation": {
+            "human": "within",
+            "ai": "below"
+          },
+          "notice": null,
+          "sampleCount": 1443,
+          "offsets": [],
+          "reasons": []
+        },
+        {
+          "dimension": "rhythm",
+          "metric": "sentence_length_iqr",
+          "observed": 18.5,
+          "humanPercentile": 37,
+          "aiPercentile": 72,
+          "referenceRanges": {
+            "human": [
+              8.5,
+              73.5
+            ],
+            "ai": [
+              6,
+              29
+            ]
+          },
+          "referenceExtent": [
+            0,
+            265
+          ],
+          "relation": {
+            "human": "within",
+            "ai": "within"
+          },
+          "notice": null,
+          "sampleCount": 1344,
+          "offsets": [],
+          "reasons": []
+        },
+        {
+          "dimension": "rhythm",
+          "metric": "sentence_length_cv",
+          "observed": 0.7730613716077681,
+          "humanPercentile": 79.5,
+          "aiPercentile": 98.5,
+          "referenceRanges": {
+            "human": [
+              0.2909561634122459,
+              1.0337923928822297
+            ],
+            "ai": [
+              0.181869820856614,
+              0.5826810355673441
+            ]
+          },
+          "referenceExtent": [
+            0,
+            2.39423015443942
+          ],
+          "relation": {
+            "human": "within",
+            "ai": "above"
+          },
+          "notice": null,
+          "sampleCount": 1344,
+          "offsets": [],
+          "reasons": []
+        },
+        {
+          "dimension": "rhythm",
+          "metric": "sentence_adjacent_change_median",
+          "observed": 20,
+          "humanPercentile": 54.5,
+          "aiPercentile": 86.5,
+          "referenceRanges": {
+            "human": [
+              6,
+              91
+            ],
+            "ai": [
+              5,
+              26
+            ]
+          },
+          "referenceExtent": [
+            0,
+            521
+          ],
+          "relation": {
+            "human": "within",
+            "ai": "within"
+          },
+          "notice": null,
+          "sampleCount": 1343,
+          "offsets": [],
+          "reasons": []
+        },
+        {
+          "dimension": "rhythm",
+          "metric": "paragraph_length_median",
+          "observed": 92,
+          "humanPercentile": 0,
+          "aiPercentile": 0,
+          "referenceRanges": {
+            "human": [
+              255,
+              387
+            ],
+            "ai": [
+              230,
+              384
+            ]
+          },
+          "referenceExtent": [
+            202,
+            2419
+          ],
+          "relation": {
+            "human": "below",
+            "ai": "below"
+          },
+          "notice": "outside_both",
+          "sampleCount": 1443,
+          "offsets": [],
+          "reasons": []
+        },
+        {
+          "dimension": "rhythm",
+          "metric": "paragraph_length_iqr",
+          "observed": 14.5,
+          "humanPercentile": null,
+          "aiPercentile": null,
+          "referenceRanges": null,
+          "relation": null,
+          "notice": null,
+          "sampleCount": 0,
+          "offsets": [],
+          "reasons": [
+            "no_valid_source_groups"
+          ]
+        },
+        {
+          "dimension": "rhythm",
+          "metric": "paragraph_length_cv",
+          "observed": 0.12660784949241202,
+          "humanPercentile": null,
+          "aiPercentile": null,
+          "referenceRanges": null,
+          "relation": null,
+          "notice": null,
+          "sampleCount": 0,
+          "offsets": [],
+          "reasons": [
+            "no_valid_source_groups"
+          ]
+        },
+        {
+          "dimension": "rhythm",
+          "metric": "punctuation_per_1k",
+          "observed": 77.19298245614036,
+          "humanPercentile": 43.5,
+          "aiPercentile": 72.5,
+          "referenceRanges": {
+            "human": [
+              41.23711340206186,
+              156.25
+            ],
+            "ai": [
+              44.44444444444444,
+              101.39860139860139
+            ]
+          },
+          "referenceExtent": [
+            0,
+            348.9208633093525
+          ],
+          "relation": {
+            "human": "within",
+            "ai": "within"
+          },
+          "notice": null,
+          "sampleCount": 1443,
+          "offsets": [],
+          "reasons": []
+        },
+        {
+          "dimension": "rhythm",
+          "metric": "punctuation_entropy",
+          "observed": 0.6998578570269279,
+          "humanPercentile": 11.5,
+          "aiPercentile": 36.5,
+          "referenceRanges": {
+            "human": [
+              0.35335933502142136,
+              2.273766646952153
+            ],
+            "ai": [
+              0,
+              2.0580531366523855
+            ]
+          },
+          "referenceExtent": [
+            0,
+            2.723060616885778
+          ],
+          "relation": {
+            "human": "within",
+            "ai": "within"
+          },
+          "notice": null,
+          "sampleCount": 1437,
+          "offsets": [],
+          "reasons": []
+        },
+        {
+          "dimension": "discourse",
+          "metric": "transition_per_1k",
+          "observed": 5.46448087431694,
+          "humanPercentile": 81.5,
+          "aiPercentile": 60.5,
+          "referenceRanges": {
+            "human": [
+              0,
+              10.81081081081081
+            ],
+            "ai": [
+              0,
+              15.384615384615385
+            ]
+          },
+          "referenceExtent": [
+            0,
+            32.05128205128205
+          ],
+          "relation": {
+            "human": "within",
+            "ai": "within"
+          },
+          "notice": null,
+          "sampleCount": 1443,
+          "offsets": [],
+          "reasons": []
+        },
+        {
+          "dimension": "discourse",
+          "metric": "transition_diversity",
+          "observed": 0.07142857142857142,
+          "humanPercentile": 85,
+          "aiPercentile": 67.5,
+          "referenceRanges": {
+            "human": [
+              0,
+              0.07142857142857142
+            ],
+            "ai": [
+              0,
+              0.14285714285714285
+            ]
+          },
+          "referenceExtent": [
+            0,
+            0.7857142857142857
+          ],
+          "relation": {
+            "human": "within",
+            "ai": "within"
+          },
+          "notice": null,
+          "sampleCount": 1443,
+          "offsets": [],
+          "reasons": []
+        },
+        {
+          "dimension": "discourse",
+          "metric": "paragraph_adjacent_jaccard",
+          "observed": 0.0814571607254534,
+          "humanPercentile": null,
+          "aiPercentile": null,
+          "referenceRanges": null,
+          "relation": null,
+          "notice": null,
+          "sampleCount": 0,
+          "offsets": [],
+          "reasons": [
+            "no_valid_source_groups"
+          ]
+        },
+        {
+          "dimension": "discourse",
+          "metric": "paragraph_nonadjacent_jaccard_q90",
+          "observed": 0.04597701149425287,
+          "humanPercentile": null,
+          "aiPercentile": null,
+          "referenceRanges": null,
+          "relation": null,
+          "notice": null,
+          "sampleCount": 0,
+          "offsets": [],
+          "reasons": [
+            "no_valid_source_groups"
+          ]
+        },
+        {
+          "dimension": "discourse",
+          "metric": "intro_conclusion_jaccard",
+          "observed": 0.04597701149425287,
+          "humanPercentile": null,
+          "aiPercentile": null,
+          "referenceRanges": null,
+          "relation": null,
+          "notice": null,
+          "sampleCount": 0,
+          "offsets": [],
+          "reasons": [
+            "no_valid_source_groups"
+          ]
+        },
+        {
+          "dimension": "discourse",
+          "metric": "section_heading_count",
+          "observed": 0,
+          "humanPercentile": 50,
+          "aiPercentile": 50,
+          "referenceRanges": {
+            "human": [
+              0,
+              0
+            ],
+            "ai": [
+              0,
+              0
+            ]
+          },
+          "referenceExtent": [
+            0,
+            0
+          ],
+          "relation": {
+            "human": "within",
+            "ai": "within"
+          },
+          "notice": null,
+          "sampleCount": 1443,
+          "offsets": [],
+          "reasons": []
+        }
+      ],
+      "patterns": {
+        "descriptive_top_tokens": [
+          {
+            "count": 19,
+            "offsets": [
+              {
+                "start": 4,
+                "end": 5
+              },
+              {
+                "start": 13,
+                "end": 14
+              },
+              {
+                "start": 27,
+                "end": 28
+              },
+              {
+                "start": 34,
+                "end": 35
+              },
+              {
+                "start": 92,
+                "end": 93
+              },
+              {
+                "start": 104,
+                "end": 105
+              },
+              {
+                "start": 140,
+                "end": 141
+              },
+              {
+                "start": 150,
+                "end": 151
+              },
+              {
+                "start": 166,
+                "end": 167
+              },
+              {
+                "start": 193,
+                "end": 194
+              },
+              {
+                "start": 204,
+                "end": 205
+              },
+              {
+                "start": 215,
+                "end": 216
+              },
+              {
+                "start": 233,
+                "end": 234
+              },
+              {
+                "start": 245,
+                "end": 246
+              },
+              {
+                "start": 264,
+                "end": 265
+              },
+              {
+                "start": 270,
+                "end": 271
+              },
+              {
+                "start": 292,
+                "end": 293
+              },
+              {
+                "start": 297,
+                "end": 298
+              },
+              {
+                "start": 316,
+                "end": 317
+              }
+            ]
+          },
+          {
+            "count": 12,
+            "offsets": [
+              {
+                "start": 0,
+                "end": 1
+              },
+              {
+                "start": 12,
+                "end": 13
+              },
+              {
+                "start": 23,
+                "end": 24
+              },
+              {
+                "start": 61,
+                "end": 62
+              },
+              {
+                "start": 89,
+                "end": 90
+              },
+              {
+                "start": 99,
+                "end": 100
+              },
+              {
+                "start": 112,
+                "end": 113
+              },
+              {
+                "start": 129,
+                "end": 130
+              },
+              {
+                "start": 211,
+                "end": 212
+              },
+              {
+                "start": 228,
+                "end": 229
+              },
+              {
+                "start": 287,
+                "end": 288
+              },
+              {
+                "start": 296,
+                "end": 297
+              }
+            ]
+          },
+          {
+            "count": 11,
+            "offsets": [
+              {
+                "start": 19,
+                "end": 20
+              },
+              {
+                "start": 50,
+                "end": 51
+              },
+              {
+                "start": 162,
+                "end": 163
+              },
+              {
+                "start": 190,
+                "end": 191
+              },
+              {
+                "start": 201,
+                "end": 202
+              },
+              {
+                "start": 230,
+                "end": 231
+              },
+              {
+                "start": 236,
+                "end": 237
+              },
+              {
+                "start": 279,
+                "end": 280
+              },
+              {
+                "start": 289,
+                "end": 290
+              },
+              {
+                "start": 306,
+                "end": 307
+              },
+              {
+                "start": 313,
+                "end": 314
+              }
+            ]
+          },
+          {
+            "count": 4,
+            "offsets": [
+              {
+                "start": 5,
+                "end": 7
+              },
+              {
+                "start": 14,
+                "end": 16
+              },
+              {
+                "start": 68,
+                "end": 70
+              },
+              {
+                "start": 205,
+                "end": 207
+              }
+            ]
+          },
+          {
+            "count": 4,
+            "offsets": [
+              {
+                "start": 41,
+                "end": 43
+              },
+              {
+                "start": 46,
+                "end": 48
+              },
+              {
+                "start": 79,
+                "end": 81
+              },
+              {
+                "start": 119,
+                "end": 121
+              }
+            ]
+          },
+          {
+            "count": 3,
+            "offsets": [
+              {
+                "start": 9,
+                "end": 11
+              },
+              {
+                "start": 56,
+                "end": 58
+              },
+              {
+                "start": 72,
+                "end": 74
+              }
+            ]
+          },
+          {
+            "count": 3,
+            "offsets": [
+              {
+                "start": 26,
+                "end": 27
+              },
+              {
+                "start": 33,
+                "end": 34
+              },
+              {
+                "start": 137,
+                "end": 138
+              }
+            ]
+          },
+          {
+            "count": 3,
+            "offsets": [
+              {
+                "start": 54,
+                "end": 55
+              },
+              {
+                "start": 71,
+                "end": 72
+              },
+              {
+                "start": 84,
+                "end": 85
+              }
+            ]
+          },
+          {
+            "count": 3,
+            "offsets": [
+              {
+                "start": 151,
+                "end": 153
+              },
+              {
+                "start": 194,
+                "end": 196
+              },
+              {
+                "start": 258,
+                "end": 260
+              }
+            ]
+          },
+          {
+            "count": 3,
+            "offsets": [
+              {
+                "start": 171,
+                "end": 172
+              },
+              {
+                "start": 180,
+                "end": 181
+              },
+              {
+                "start": 212,
+                "end": 213
+              }
+            ]
+          },
+          {
+            "count": 3,
+            "offsets": [
+              {
+                "start": 210,
+                "end": 211
+              },
+              {
+                "start": 229,
+                "end": 230
+              },
+              {
+                "start": 288,
+                "end": 289
+              }
+            ]
+          },
+          {
+            "count": 2,
+            "offsets": [
+              {
+                "start": 62,
+                "end": 64
+              },
+              {
+                "start": 100,
+                "end": 102
+              }
+            ]
+          },
+          {
+            "count": 2,
+            "offsets": [
+              {
+                "start": 70,
+                "end": 71
+              },
+              {
+                "start": 118,
+                "end": 119
+              }
+            ]
+          },
+          {
+            "count": 2,
+            "offsets": [
+              {
+                "start": 96,
+                "end": 97
+              },
+              {
+                "start": 257,
+                "end": 258
+              }
+            ]
+          },
+          {
+            "count": 2,
+            "offsets": [
+              {
+                "start": 113,
+                "end": 115
+              },
+              {
+                "start": 130,
+                "end": 132
+              }
+            ]
+          },
+          {
+            "count": 2,
+            "offsets": [
+              {
+                "start": 138,
+                "end": 139
+              },
+              {
+                "start": 148,
+                "end": 149
+              }
+            ]
+          },
+          {
+            "count": 2,
+            "offsets": [
+              {
+                "start": 154,
+                "end": 156
+              },
+              {
+                "start": 275,
+                "end": 277
+              }
+            ]
+          },
+          {
+            "count": 2,
+            "offsets": [
+              {
+                "start": 175,
+                "end": 177
+              },
+              {
+                "start": 281,
+                "end": 283
+              }
+            ]
+          },
+          {
+            "count": 2,
+            "offsets": [
+              {
+                "start": 191,
+                "end": 193
+              },
+              {
+                "start": 202,
+                "end": 204
+              }
+            ]
+          }
+        ],
+        "repeated_phrases": [],
+        "sentence_start_templates": []
+      }
+    },
+    "label": "human",
+    "threshold": 0.0028,
+    "rawScore": 0.00022532303623772672
+  }
+]

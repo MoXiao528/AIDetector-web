@@ -58,6 +58,6 @@ import { useI18n } from '../i18n';
 import AppHeader from '../sections/AppHeader.vue';
 
 const { t } = useI18n();
-const supportEmail = 'help@repreguard.dev';
+const supportEmail = 'mc55036@um.edu.mo';
 const faqItems = computed(() => t('contactPage.faq.items'));
 </script>
