@@ -1,9 +1,9 @@
 <template>
   <Popover class="relative" v-slot="{ close }">
-    <PopoverButton class="admin-date-button">
+    <PopoverButton class="admin-date-button flex w-full items-center justify-between rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-left outline-none transition hover:border-primary-300 focus-visible:border-primary-500 focus-visible:ring-2 focus-visible:ring-primary-100">
       <div class="min-w-0 text-left">
-        <p v-if="label" class="mb-1 text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-500">{{ label }}</p>
-        <p class="truncate text-sm font-semibold text-slate-100">{{ displayText }}</p>
+        <p v-if="label" class="mb-1 text-xs font-medium text-slate-500">{{ label }}</p>
+        <p class="truncate text-sm font-semibold text-slate-800">{{ displayText }}</p>
       </div>
       <CalendarDaysIcon class="ml-3 h-4 w-4 shrink-0 text-slate-500" />
     </PopoverButton>
@@ -11,7 +11,7 @@
     <transition name="fade">
       <PopoverPanel class="admin-date-panel">
         <div class="flex items-center gap-2">
-          <button type="button" class="nav-btn" @click="changeMonth(-1)">
+          <button type="button" class="nav-btn liquid-glass" aria-label="上个月" @click="changeMonth(-1)">
             <ChevronLeftIcon class="h-4 w-4" />
           </button>
 
@@ -21,7 +21,7 @@
               :options="yearOptions"
               placeholder="年份"
               aria-label="选择年份"
-              button-class="min-h-11 rounded-2xl px-4 py-2"
+              button-class="min-h-9"
               options-class="z-50 max-h-64"
               text-class="text-left"
             />
@@ -31,34 +31,34 @@
               :options="monthOptions"
               placeholder="月份"
               aria-label="选择月份"
-              button-class="min-h-11 rounded-2xl px-4 py-2"
+              button-class="min-h-9"
               options-class="z-50 max-h-64"
               text-class="text-left"
             />
           </div>
 
-          <button type="button" class="nav-btn" @click="changeMonth(1)">
+          <button type="button" class="nav-btn liquid-glass" aria-label="下个月" @click="changeMonth(1)">
             <ChevronRightIcon class="h-4 w-4" />
           </button>
         </div>
 
-        <div class="mt-4 grid grid-cols-7 gap-2 text-center text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">
+        <div class="mt-4 grid grid-cols-7 gap-1 text-center text-xs font-medium text-slate-500">
           <span v-for="day in weekDays" :key="day">{{ day }}</span>
         </div>
 
-        <div class="mt-3 grid grid-cols-7 gap-2">
+        <div class="mt-2 grid grid-cols-7 gap-1">
           <button
             v-for="day in calendarDays"
             :key="day.key"
             type="button"
             :disabled="day.isPlaceholder || day.isDisabled"
             :class="[
-              'flex h-10 items-center justify-center rounded-2xl text-sm font-medium transition',
-              day.isSelected ? 'bg-amber-400 text-slate-950' : '',
-              day.isToday && !day.isSelected ? 'border border-sky-300/40 text-sky-100' : '',
-              day.isPlaceholder ? 'cursor-default text-slate-700' : '',
-              day.isDisabled && !day.isPlaceholder ? 'cursor-not-allowed bg-white/[0.02] text-slate-600' : '',
-              !day.isPlaceholder && !day.isDisabled && !day.isSelected && !day.isToday ? 'text-slate-200 hover:bg-white/10' : '',
+              'flex h-9 min-w-0 items-center justify-center rounded-lg text-sm font-medium transition',
+              day.isSelected ? 'bg-primary-600 text-white' : '',
+              day.isToday && !day.isSelected ? 'border border-primary-300 text-primary-700' : '',
+              day.isPlaceholder ? 'cursor-default text-slate-300' : '',
+              day.isDisabled && !day.isPlaceholder ? 'cursor-not-allowed bg-slate-50 text-slate-400' : '',
+              !day.isPlaceholder && !day.isDisabled && !day.isSelected && !day.isToday ? 'text-slate-700 hover:bg-primary-50' : '',
             ]"
             @click="selectDate(day.value, close)"
           >
@@ -66,9 +66,9 @@
           </button>
         </div>
 
-        <div class="mt-4 flex items-center justify-between gap-3 border-t border-white/10 pt-4">
-          <button type="button" class="footer-btn" @click="clearValue(close)">清空</button>
-          <button type="button" class="footer-btn footer-btn--primary" @click="selectToday(close)">今天</button>
+        <div class="mt-3 flex items-center justify-between gap-3 border-t border-slate-200 pt-3">
+          <button type="button" class="footer-btn liquid-glass" @click="clearValue(close)">清空</button>
+          <button type="button" class="footer-btn liquid-glass liquid-glass-selected" @click="selectToday(close)">今天</button>
         </div>
       </PopoverPanel>
     </transition>
@@ -273,24 +273,24 @@ function formatDate(date) {
 </script>
 
 <style scoped>
-.admin-date-button {
-  @apply flex w-full items-center justify-between rounded-[22px] border border-white/10 bg-slate-950/70 px-4 py-3 text-left shadow-sm outline-none transition hover:border-white/20 hover:bg-slate-950 focus-visible:border-amber-300 focus-visible:ring-2 focus-visible:ring-amber-200/30;
-}
-
 .admin-date-panel {
-  @apply absolute z-30 mt-2 w-[420px] max-w-[calc(100vw-1.5rem)] overflow-visible rounded-[24px] border border-white/10 bg-slate-900/95 p-4 shadow-2xl shadow-slate-950/50 backdrop-blur;
+  @apply absolute inset-x-0 z-30 mt-2 w-full min-w-0 overflow-visible rounded-2xl border border-slate-200 bg-white p-3 shadow-xl shadow-slate-900/10;
 }
 
 .nav-btn {
-  @apply inline-flex h-11 w-11 items-center justify-center rounded-full border border-white/10 bg-white/5 text-slate-200 transition hover:border-white/20 hover:bg-white/10;
+  @apply inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full;
 }
 
 .footer-btn {
-  @apply inline-flex items-center justify-center rounded-full border border-white/10 bg-white/5 px-4 py-2 text-sm font-semibold text-slate-200 transition hover:border-white/20 hover:bg-white/10;
+  @apply inline-flex items-center justify-center rounded-full px-3 py-2 text-sm font-semibold;
 }
 
-.footer-btn--primary {
-  @apply border-transparent bg-amber-400 text-slate-950 hover:bg-amber-300;
+.admin-date-panel :deep(.admin-select-button) {
+  @apply rounded-lg px-2 py-2;
+}
+
+.admin-date-panel :deep(.admin-select-button > svg) {
+  margin-left: 4px;
 }
 
 .fade-enter-active,

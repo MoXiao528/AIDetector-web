@@ -1,5 +1,5 @@
 <template>
-  <div class="space-y-6">
+  <div class="space-y-5">
     <AdminFilterBar
       v-model:searchValue="filters.search"
       search-label="记录搜索"
@@ -8,9 +8,10 @@
       @reset="resetFilters"
     >
       <template #filters>
-        <div>
-          <label class="admin-kicker">User ID</label>
+        <div class="min-w-0">
+          <label for="detection-user-filter" class="admin-kicker">用户 ID</label>
           <input
+            id="detection-user-filter"
             :value="filters.userId"
             type="text"
             inputmode="numeric"
@@ -20,18 +21,18 @@
             @input="handleUserIdInput"
           />
         </div>
-        <AdminSelect v-model="filters.actorType" label="Actor Type" :options="actorTypeOptions" placeholder="全部类型" />
-        <AdminSelect v-model="filters.label" label="Label" :options="labelOptions" placeholder="全部标签" />
-        <div>
-          <label class="admin-kicker">Function</label>
-          <input v-model="filters.functionName" type="text" placeholder="scan" class="admin-field mt-2" />
+        <AdminSelect v-model="filters.actorType" label="用户类型" :options="actorTypeOptions" placeholder="全部类型" />
+        <AdminSelect v-model="filters.label" label="检测标签" :options="labelOptions" placeholder="全部标签" />
+        <div class="min-w-0">
+          <label for="detection-function-filter" class="admin-kicker">功能</label>
+          <input id="detection-function-filter" v-model="filters.functionName" type="text" placeholder="scan" class="admin-field mt-2" />
         </div>
-        <AdminDatePicker v-model="filters.dateFrom" label="From" placeholder="开始日期" :max-value="filters.dateTo || ''" />
-        <AdminDatePicker v-model="filters.dateTo" label="To" placeholder="结束日期" :min-value="filters.dateFrom || ''" />
+        <AdminDatePicker v-model="filters.dateFrom" label="开始日期" placeholder="开始日期" :max-value="filters.dateTo || ''" />
+        <AdminDatePicker v-model="filters.dateTo" label="结束日期" placeholder="结束日期" :min-value="filters.dateFrom || ''" />
       </template>
     </AdminFilterBar>
 
-    <div v-if="errorMessage" class="rounded-3xl border border-rose-400/20 bg-rose-500/10 px-4 py-3 text-sm text-rose-200">
+    <div v-if="errorMessage" role="alert" class="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
       {{ errorMessage }}
     </div>
 
@@ -45,70 +46,67 @@
       @rowClick="openDetection"
     >
       <template #cell-userEmail="{ row }">
-        <span>{{ row.userEmail || row.userName || 'Guest' }}</span>
+        <span>{{ row.userEmail || row.userName || '游客' }}</span>
       </template>
       <template #cell-label="{ value }">
-        <span class="rounded-full bg-amber-400/15 px-3 py-1 text-xs font-semibold text-amber-100">{{ String(value).toUpperCase() }}</span>
+        <span class="rounded-md px-2.5 py-1 text-xs font-semibold" :class="value === 'ai' ? 'bg-blue-50 text-blue-700' : value === 'human' ? 'bg-cyan-50 text-cyan-800' : 'bg-slate-100 text-slate-700'">{{ String(value).toUpperCase() }}</span>
       </template>
-      <template #cell-score="{ value }"><span class="font-semibold text-white">{{ formatScore(value) }}</span></template>
+      <template #cell-score="{ value }"><span class="font-semibold tabular-nums text-slate-900">{{ formatScore(value) }}</span></template>
       <template #cell-createdAt="{ value }">{{ formatDateTime(value) }}</template>
       <template #actions="{ row }">
-        <button type="button" class="admin-secondary-btn" @click="openDetection(row)">查看</button>
+        <button type="button" class="admin-secondary-btn liquid-glass" @click="openDetection(row)">查看</button>
         <button type="button" class="admin-danger-btn" @click="requestDelete(row)">删除</button>
       </template>
     </AdminDataTable>
 
     <AdminPagination :page="page" :total-pages="totalPages" :total="total" :loading="loading" @change="changePage" />
 
-    <div v-if="drawerOpen" class="fixed inset-0 z-50 flex justify-end bg-slate-950/50 backdrop-blur-sm" @click.self="closeDrawer">
-      <div class="flex h-full w-full max-w-3xl flex-col border-l border-white/10 bg-slate-900">
-        <div class="flex items-start justify-between gap-4 border-b border-white/10 px-6 py-5">
-          <div>
-            <h2 class="text-lg font-semibold text-white">{{ selectedDetection?.label?.toUpperCase() || '检测详情' }}</h2>
-            <p class="mt-1 text-sm text-slate-400">{{ selectedDetection?.userEmail || selectedDetection?.userName || 'Guest' }}</p>
+    <div v-if="drawerOpen" class="fixed inset-0 z-50 !mt-0 flex justify-end bg-slate-900/35 backdrop-blur-sm" @click.self="closeDrawer">
+      <div class="flex h-full min-h-0 w-full max-w-3xl flex-col border-l border-slate-200 bg-white shadow-xl [overflow-wrap:anywhere]">
+        <div class="flex shrink-0 items-start justify-between gap-4 border-b border-slate-200 px-4 py-4 sm:px-6">
+          <div class="min-w-0">
+            <h2 class="text-lg font-semibold text-slate-900">{{ selectedDetection?.label?.toUpperCase() || '检测详情' }}</h2>
+            <p class="mt-1 break-all text-sm text-slate-600">{{ selectedDetection?.userEmail || selectedDetection?.userName || '游客' }}</p>
           </div>
-          <button type="button" class="admin-secondary-btn" @click="closeDrawer">关闭</button>
+          <button type="button" class="admin-secondary-btn liquid-glass shrink-0" @click="closeDrawer">关闭</button>
         </div>
 
-        <div class="flex-1 space-y-6 overflow-y-auto px-6 py-6">
-          <div v-if="drawerError" class="rounded-3xl border border-rose-400/20 bg-rose-500/10 px-4 py-3 text-sm text-rose-200">
+        <div class="min-h-0 flex-1 space-y-6 overflow-y-auto px-4 py-5 sm:px-6 sm:py-6">
+          <div v-if="drawerError" role="alert" class="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
             {{ drawerError }}
           </div>
 
-          <section class="rounded-3xl border border-white/10 bg-white/5 p-5">
+          <section class="border-b border-slate-200 pb-6">
             <div class="flex flex-wrap items-center gap-3">
-              <span class="rounded-full bg-amber-400/15 px-3 py-1 text-xs font-semibold text-amber-100">{{ selectedDetection?.label?.toUpperCase() || '-' }}</span>
-              <span class="rounded-full bg-sky-400/15 px-3 py-1 text-xs font-semibold text-sky-100">{{ formatScore(selectedDetection?.score) }}</span>
-              <span class="rounded-full bg-white/10 px-3 py-1 text-xs font-semibold text-slate-200">{{ selectedDetection?.actorType || '-' }}</span>
+              <span class="rounded-md px-2.5 py-1 text-xs font-semibold" :class="selectedDetection?.label === 'ai' ? 'bg-blue-50 text-blue-700' : selectedDetection?.label === 'human' ? 'bg-cyan-50 text-cyan-800' : 'bg-slate-100 text-slate-700'">{{ selectedDetection?.label?.toUpperCase() || '-' }}</span>
+              <span class="text-sm text-slate-600">AI 概率 <strong class="text-lg font-semibold tabular-nums text-slate-900">{{ formatScore(selectedDetection?.score) }}</strong></span>
+              <span class="rounded-md bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-600">{{ selectedDetection?.actorType || '-' }}</span>
             </div>
-            <div class="mt-4 grid gap-4 md:grid-cols-4">
-              <div><p class="admin-kicker">用户</p><p class="mt-1 text-sm text-slate-200">{{ selectedDetection?.userEmail || selectedDetection?.userName || 'Guest' }}</p></div>
-              <div><p class="admin-kicker">字符数</p><p class="mt-1 text-sm text-slate-200">{{ formatNumber(selectedDetection?.charsUsed) }}</p></div>
-              <div><p class="admin-kicker">功能</p><p class="mt-1 text-sm text-slate-200">{{ formatFunctions(selectedDetection?.functionsUsed) }}</p></div>
-              <div><p class="admin-kicker">创建时间</p><p class="mt-1 text-sm text-slate-200">{{ formatDateTime(selectedDetection?.createdAt) }}</p></div>
-            </div>
-          </section>
-
-          <section class="grid gap-6 lg:grid-cols-[1.1fr_0.9fr]">
-            <div class="rounded-3xl border border-white/10 bg-white/5 p-5">
-              <div class="flex items-center justify-between">
-                <h3 class="text-base font-semibold text-white">原文</h3>
-                <span class="admin-kicker">Input</span>
-              </div>
-              <p class="mt-4 whitespace-pre-wrap text-sm leading-7 text-slate-200">{{ selectedDetection?.inputText || '-' }}</p>
-            </div>
-
-            <div class="rounded-3xl border border-white/10 bg-white/5 p-5">
-              <div class="flex items-center justify-between">
-                <h3 class="text-base font-semibold text-white">Meta / Analysis</h3>
-                <span class="admin-kicker">JSON</span>
-              </div>
-              <pre class="mt-4 max-h-[420px] overflow-auto rounded-2xl bg-slate-950 p-4 text-xs leading-6 text-slate-100">{{ prettyMeta }}</pre>
+            <div class="mt-5 grid grid-cols-2 gap-4 sm:grid-cols-4">
+              <div class="min-w-0"><p class="admin-kicker">用户</p><p class="mt-1 break-all text-sm text-slate-700">{{ selectedDetection?.userEmail || selectedDetection?.userName || '游客' }}</p></div>
+              <div class="min-w-0"><p class="admin-kicker">字符数</p><p class="mt-1 text-sm tabular-nums text-slate-700">{{ formatNumber(selectedDetection?.charsUsed) }}</p></div>
+              <div class="min-w-0"><p class="admin-kicker">功能</p><p class="mt-1 text-sm text-slate-700">{{ formatFunctions(selectedDetection?.functionsUsed) }}</p></div>
+              <div class="min-w-0"><p class="admin-kicker">创建时间</p><p class="mt-1 text-sm text-slate-700">{{ formatDateTime(selectedDetection?.createdAt) }}</p></div>
             </div>
           </section>
 
-          <div class="flex items-center justify-end gap-3">
-            <button type="button" class="admin-secondary-btn" @click="closeDrawer">取消</button>
+          <section class="space-y-6">
+            <div class="min-w-0 border-b border-slate-200 pb-6">
+              <h3 class="text-base font-semibold text-slate-900">原文</h3>
+              <p class="mt-4 whitespace-pre-wrap text-sm leading-7 text-slate-700">{{ selectedDetection?.inputText || '-' }}</p>
+            </div>
+
+            <div class="min-w-0">
+              <div class="flex items-center justify-between gap-3">
+                <h3 class="text-base font-semibold text-slate-900">分析数据与元信息</h3>
+                <span class="text-xs font-medium text-slate-500">JSON</span>
+              </div>
+              <pre class="mt-4 max-h-[420px] max-w-full overflow-auto rounded-xl border border-slate-200 bg-slate-50 p-4 text-xs leading-6 text-slate-700">{{ prettyMeta }}</pre>
+            </div>
+          </section>
+
+          <div class="flex flex-wrap items-center justify-end gap-3 border-t border-slate-200 pt-5">
+            <button type="button" class="admin-secondary-btn liquid-glass" @click="closeDrawer">取消</button>
             <button type="button" class="admin-danger-btn" @click="requestDelete(selectedDetection)">删除记录</button>
           </div>
         </div>
@@ -140,12 +138,12 @@ const labelOptions = [
 ];
 
 const columns = [
-  { key: 'userEmail', label: 'User' },
-  { key: 'actorType', label: 'Actor' },
-  { key: 'label', label: 'Label' },
-  { key: 'score', label: 'Score' },
-  { key: 'charsUsed', label: 'Chars' },
-  { key: 'createdAt', label: 'Created At' },
+  { key: 'userEmail', label: '用户' },
+  { key: 'actorType', label: '用户类型' },
+  { key: 'label', label: '检测标签' },
+  { key: 'score', label: 'AI 概率' },
+  { key: 'charsUsed', label: '字符数' },
+  { key: 'createdAt', label: '创建时间' },
 ];
 
 const loading = ref(false);
@@ -331,7 +329,7 @@ onMounted(loadDetections);
 
 <style scoped>
 .admin-field {
-  @apply w-full rounded-2xl border border-white/10 bg-slate-950/70 px-4 py-3 text-sm text-slate-100 outline-none transition focus:border-amber-300 focus:ring-2 focus:ring-amber-200/40;
+  @apply min-h-11 w-full min-w-0 rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-800 transition-colors placeholder:text-slate-400 hover:border-slate-300 focus:border-primary-500 focus:ring-2 focus:ring-primary-100;
 }
 
 .admin-field::-webkit-outer-spin-button,
@@ -343,14 +341,14 @@ onMounted(loadDetections);
 }
 
 .admin-kicker {
-  @apply block text-xs font-semibold uppercase tracking-[0.24em] text-slate-400;
+  @apply block text-sm font-medium text-slate-600;
 }
 
 .admin-secondary-btn {
-  @apply inline-flex items-center justify-center rounded-full border border-white/10 bg-white/5 px-4 py-2 text-sm font-semibold text-slate-200 transition hover:border-white/20 hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-50;
+  @apply inline-flex min-h-10 items-center justify-center rounded-full px-3.5 py-2 text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-50;
 }
 
 .admin-danger-btn {
-  @apply inline-flex items-center justify-center rounded-full bg-rose-500 px-4 py-2 text-sm font-semibold text-white transition hover:bg-rose-400 disabled:cursor-not-allowed disabled:opacity-50;
+  @apply inline-flex min-h-10 items-center justify-center rounded-full border border-rose-200 bg-rose-50 px-3.5 py-2 text-sm font-semibold text-rose-700 transition-colors hover:border-rose-300 hover:bg-rose-100 disabled:cursor-not-allowed disabled:opacity-50;
 }
 </style>

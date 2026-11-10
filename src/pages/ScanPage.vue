@@ -1,68 +1,84 @@
 <template>
-  <div class="min-h-screen bg-neutral-50 font-sans selection:bg-primary-100 selection:text-primary-900">
+  <div class="workbench-theme min-h-screen bg-neutral-50 font-sans selection:bg-primary-100 selection:text-primary-900" :class="{ 'workbench-home': isPanelActive('home') }">
     <AppHeader mode="dashboard" :dashboard-context="headerVariant" />
     <div class="relative flex flex-col lg:flex-row">
-      <aside class="hidden w-20 flex-shrink-0 flex-col self-stretch border-r border-neutral-100 bg-white px-4 py-8 lg:flex lg:min-h-[calc(100vh-4rem)] xl:w-72 transition-all duration-300 ease-in-out">
-        <nav class="space-y-1">
-          <button
-            type="button"
-            :class="['nav-item group relative flex w-full items-center gap-3 rounded-xl px-4 py-3 text-sm font-medium transition-all duration-200', isPanelActive('home') ? 'bg-gradient-to-r from-primary-100 to-primary-50 text-primary-800 shadow-sm ring-1 ring-primary-200' : 'text-neutral-500 hover:bg-neutral-50 hover:text-neutral-900']"
-            @click="setActivePanel('home')"
-          >
-            <HomeIcon :class="['h-5 w-5 transition-colors', isPanelActive('home') ? 'text-primary-700' : 'text-neutral-400 group-hover:text-neutral-600']" />
-            <span class="nav-label">{{ t('scan.nav.home') }}</span>
-          </button>
-          <button
-            type="button"
-            :class="['nav-item group relative flex w-full items-center gap-3 rounded-xl px-4 py-3 text-sm font-medium transition-all duration-200', isPanelActive('document') ? 'bg-gradient-to-r from-primary-100 to-primary-50 text-primary-800 shadow-sm ring-1 ring-primary-200' : 'text-neutral-500 hover:bg-neutral-50 hover:text-neutral-900']"
-            @click="setActivePanel('document')"
-          >
-            <DocumentTextIcon :class="['h-5 w-5 transition-colors', isPanelActive('document') ? 'text-primary-700' : 'text-neutral-400 group-hover:text-neutral-600']" />
-            <span class="nav-label">{{ t('scan.nav.document') }}</span>
-          </button>
-          <div class="relative pt-4">
-            <button
-              ref="newMenuButtonRef"
-              type="button"
-              class="nav-item group relative flex w-full items-center gap-3 rounded-lg bg-gradient-to-r from-primary-700 via-primary-600 to-primary-500 px-4 py-2.5 text-sm font-medium text-white shadow-sm shadow-primary-900/10 ring-1 ring-primary-400/30 transition-all hover:-translate-y-0.5 hover:from-primary-800 hover:via-primary-700 hover:to-primary-600 hover:shadow-md hover:shadow-primary-900/15"
-              @click="toggleNewMenu"
-            >
-              <PlusIcon class="h-4 w-4 text-white" />
-              <span class="nav-label text-white">{{ t('scan.nav.new') }}</span>
-            </button>
-            <transition
-              name="fade"
-              enter-active-class="transition ease-out duration-200"
-              enter-from-class="opacity-0 translate-y-1"
-              enter-to-class="opacity-100 translate-y-0"
-              leave-active-class="transition ease-in duration-150"
-              leave-from-class="opacity-100 translate-y-0"
-              leave-to-class="opacity-0 translate-y-1"
-            >
-              <div
-                v-if="newMenuOpen"
-                ref="newMenuRef"
-                class="absolute left-0 right-0 top-full z-20 mt-2 w-full origin-top rounded-xl border border-neutral-100 bg-white p-1.5 shadow-premium text-sm"
+      <aside class="workbench-navigation hidden w-20 flex-shrink-0 flex-col self-start border-r border-neutral-100 bg-white px-4 pb-4 pt-8 lg:flex xl:w-72 transition-all duration-300 ease-in-out">
+        <div class="workbench-navigation-main -mx-2 min-h-0 flex-1 overflow-y-auto overscroll-contain px-2 pb-2">
+          <nav class="space-y-1">
+            <div class="workbench-panel-navigation relative grid gap-2">
+              <span
+                v-if="isWorkbenchPanel"
+                aria-hidden="true"
+                class="workbench-nav-selection liquid-glass liquid-glass-selected"
+                :class="{ 'is-document': isPanelActive('document') }"
+              />
+              <button
+                type="button"
+                :aria-current="isPanelActive('home') ? 'page' : undefined"
+                :class="{ 'liquid-glass-selected': isPanelActive('home') }"
+                class="nav-item liquid-glass group relative flex w-full items-center gap-3 rounded-xl px-4 py-3 text-sm font-medium transition-all duration-200"
+                @click="setActivePanel('home')"
               >
-                <button type="button" class="w-full rounded-lg px-3 py-2 text-left text-neutral-700 hover:bg-neutral-50 hover:text-primary-600 transition-colors" @click="startNewScan">{{ t('scan.nav.newScan') }}</button>
-                <button
-                  type="button"
-                  class="w-full rounded-lg px-3 py-2 text-left text-neutral-400 cursor-not-allowed"
-                  @click="triggerMultiUpload"
+                <HomeIcon :class="['h-5 w-5 transition-colors', isPanelActive('home') ? 'text-primary-700' : 'text-neutral-400 group-hover:text-neutral-600']" />
+                <span class="nav-label">{{ t('scan.nav.home') }}</span>
+              </button>
+              <button
+                type="button"
+                :aria-current="isPanelActive('document') ? 'page' : undefined"
+                :class="{ 'liquid-glass-selected': isPanelActive('document') }"
+                class="nav-item liquid-glass group relative flex w-full items-center gap-3 rounded-xl px-4 py-3 text-sm font-medium transition-all duration-200"
+                @click="setActivePanel('document')"
+              >
+                <DocumentTextIcon :class="['h-5 w-5 transition-colors', isPanelActive('document') ? 'text-primary-700' : 'text-neutral-400 group-hover:text-neutral-600']" />
+                <span class="nav-label">{{ t('scan.nav.document') }}</span>
+              </button>
+            </div>
+            <div class="relative pt-4">
+              <button
+                ref="newMenuButtonRef"
+                type="button"
+                class="nav-item liquid-glass liquid-glass-selected workbench-new group relative flex w-full items-center gap-3 rounded-lg bg-gradient-to-r from-primary-700 via-primary-600 to-primary-500 px-4 py-2.5 text-sm font-medium text-white shadow-sm shadow-primary-900/10 ring-1 ring-primary-400/30 transition-all hover:-translate-y-0.5 hover:from-primary-800 hover:via-primary-700 hover:to-primary-600 hover:shadow-md hover:shadow-primary-900/15"
+                @click="toggleNewMenu"
+              >
+                <PlusIcon class="h-4 w-4 text-white" />
+                <span class="nav-label text-white">{{ t('scan.nav.new') }}</span>
+              </button>
+              <transition
+                name="fade"
+                enter-active-class="transition ease-out duration-200"
+                enter-from-class="opacity-0 translate-y-1"
+                enter-to-class="opacity-100 translate-y-0"
+                leave-active-class="transition ease-in duration-150"
+                leave-from-class="opacity-100 translate-y-0"
+                leave-to-class="opacity-0 translate-y-1"
+              >
+                <div
+                  v-if="newMenuOpen"
+                  ref="newMenuRef"
+                  class="absolute left-0 right-0 top-full z-20 mt-2 w-full origin-top rounded-xl border border-neutral-100 bg-white p-1.5 shadow-premium text-sm"
                 >
-                  {{ t('scan.nav.multiUpload') }}
-                </button>
-              </div>
-            </transition>
+                  <button type="button" class="w-full rounded-lg px-3 py-2 text-left text-neutral-700 hover:bg-neutral-50 hover:text-primary-600 transition-colors" @click="startNewScan">{{ t('scan.nav.newScan') }}</button>
+                  <button
+                    type="button"
+                    class="w-full rounded-lg px-3 py-2 text-left text-neutral-400 cursor-not-allowed"
+                    @click="triggerMultiUpload"
+                  >
+                    {{ t('scan.nav.multiUpload') }}
+                  </button>
+                </div>
+              </transition>
+            </div>
+          </nav>
+          <div class="m-2 mt-8 rounded-2xl border border-dashed border-neutral-200 bg-neutral-50/50 p-4 text-xs leading-relaxed text-neutral-500">
+            <p>{{ t('scan.sidebarTip') }}</p>
           </div>
-        </nav>
-        <div class="m-2 mt-8 rounded-2xl border border-dashed border-neutral-200 bg-neutral-50/50 p-4 text-xs leading-relaxed text-neutral-500">
-          <p>{{ t('scan.sidebarTip') }}</p>
         </div>
-        <div v-if="authStore.isAuthenticated" class="mt-6 space-y-1 border-t border-neutral-100 pt-6">
+        <div class="workbench-navigation-footer mt-4 shrink-0 space-y-1 border-t border-neutral-100 pt-4">
           <button
             type="button"
-            :class="['nav-item group relative flex w-full items-center gap-3 rounded-xl px-4 py-3 text-sm font-medium transition-all duration-200', isPanelActive('profile') ? 'bg-gradient-to-r from-primary-100 to-primary-50 text-primary-800 shadow-sm ring-1 ring-primary-200' : 'text-neutral-500 hover:bg-neutral-50 hover:text-neutral-900']"
+            :aria-current="isPanelActive('profile') ? 'page' : undefined"
+            :class="{ 'liquid-glass-selected': isPanelActive('profile') }"
+            class="nav-item liquid-glass group relative flex w-full items-center gap-3 rounded-xl px-4 py-3 text-sm font-medium transition-all duration-200"
             @click="goToProfile"
           >
             <Cog6ToothIcon :class="['h-5 w-5 transition-colors', isPanelActive('profile') ? 'text-primary-700' : 'text-neutral-400 group-hover:text-neutral-600']" />
@@ -70,7 +86,9 @@
           </button>
             <button
               type="button"
-              :class="['nav-item group relative flex w-full items-center gap-3 rounded-xl px-4 py-3 text-sm font-medium transition-all duration-200', isPanelActive('qa') ? 'bg-gradient-to-r from-primary-100 to-primary-50 text-primary-800 shadow-sm ring-1 ring-primary-200' : 'text-neutral-500 hover:bg-neutral-50 hover:text-neutral-900']"
+              :aria-current="isPanelActive('qa') ? 'page' : undefined"
+              :class="{ 'liquid-glass-selected': isPanelActive('qa') }"
+              class="nav-item liquid-glass group relative flex w-full items-center gap-3 rounded-xl px-4 py-3 text-sm font-medium transition-all duration-200"
               @click="setActivePanel('qa')"
             >
               <QuestionMarkCircleIcon :class="['h-5 w-5 transition-colors', isPanelActive('qa') ? 'text-primary-700' : 'text-neutral-400 group-hover:text-neutral-600']" />
@@ -79,31 +97,25 @@
         </div>
       </aside>
 
-      <main class="relative z-0 flex min-h-[calc(100vh-4rem)] flex-1 flex-col">
-        <div v-if="isPanelActive('home')" class="relative flex-1 isolate px-6 py-10 lg:px-12">
-          <!-- Background Mesh Gradients -->
-          <div class="fixed inset-0 -z-10 pointer-events-none">
-             <div class="absolute top-[-10%] right-[-5%] h-[500px] w-[500px] rounded-full bg-primary-100/28 blur-3xl mix-blend-multiply filter"></div>
-             <div class="absolute top-[20%] left-[-10%] h-[400px] w-[400px] rounded-full bg-indigo-100/24 blur-3xl mix-blend-multiply filter"></div>
-             <div class="absolute bottom-[-10%] right-[10%] h-[600px] w-[600px] rounded-full bg-sky-100/20 blur-3xl mix-blend-multiply filter"></div>
-          </div>
+      <main class="relative z-0 flex min-w-0 min-h-[calc(100vh-4rem)] flex-1 flex-col">
+        <div v-if="isPanelActive('home')" class="dashboard-home relative flex-1 px-4 py-6 sm:px-6 lg:px-8 lg:py-8">
           <div
             :class="[
-              'mx-auto flex w-full max-w-7xl flex-col gap-12',
+              'mx-auto flex w-full max-w-7xl flex-col gap-6',
               isFeatureModalOpen ? 'pointer-events-none select-none filter blur-sm transition-all duration-300' : 'transition-all duration-300',
             ]"
           >
-            <header class="flex flex-col gap-6">
-              <div class="space-y-4">
-                <div class="flex flex-wrap items-end gap-4">
-                  <h1 class="text-3xl lg:text-4xl font-semibold tracking-tight text-neutral-900">
+            <header class="flex flex-col gap-4">
+              <div class="space-y-2">
+                <div class="flex flex-wrap items-center gap-3">
+                  <h1 class="max-w-full break-words text-2xl sm:text-3xl font-semibold tracking-tight text-neutral-900">
                     {{ t('scan.welcome.title', { name: userDisplayName }) }}
                   </h1>
-                  <span class="mb-1.5 inline-flex items-center rounded-full bg-primary-50 px-3 py-1 text-xs font-semibold text-primary-700 ring-1 ring-inset ring-primary-700/10">
+                  <span class="inline-flex items-center rounded-full bg-primary-50 px-3 py-1 text-xs font-semibold text-primary-700 ring-1 ring-inset ring-primary-700/10">
                     {{ userPlanTag }}
                   </span>
                 </div>
-                <p class="max-w-2xl text-lg font-light text-neutral-500 leading-relaxed">{{ activeQuote }}</p>
+                <p class="max-w-2xl text-sm leading-6 text-slate-500">{{ activeQuote }}</p>
               </div>
               <OnboardingStepsBar
                 v-if="showOnboarding"
@@ -114,93 +126,90 @@
               />
             </header>
 
-            <section class="grid gap-8 xl:grid-cols-[minmax(0,1.08fr)_minmax(0,0.92fr)]">
-              <div class="relative overflow-hidden rounded-[2rem] bg-[linear-gradient(180deg,#31424d_0%,#283943_100%)] p-8 text-white shadow-xl shadow-slate-300/40">
-                <div class="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(148,190,206,0.18),transparent_32%),radial-gradient(circle_at_bottom_right,rgba(165,209,193,0.16),transparent_28%)]"></div>
-                <div class="relative z-10">
-                  <div class="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+            <section class="grid items-start gap-5 xl:grid-cols-[minmax(0,1.08fr)_minmax(0,0.92fr)]">
+              <div class="home-overview rounded-2xl p-5 sm:p-7">
+                <div>
+                  <div class="flex flex-col gap-4">
                     <div class="max-w-2xl">
-                      <p class="text-xs font-semibold uppercase tracking-[0.28em] text-sky-100">{{ dashboardHomeCopy.commandCenterEyebrow }}</p>
-                      <h2 class="mt-3 text-3xl font-semibold tracking-tight text-white">{{ dashboardHomeCopy.commandCenterTitle }}</h2>
-                      <p class="mt-3 text-sm leading-7 text-slate-300">{{ dashboardHomeCopy.commandCenterSubtitle }}</p>
+                      <h2 class="text-2xl font-semibold leading-snug tracking-tight text-slate-900">{{ dashboardHomeCopy.commandCenterTitle }}</h2>
                     </div>
                   </div>
 
-                  <div class="mt-8 grid gap-4 sm:grid-cols-3">
+                  <button
+                    type="button"
+                    class="home-primary liquid-glass liquid-glass-selected mt-5 inline-flex min-h-11 items-center justify-center gap-2 rounded-full px-5 py-2.5 text-sm font-semibold"
+                    @click="startNewScan"
+                  >
+                    <PlusIcon class="h-4 w-4" aria-hidden="true" />
+                    {{ dashboardHomeCopy.primaryCta }}
+                    <ArrowRightIcon class="h-4 w-4" aria-hidden="true" />
+                  </button>
+
+                  <div class="mt-6 grid grid-cols-3 gap-3 border-t border-primary-200/70 pt-5 sm:gap-5">
                     <div
                       v-for="item in homeStatCards"
                       :key="item.label"
-                      class="rounded-3xl border border-white/10 bg-white/5 p-4 backdrop-blur"
+                      class="min-w-0"
                     >
-                      <p class="text-xs font-semibold uppercase tracking-[0.24em] text-slate-400">{{ item.label }}</p>
-                      <p class="mt-3 text-3xl font-semibold tracking-tight text-white">{{ item.value }}</p>
-                      <p class="mt-1 text-xs text-slate-400">{{ item.description }}</p>
+                      <p class="min-h-10 text-xs leading-5 text-slate-600 sm:min-h-0">{{ item.label }}</p>
+                      <p class="mt-2 text-2xl font-semibold tabular-nums tracking-tight text-primary-900 sm:text-3xl">{{ item.value }}</p>
+                      <p v-if="item.description" class="mt-1 text-[11px] leading-5 text-slate-600">{{ item.description }}</p>
                     </div>
                   </div>
-
-                  <div class="mt-8 rounded-[1.75rem] border border-white/10 bg-white/5 p-6 backdrop-blur">
-                    <div class="flex items-start justify-between gap-4">
-                      <div>
-                        <p class="text-xs font-semibold uppercase tracking-[0.24em] text-slate-400">{{ t('scan.quickLaunch.badge') }}</p>
-                        <h3 class="mt-3 text-2xl font-semibold tracking-tight text-white">{{ t('scan.quickLaunch.title') }}</h3>
-                        <p class="mt-3 max-w-2xl text-sm leading-6 text-slate-300">{{ t('scan.quickLaunch.description') }}</p>
-                      </div>
-                      <div class="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-white/10 text-sky-100">
-                        <DocumentTextIcon class="h-7 w-7" />
-                      </div>
-                    </div>
-                    <div class="mt-6 flex flex-wrap gap-3">
-                      <button
-                        type="button"
-                        class="inline-flex items-center rounded-full bg-white px-5 py-2.5 text-sm font-semibold text-slate-900 transition hover:-translate-y-0.5 hover:bg-slate-50"
-                        @click="startNewScan"
-                      >
-                        {{ dashboardHomeCopy.primaryCta }}
-                      </button>
-                    </div>
-                  </div>
+                  <button
+                    v-if="!isQuotaReady && !isQuotaLoading"
+                    type="button"
+                    class="home-quota-retry mt-3 text-xs font-semibold text-primary-700 underline underline-offset-4"
+                    @click="refreshQuota()"
+                  >{{ t('scan.history.retry') }}</button>
                 </div>
               </div>
 
-              <div class="rounded-[2rem] border border-slate-200/70 bg-[#fbfcfa]/95 p-7 shadow-lg shadow-slate-200/80">
+              <div class="home-surface min-w-0 rounded-2xl p-5 sm:p-6">
                 <div class="flex items-center justify-between gap-4">
                   <div>
-                    <p class="text-xs font-semibold uppercase tracking-[0.24em] text-slate-400">{{ dashboardHomeCopy.snapshotEyebrow }}</p>
-                    <h3 class="mt-2 text-2xl font-semibold tracking-tight text-neutral-900">{{ dashboardHomeCopy.snapshotTitle }}</h3>
+                    <h3 class="text-lg font-semibold tracking-tight text-neutral-900">{{ dashboardHomeCopy.snapshotTitle }}</h3>
                   </div>
-                  <span class="rounded-full bg-primary-50 px-3 py-1 text-xs font-semibold text-primary-700 ring-1 ring-primary-700/10">
+                  <span class="shrink-0 text-xs text-slate-500">
                     {{ dashboardHomeCopy.snapshotBadge }}
                   </span>
                 </div>
-                <div v-if="homeActivityItems.length" class="mt-6 space-y-3">
+                <div v-if="scanStore.historyLoadFailed" role="alert" class="mt-5 rounded-xl bg-amber-50 p-3 text-sm text-amber-900">
+                  {{ t('scan.history.loadFailed') }}
+                  <button type="button" class="ml-2 font-semibold underline" :disabled="scanStore.isHistoryLoading" @click="retryHistoryLoad">
+                    {{ t('scan.history.retry') }}
+                  </button>
+                </div>
+                <div v-if="homeActivityItems.length" class="mt-4 divide-y divide-slate-100">
                   <button
                     v-for="item in homeActivityItems"
                     :key="item.recordId"
                     type="button"
-                    class="group w-full rounded-3xl border border-neutral-200/80 bg-[#fdfefd] px-5 py-4 text-left shadow-sm shadow-slate-200/60 transition hover:-translate-y-0.5 hover:border-primary-200 hover:shadow-md hover:shadow-slate-200/80"
+                    class="group w-full rounded-lg px-2 py-4 text-left transition-colors hover:bg-primary-50/70"
                     @click="openHistoryRecord(item.recordId)"
                   >
                     <div class="flex items-start justify-between gap-3">
                       <div class="min-w-0">
                         <p class="truncate text-sm font-semibold text-neutral-900">{{ item.title }}</p>
-                        <p class="mt-1 text-sm leading-6 text-neutral-500">{{ item.summary }}</p>
+                        <p class="mt-1 text-sm leading-6 text-slate-600">{{ item.summary }}</p>
                       </div>
-                      <span :class="['inline-flex shrink-0 items-center rounded-full px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.2em]', item.badgeClass]">
+                      <span :class="['inline-flex shrink-0 items-center rounded-md px-2 py-1 text-xs font-medium', item.badgeClass]">
                         {{ item.badge }}
                       </span>
                     </div>
                     <div class="mt-3 flex items-center justify-between gap-3">
-                      <p class="text-xs text-neutral-400">{{ item.meta }}</p>
+                      <p class="text-xs text-slate-500">{{ item.meta }}</p>
                       <ArrowRightIcon class="h-4 w-4 text-neutral-300 transition group-hover:text-primary-500" />
                     </div>
                   </button>
                 </div>
-                <div v-else class="mt-6 rounded-3xl border border-dashed border-neutral-200 bg-[#fdfefd] px-5 py-6">
+                <p v-else-if="scanStore.isHistoryLoading" role="status" class="py-8 text-center text-sm text-slate-500">{{ t('scan.history.loading') }}</p>
+                <div v-else-if="!scanStore.historyLoadFailed" class="mt-5 py-4">
                   <p class="text-sm font-semibold text-neutral-900">{{ dashboardHomeCopy.activity.emptyTitle }}</p>
                   <p class="mt-2 text-sm leading-6 text-neutral-500">{{ dashboardHomeCopy.activity.emptyDescription }}</p>
                   <button
                     type="button"
-                    class="mt-5 inline-flex items-center gap-2 rounded-full bg-primary-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-primary-500"
+                    class="liquid-glass liquid-glass-selected mt-4 inline-flex min-h-11 items-center gap-2 rounded-full px-4 py-2 text-sm font-semibold"
                     @click="startNewScan"
                   >
                     <span>{{ dashboardHomeCopy.activity.emptyCta }}</span>
@@ -210,7 +219,7 @@
                 <button
                   v-if="homeActivityItems.length"
                   type="button"
-                  class="mt-6 inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:border-primary-200 hover:text-primary-600"
+                  class="liquid-glass mt-4 inline-flex min-h-11 items-center gap-2 rounded-full px-4 py-2 text-sm font-semibold"
                   @click="runHomeAction('history')"
                 >
                   <span>{{ dashboardHomeCopy.snapshotCta }}</span>
@@ -219,15 +228,14 @@
               </div>
             </section>
 
-            <section class="grid gap-8 xl:grid-cols-[minmax(0,1.08fr)_minmax(0,0.92fr)]">
-              <div class="rounded-[2rem] border border-slate-200/70 bg-[#fbfcfa]/95 p-7 shadow-lg shadow-slate-200/80">
+            <section class="grid items-start gap-5 xl:grid-cols-[minmax(0,1.08fr)_minmax(0,0.92fr)]">
+              <div class="home-surface min-w-0 rounded-2xl p-5 sm:p-6">
                 <div class="flex items-center justify-between gap-4">
                   <div>
-                    <h3 class="text-xs font-bold uppercase tracking-widest text-neutral-400">{{ t('scan.features.title') }}</h3>
-                    <p class="mt-2 text-sm text-neutral-500">{{ t('scan.features.subtitle') }}</p>
+                    <h3 class="text-lg font-semibold text-neutral-900">{{ t('scan.features.title') }}</h3>
                   </div>
                 </div>
-                <div class="mt-6 grid gap-5 md:grid-cols-2 xl:grid-cols-3">
+                <div class="mt-4 grid gap-x-5 gap-y-1 sm:grid-cols-2">
                   <button
                     v-for="card in featureCards"
                     :key="card.key"
@@ -236,15 +244,15 @@
                     :disabled="card.disabled"
                     :aria-disabled="card.disabled"
                     :class="[
-                      'group relative rounded-2xl p-6 text-left ring-1 transition-all',
+                      'group relative min-w-0 rounded-lg py-4 text-left transition-colors',
                       card.disabled
-                        ? 'cursor-not-allowed bg-slate-50/95 text-slate-500 ring-slate-200/80 opacity-80 grayscale'
-                        : 'cursor-pointer bg-neutral-50/90 ring-neutral-200/70 hover:-translate-y-1 hover:bg-white hover:shadow-lg hover:shadow-primary-500/10 hover:ring-primary-200',
+                        ? 'cursor-not-allowed text-slate-500 grayscale'
+                        : 'cursor-pointer hover:bg-primary-50',
                     ]"
                     @click="openFeatureModal(card)"
                   >
                     <div class="flex items-center justify-between">
-                      <div :class="['flex h-10 w-10 items-center justify-center rounded-xl transition-colors', card.iconClass]">
+                      <div class="flex h-8 w-8 items-center justify-center text-slate-500">
                         <component :is="card.icon" class="h-5 w-5" aria-hidden="true" />
                       </div>
                       <span
@@ -254,7 +262,7 @@
                         {{ card.tag }}
                       </span>
                     </div>
-                    <div class="mt-4">
+                    <div class="mt-2">
                       <p class="text-sm font-semibold text-neutral-900">{{ card.title }}</p>
                       <p class="mt-1 text-xs leading-5 text-neutral-500">{{ card.subtitle }}</p>
                     </div>
@@ -262,22 +270,22 @@
                 </div>
               </div>
 
-              <div class="flex flex-col gap-6">
-                <div class="rounded-[2rem] border border-slate-200/70 bg-[#fbfcfa]/95 p-7 shadow-lg shadow-slate-200/80">
-                  <h3 class="text-xs font-bold uppercase tracking-widest text-neutral-400">{{ dashboardHomeCopy.actionsTitle }}</h3>
-                  <div class="mt-5 space-y-3">
+              <div class="flex min-w-0 flex-col gap-5">
+                <div class="home-surface rounded-2xl p-5 sm:p-6">
+                  <h3 class="text-lg font-semibold text-neutral-900">{{ dashboardHomeCopy.actionsTitle }}</h3>
+                  <div class="mt-4 divide-y divide-slate-100">
                     <button
                       v-for="item in homeActionItems"
                       :key="item.key"
                       type="button"
-                      class="flex w-full items-center justify-between rounded-2xl border border-neutral-200 bg-neutral-50/80 px-4 py-4 text-left transition hover:border-primary-200 hover:bg-white hover:shadow-sm"
+                      class="flex min-h-16 w-full items-center justify-between gap-4 rounded-lg px-2 py-4 text-left transition-colors hover:bg-primary-50/70"
                       @click="runHomeAction(item.key)"
                     >
                       <div>
                         <p class="text-sm font-semibold text-neutral-900">{{ item.title }}</p>
                         <p class="mt-1 text-xs leading-5 text-neutral-500">{{ item.description }}</p>
                       </div>
-                      <ArrowRightIcon class="h-4 w-4 text-neutral-400" />
+                      <ArrowRightIcon class="h-4 w-4 shrink-0 text-slate-400" />
                     </button>
                   </div>
                 </div>
@@ -372,19 +380,25 @@
           </transition>
 
         <div v-if="isPanelActive('document')" class="relative z-0 flex min-h-[calc(100vh-4rem)] flex-col">
-          <div class="sticky top-0 z-10 border-b border-neutral-100 bg-white/80 px-6 py-4 backdrop-blur-md transition-all">
-            <div class="grid grid-cols-1 gap-4 lg:grid-cols-[18rem_minmax(0,1fr)_24rem] lg:items-center xl:grid-cols-[20rem_minmax(0,1fr)_28rem]">
-              <div class="flex flex-wrap items-center gap-3">
-                <div class="inline-flex items-center overflow-hidden rounded-lg bg-neutral-100/80 p-1 text-xs font-semibold text-neutral-600 ring-1 ring-black/5">
+          <div class="workbench-document-header sticky top-16 z-10 border-b border-neutral-100 bg-white/80 px-6 py-4 backdrop-blur-md transition-all">
+            <div class="workbench-header-grid">
+              <div class="workbench-mode-controls flex flex-wrap items-center gap-3">
+                <div class="workbench-mode-switch liquid-glass relative inline-grid grow grid-cols-2 items-center rounded-full p-1 text-xs font-semibold sm:grow-0" role="group" :aria-label="t('scan.editor.modes.edit') + ' / ' + t('scan.editor.modes.preview')">
+                  <span
+                    aria-hidden="true"
+                    class="workbench-mode-selection liquid-glass liquid-glass-selected"
+                    :class="{ 'is-preview': editorMode === 'preview' }"
+                  />
                   <button
                     v-for="mode in editorModes"
                     :key="mode.key"
                     type="button"
                     :class="[
-                      'rounded-md px-4 py-1.5 transition-all duration-200 ease-out',
-                      editorMode === mode.key ? 'bg-white text-neutral-900 shadow-sm ring-1 ring-black/5' : 'text-neutral-500 hover:text-neutral-900',
-                      mode.key === 'preview' && !hasResults ? 'pointer-events-none opacity-40' : '',
+                      'mode-button relative min-w-16 whitespace-nowrap rounded-full border border-transparent px-0 py-2 text-center transition-colors duration-200 sm:px-4',
+                      editorMode === mode.key ? 'text-primary-700' : 'text-slate-600 hover:text-slate-900',
                     ]"
+                    :aria-pressed="editorMode === mode.key"
+                    :disabled="mode.key === 'preview' && !hasResults"
                     @click="editorMode = mode.key"
                   >
                     {{ mode.label }}
@@ -398,17 +412,17 @@
                   {{ t('scan.editor.reset') }}
                 </button>
               </div>
-              <div class="flex justify-end">
+              <div class="workbench-detail flex justify-end">
                 <button
                   v-if="hasResults"
                   type="button"
-                  class="inline-flex items-center rounded-full border border-primary-200 bg-white px-4 py-2 text-xs font-semibold text-primary-700 shadow-sm transition hover:border-primary-300 hover:bg-primary-50"
+                  class="liquid-glass inline-flex items-center rounded-full px-4 py-2 text-xs font-semibold"
                   @click="openResultDetail"
                 >
                   {{ t('scan.results.openDetail') }}
                 </button>
               </div>
-              <div class="flex flex-wrap items-center gap-4 text-xs font-medium text-neutral-400 lg:justify-end">
+              <div class="workbench-document-meta flex flex-wrap items-center gap-4 text-xs font-medium text-neutral-400 lg:justify-end">
                 <span :class="{ 'text-primary-600': characterCount > 0 && !isOverCharacterLimit, 'text-rose-600': isOverCharacterLimit }">{{ characterUsage }}</span>
                 <span class="h-4 w-px bg-neutral-200"></span>
                 <span>{{ t('scan.editor.selectedFunctions', { value: selectedFunctionSummary }) }}</span>
@@ -429,15 +443,14 @@
           </div>
 
           <div class="flex flex-1 flex-col lg:min-h-[calc(100vh-10rem)] lg:flex-row">
-            <aside class="flex w-full flex-col border-b border-neutral-100 bg-white/75 px-4 py-5 lg:w-72 lg:border-b-0 lg:border-r xl:w-80">
+            <aside class="workbench-history flex w-full flex-col border-b border-neutral-100 bg-white/75 px-4 py-5 lg:w-72 lg:shrink-0 lg:border-b-0 lg:border-r xl:w-80">
               <div class="flex items-start justify-between gap-3">
                 <div>
                   <h2 class="text-sm font-bold text-neutral-900">{{ t('scan.history.conversationTitle') }}</h2>
-                  <p class="mt-1 text-xs leading-5 text-neutral-500">{{ t('scan.history.conversationSubtitle') }}</p>
                 </div>
                 <button
                   type="button"
-                  class="rounded-full border border-neutral-200 bg-white px-3 py-1.5 text-xs font-semibold text-neutral-600 transition hover:border-primary-200 hover:text-primary-700"
+                  class="shrink-0 whitespace-nowrap rounded-full border border-neutral-200 bg-white px-3 py-1.5 text-xs font-semibold text-neutral-600 transition hover:border-primary-200 hover:text-primary-700"
                   @click="toggleHistoryManageMode"
                 >
                   {{ isHistoryManaging ? t('scan.history.doneManage') : t('scan.history.manage') }}
@@ -629,8 +642,8 @@
               </p>
             </aside>
 
-            <section class="relative flex-1 px-6 py-8">
-              <div class="flex min-h-[30rem] flex-col overflow-hidden rounded-2xl bg-white shadow-premium ring-1 ring-neutral-200/50 transition-all lg:min-h-[calc(100vh-14rem)]">
+            <section class="workbench-document relative min-w-0 flex-1 px-6 py-8">
+              <div class="document-paper flex min-h-[30rem] flex-col overflow-hidden rounded-2xl bg-white shadow-premium ring-1 ring-neutral-200/50 transition-all lg:min-h-[calc(100vh-14rem)]">
                 <div class="relative flex-1 overflow-hidden">
                   <div
                     v-show="editorMode === 'edit'"
@@ -686,29 +699,44 @@
               />
             </section>
 
-            <aside class="flex w-full min-h-[24rem] flex-col border-t border-neutral-100 bg-white lg:min-h-[calc(100vh-14rem)] lg:w-[24rem] lg:border-t-0 lg:border-l xl:w-[28rem]">
+            <aside class="workbench-results flex w-full min-h-[24rem] flex-col border-t border-neutral-100 bg-white lg:min-h-[calc(100vh-14rem)] lg:w-[24rem] lg:shrink-0 lg:border-t-0 lg:border-l xl:w-[28rem]">
               <div class="flex h-full flex-col">
-                <div class="flex-1 overflow-y-auto px-6 py-8">
-                  <div class="flex items-center justify-between mb-6">
+                <div class="flex flex-1 flex-col px-6 py-5">
+                  <div class="mb-3 flex items-center justify-between gap-3">
                     <div>
-                      <h2 class="text-base font-bold tracking-tight text-neutral-900">{{ t('scan.results.menuTitle') }}</h2>
-                      <p class="text-xs text-slate-500">{{ t('scan.results.menuSubtitle') }}</p>
+                      <h2 class="text-base font-bold tracking-tight text-neutral-900">{{ t(hasResults ? 'scan.results.title' : 'scan.results.menuTitle') }}</h2>
+                      <p v-if="!hasResults" class="text-xs text-slate-500">{{ t('scan.results.menuSubtitle') }}</p>
                     </div>
+                    <button
+                      v-if="hasResults"
+                      type="button"
+                      data-testid="result-export"
+                      class="liquid-glass inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full px-3 py-2 text-xs font-semibold"
+                      :title="authStore.isAuthenticated ? t('scan.results.exportHint') : t('scan.results.exportLockedHint')"
+                      :disabled="isExportingReport"
+                      :aria-busy="isExportingReport"
+                      @click="exportReport"
+                    >
+                      <ArrowPathIcon v-if="isExportingReport" class="h-4 w-4 animate-spin" aria-hidden="true" />
+                      <DocumentArrowDownIcon v-else class="h-4 w-4" aria-hidden="true" />
+                      {{ t(isExportingReport ? 'scan.results.exporting' : 'scan.results.export') }}
+                    </button>
                   </div>
-                  <div class="mt-4 rounded-xl border border-neutral-100 bg-neutral-50/50 p-4 text-xs">
+                  <div class="quota-summary text-xs" :class="hasResults ? 'order-last mt-4 border-t border-neutral-100 pt-3' : 'mt-4 rounded-xl border border-neutral-100 bg-neutral-50/50 p-4'">
                     <div class="flex items-center justify-between mb-2">
-                       <p class="font-semibold uppercase tracking-wider text-neutral-400">{{ t('scan.results.quota') }}</p>
+                       <p class="font-semibold text-slate-600">{{ t('scan.results.quota') }}</p>
                        <span v-if="isQuotaReady" class="font-mono text-neutral-600">{{ quotaRemainingDisplay }} / {{ quotaLimitDisplay }}</span>
                        <span v-else-if="isQuotaLoading" class="animate-pulse text-neutral-400">{{ t('scan.results.loading') }}</span>
                        <span v-else class="text-rose-500">{{ t('scan.results.error') }}</span>
                     </div>
-                    <div class="h-1.5 w-full overflow-hidden rounded-full bg-neutral-200">
-                      <div class="h-full bg-primary-500 transition-all duration-500" :style="{ width: quotaPercentage + '%' }"></div>
+                    <div v-if="!hasResults" class="h-1.5 w-full overflow-hidden rounded-full bg-neutral-200">
+                      <div class="h-full rounded-full bg-primary-600 transition-all duration-500" :style="{ width: quotaPercentage + '%' }"></div>
                     </div>
-                    <p class="mt-2 text-[10px] text-neutral-400">{{ t('scan.quotaHint') }}</p>
+                    <p v-if="!hasResults" class="mt-2 text-xs text-slate-500">{{ t('scan.results.quotaHint') }}</p>
                   </div>
                   <div
-                    class="mt-3 rounded-xl border px-4 py-3 text-xs"
+                    v-if="!hasResults"
+                    class="scan-readiness mt-3 rounded-xl border px-4 py-3 text-xs"
                     :class="
                       canStartScan
                         ? 'border-emerald-200 bg-emerald-50/80 text-emerald-700'
@@ -716,7 +744,7 @@
                     "
                   >
                     <div class="flex items-center justify-between gap-3">
-                      <span class="font-semibold uppercase tracking-wider">
+                      <span class="font-semibold">
                         {{ t('scan.toolbar.start') }}
                       </span>
                       <span class="font-mono">
@@ -780,24 +808,21 @@
                     </div>
                   </div>
 
-                  <div v-else class="mt-8 space-y-6">
+                  <div v-else class="space-y-3">
                     <p
                       v-if="resultTextMismatch"
                       role="status"
                       data-testid="incomplete-text-notice"
                       class="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm leading-6 text-amber-800"
-                    >{{ t('scan.results.incompleteTextNotice') }}</p>
-                    <div class="relative overflow-hidden rounded-2xl border border-neutral-100 bg-white p-6 shadow-premium ring-1 ring-black/5">
-                       <div class="absolute top-0 right-0 -mt-4 -mr-4 h-32 w-32 rounded-full bg-primary-100/50 blur-3xl"></div>
-                       <div class="absolute bottom-0 left-0 -mb-4 -ml-4 h-32 w-32 rounded-full bg-primary-200/20 blur-3xl"></div>
-                       
+                    >{{ t('scan.results.incompleteTextNotice') }} {{ t('scan.results.exportSnapshotNotice') }}</p>
+                    <div class="analysis-summary relative overflow-hidden rounded-2xl border border-neutral-100 bg-white p-4 shadow-premium ring-1 ring-black/5">
                        <div class="relative z-10">
-                         <div class="flex items-center justify-between mb-8">
+                         <div class="mb-3 flex items-center justify-between gap-2">
                            <h3 class="text-sm font-bold text-neutral-900 uppercase tracking-wider">{{ t('scan.results.summary.title') }}</h3>
-                           <span class="rounded-full bg-primary-50 px-2.5 py-1 text-[10px] font-bold tracking-wider text-primary-700 ring-1 ring-primary-700/10">{{ modelVersionLabel }}</span>
+                           <span class="rounded-full bg-neutral-100 px-2.5 py-1 text-[10px] font-semibold text-slate-600 ring-1 ring-slate-200/60">{{ modelVersionLabel }}</span>
                          </div>
                          
-                         <div class="flex items-end gap-3 mb-8">
+                         <div class="mb-3 flex items-end gap-3">
                            <span class="text-6xl font-bold tracking-tighter leading-none text-neutral-900">{{ resultDisplaySummary.ai }}%</span>
                            <span class="text-lg font-medium text-neutral-500 mb-1.5">{{ t('scan.results.summary.label') }}</span>
                          </div>
@@ -808,8 +833,8 @@
                                <span class="text-neutral-600">{{ t('scan.results.summary.ai') }}</span>
                                <span class="text-neutral-900">{{ resultDisplaySummary.ai }}%</span>
                              </div>
-                             <div class="h-1.5 w-full overflow-hidden rounded-full bg-neutral-100">
-                               <div class="h-full bg-primary-500" :style="{ width: resultDisplaySummary.ai + '%' }"></div>
+                             <div class="analysis-track h-1.5 w-full overflow-hidden rounded-full">
+                               <div class="analysis-bar-ai h-full" :style="{ width: resultDisplaySummary.ai + '%' }"></div>
                              </div>
                            </div>
 
@@ -818,33 +843,17 @@
                                <span class="text-neutral-600">{{ t('scan.results.summary.human') }}</span>
                                <span class="text-neutral-900">{{ resultDisplaySummary.human }}%</span>
                              </div>
-                             <div class="h-1.5 w-full overflow-hidden rounded-full bg-neutral-100">
-                               <div class="h-full bg-emerald-500" :style="{ width: resultDisplaySummary.human + '%' }"></div>
+                             <div class="analysis-track h-1.5 w-full overflow-hidden rounded-full">
+                               <div class="analysis-bar-human h-full" :style="{ width: resultDisplaySummary.human + '%' }"></div>
                              </div>
                            </div>
                          </div>
                        </div>
                     </div>
 
-                    <EvidencePanel :evidence="scanStore.result?.evidence" @view-details="openEvidenceDetail" />
+                    <EvidencePanel :evidence="scanStore.result?.evidence" :initial-show-all="evidenceShowAll" @update:show-all="evidenceShowAll = $event" @view-details="openEvidenceDetail" />
 
-                    <button
-                      type="button"
-                      class="flex w-full items-start gap-4 rounded-2xl border border-neutral-100 bg-white p-4 text-left shadow-sm transition hover:border-primary-200 hover:bg-primary-50/40"
-                      @click="exportReport"
-                    >
-                      <span class="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-2xl bg-primary-50 text-primary-600 ring-1 ring-primary-100">
-                        <DocumentArrowDownIcon class="h-5 w-5" />
-                      </span>
-                      <span class="min-w-0 flex-1">
-                        <span class="block text-sm font-semibold text-slate-900">{{ t('scan.results.export') }}</span>
-                        <span class="mt-1 block text-xs leading-5 text-slate-500">
-                          {{ authStore.isAuthenticated ? t('scan.results.exportHint') : t('scan.results.exportLockedHint') }}
-                        </span>
-                      </span>
-                    </button>
-
-                    <div class="rounded-2xl border border-neutral-100 bg-white p-1">
+                    <div data-testid="result-segments" class="rounded-2xl border border-neutral-100 bg-white p-1">
                       <div class="grid grid-cols-2 gap-1 p-1 bg-neutral-50/50 rounded-xl">
                         <button
                           v-for="tab in availableResultTabs"
@@ -892,7 +901,6 @@
                               @mouseleave="setActiveSentence(getSentenceDefaultActiveId(sentence))"
                               v-html="formatHighlightedSentence(sentence)"
                             ></div>
-                            <p v-if="sentence.reason" class="mt-2 text-xs text-slate-500">{{ sentence.reason }}</p>
                           </div>
                         </div>
                         <div v-else-if="activeResultTab === 'translate'" class="space-y-3">
@@ -934,14 +942,14 @@
             </aside>
 
           </div>
-          <div class="pointer-events-none fixed bottom-6 left-1/2 z-30 flex w-full max-w-3xl -translate-x-1/2 px-4 transition-all duration-500 ease-out" :class="{ 'translate-y-24 opacity-0': !isPanelActive('document') }">
-            <div class="pointer-events-auto flex w-full flex-col items-center justify-between gap-2 rounded-2xl border border-white/20 bg-white/90 px-2 py-2 shadow-premium backdrop-blur-xl ring-1 ring-black/5 sm:flex-row sm:gap-4 sm:rounded-full sm:pl-6">
+          <div class="workbench-toolbar pointer-events-none fixed bottom-6 left-1/2 z-30 flex w-full max-w-3xl -translate-x-1/2 px-4" :class="{ 'translate-y-24 opacity-0': !isPanelActive('document') }">
+            <div class="liquid-glass toolbar-glass relative pointer-events-auto flex w-full flex-col items-center justify-between gap-2 rounded-2xl px-3 py-2 sm:flex-row sm:gap-4 sm:rounded-full sm:pl-5">
               <div class="flex items-center gap-1">
                 <button type="button" class="toolbar-button rounded-lg p-2 text-neutral-500 hover:bg-neutral-100 hover:text-neutral-900 transition-colors" @click="applyCommand('bold')"><span class="font-bold">B</span></button>
                 <button type="button" class="toolbar-button italic rounded-lg p-2 text-neutral-500 hover:bg-neutral-100 hover:text-neutral-900 transition-colors" @click="applyCommand('italic')">I</button>
                 <button type="button" class="toolbar-button underline rounded-lg p-2 text-neutral-500 hover:bg-neutral-100 hover:text-neutral-900 transition-colors" @click="applyCommand('underline')">U</button>
                 <div class="mx-2 h-4 w-px bg-neutral-200"></div>
-                <button type="button" class="toolbar-button rounded-lg p-2 text-neutral-500 hover:bg-neutral-100 hover:text-neutral-900 transition-colors" @click="applyCommand('insertUnorderedList')">{{ t('scan.toolbar.bulleted') }}</button>
+                <button type="button" class="toolbar-button gap-1.5 rounded-lg p-2 text-neutral-500 hover:bg-neutral-100 hover:text-neutral-900 transition-colors" @click="applyCommand('insertUnorderedList')"><ListBulletIcon class="h-4 w-4" />{{ t('scan.toolbar.bulleted') }}</button>
                 <label class="sr-only" for="font-size">{{ t('scan.toolbar.fontSize') }}</label>
                 <!-- Simplified select for aesthetic -->
                  <BaseListbox
@@ -950,25 +958,22 @@
                     :options="fontSizeOptions"
                     :placeholder="t('scan.toolbar.fontSize')"
                     :aria-label="t('scan.toolbar.fontSize')"
-                    button-class="text-xs font-medium text-neutral-600 hover:text-neutral-900"
+                    button-class="toolbar-font-size text-xs font-medium text-neutral-600 hover:text-neutral-900"
+                    options-class="liquid-glass toolbar-font-options"
                     display-class="text-xs"
                     @update:model-value="onFontSizeChange"
                   />
               </div>
               <div class="flex items-center gap-3">
-                <button type="button" class="group flex items-center gap-2 rounded-full px-4 py-2 text-xs font-medium text-neutral-600 hover:bg-neutral-100 transition-all" @click="triggerUpload">
+                <button type="button" class="group flex items-center gap-2 rounded-full px-4 py-2 text-xs font-medium text-neutral-600 hover:bg-white/60 transition-colors" @click="triggerUpload">
                   <ArrowUpTrayIcon class="h-4 w-4 text-neutral-400 group-hover:text-neutral-600" />
                   {{ t('scan.toolbar.upload') }}
                 </button>
                 <button
                   type="button"
                   :disabled="isScanning || !canStartScan"
-                  :class="[
-                    'inline-flex items-center gap-2 rounded-full pl-4 pr-5 py-2.5 text-sm font-semibold text-white transition-all',
-                    isScanning || !canStartScan
-                      ? 'cursor-not-allowed bg-slate-300 shadow-none'
-                      : 'bg-gradient-to-r from-primary-700 via-primary-600 to-primary-500 shadow-lg shadow-primary-700/20 hover:from-primary-600 hover:via-primary-500 hover:to-primary-400 hover:scale-105 active:scale-95',
-                  ]"
+                  class="liquid-glass liquid-glass-selected inline-flex items-center gap-2 whitespace-nowrap rounded-full pl-4 pr-5 py-2.5 text-sm font-semibold"
+                  :aria-busy="isScanning"
                   @click="handleScan"
                 >
                   <svg
@@ -989,13 +994,13 @@
           </div>
         </div>
 
-        <div v-else-if="isPanelActive('profile')" class="flex-1 px-4 py-6">
+        <div v-else-if="isPanelActive('profile')" class="public-theme flex-1 px-4 py-6 sm:px-6 lg:px-8 lg:py-8">
           <div class="mx-auto w-full max-w-4xl">
             <ProfilePanel />
           </div>
         </div>
 
-        <div v-else-if="isPanelActive('qa')" class="flex-1 px-4 py-6">
+        <div v-else-if="isPanelActive('qa')" class="public-theme flex-1 px-4 py-6 sm:px-6 lg:px-8 lg:py-8">
           <div class="mx-auto w-full max-w-5xl">
             <QAPanel />
           </div>
@@ -1025,17 +1030,21 @@
               <div class="mt-2 flex flex-wrap gap-3 text-xs text-neutral-500">
                 <span v-if="activeHistoryRecord">{{ formatHistoryTimestamp(activeHistoryRecord.createdAt) }}</span>
                 <span>{{ characterUsage }}</span>
-                <span>{{ t('scan.editor.selectedFunctions', { value: selectedFunctionSummary }) }}</span>
+                <span v-if="availableResultTabs.length > 1">{{ t('scan.editor.selectedFunctions', { value: selectedFunctionSummary }) }}</span>
               </div>
             </div>
             <div class="flex flex-wrap items-center gap-2">
               <button
                 type="button"
+                data-testid="detail-export"
                 class="inline-flex items-center gap-2 rounded-full border border-neutral-200 bg-white px-4 py-2 text-xs font-semibold text-neutral-700 transition hover:border-primary-200 hover:text-primary-700"
+                :disabled="isExportingReport"
+                :aria-busy="isExportingReport"
                 @click="exportReport"
               >
-                <DocumentArrowDownIcon class="h-4 w-4" />
-                {{ t('scan.results.export') }}
+                <ArrowPathIcon v-if="isExportingReport" class="h-4 w-4 animate-spin" aria-hidden="true" />
+                <DocumentArrowDownIcon v-else class="h-4 w-4" aria-hidden="true" />
+                {{ t(isExportingReport ? 'scan.results.exporting' : 'scan.results.export') }}
               </button>
               <button
                 type="button"
@@ -1061,8 +1070,8 @@
                       <span>{{ t('scan.results.summary.ai') }}</span>
                       <span>{{ resultDisplaySummary.ai }}%</span>
                     </div>
-                    <div class="h-2 overflow-hidden rounded-full bg-neutral-100">
-                      <div class="h-full bg-primary-500" :style="{ width: resultDisplaySummary.ai + '%' }"></div>
+                    <div class="analysis-track h-2 overflow-hidden rounded-full">
+                      <div class="analysis-bar-ai h-full" :style="{ width: resultDisplaySummary.ai + '%' }"></div>
                     </div>
                   </div>
                   <div>
@@ -1070,14 +1079,14 @@
                       <span>{{ t('scan.results.summary.human') }}</span>
                       <span>{{ resultDisplaySummary.human }}%</span>
                     </div>
-                    <div class="h-2 overflow-hidden rounded-full bg-neutral-100">
-                      <div class="h-full bg-emerald-500" :style="{ width: resultDisplaySummary.human + '%' }"></div>
+                    <div class="analysis-track h-2 overflow-hidden rounded-full">
+                      <div class="analysis-bar-human h-full" :style="{ width: resultDisplaySummary.human + '%' }"></div>
                     </div>
                   </div>
                 </div>
               </div>
 
-              <div class="mt-4 rounded-3xl border border-neutral-100 bg-white p-2 shadow-sm">
+              <div v-if="availableResultTabs.length > 1" class="mt-4 rounded-3xl border border-neutral-100 bg-white p-2 shadow-sm">
                 <button
                   v-for="tab in availableResultTabs"
                   :key="tab.key"
@@ -1102,12 +1111,13 @@
                 role="status"
                 data-testid="incomplete-text-notice"
                 class="mb-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm leading-6 text-amber-800"
-              >{{ t('scan.results.incompleteTextNotice') }}</p>
+              >{{ t('scan.results.incompleteTextNotice') }} {{ t('scan.results.exportSnapshotNotice') }}</p>
               <EvidencePanel
                 :evidence="scanStore.result?.evidence"
                 :submitted-text="scanStore.resultInputText"
                 :initial-dimension="evidenceDimension"
                 :initial-show-all="evidenceShowAll"
+                @update:show-all="evidenceShowAll = $event"
                 detailed
                 class="mb-6"
               />
@@ -1140,7 +1150,6 @@
                     @mouseleave="setActiveSentence(getSentenceDefaultActiveId(sentence))"
                     v-html="formatHighlightedSentence(sentence)"
                   ></div>
-                  <p v-if="sentence.reason" class="mt-3 text-xs leading-5 text-slate-500">{{ sentence.reason }}</p>
                 </div>
               </div>
 
@@ -1194,9 +1203,12 @@
 
 <script setup>
 import { computed, h, markRaw, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
+import { executeTransition, usePreferredReducedMotion } from '@vueuse/core';
 import { useRoute, useRouter } from 'vue-router';
 import {
   ArrowUpTrayIcon,
+  ArrowPathIcon,
+  ListBulletIcon,
   BoltIcon,
   BookOpenIcon,
   BookmarkSquareIcon,
@@ -1275,6 +1287,8 @@ const localText = ref(scanStore.inputText || '');
 
 const editorMode = ref('edit');
 const isScanning = ref(false);
+const isExportingReport = ref(false);
+const evidenceEnabled = import.meta.env.VITE_EVIDENCE_ENABLED !== 'false';
 const dragActive = ref(false);
 const detectionResults = computed(() => scanStore.result);
 const highlightedPreviewHtml = ref('');
@@ -1295,10 +1309,33 @@ const isResultDetailOpen = ref(false);
 const evidenceDimension = ref('lexical');
 const evidenceShowAll = ref(false);
 watch(() => scanStore.result?.evidence, () => { evidenceShowAll.value = false; });
-const headerVariant = computed(() => (activePanel.value === 'document' ? 'scan' : 'standard'));
+const isWorkbenchPanel = computed(() => activePanel.value === 'home' || activePanel.value === 'document');
+const headerVariant = computed(() => (activePanel.value === 'document' ? 'scan' : activePanel.value));
 const quotaInfo = ref({ actor_type: '', limit: 0, used_today: 0, remaining: 0 });
 const isQuotaLoading = ref(false);
 const isQuotaReady = ref(false);
+const reducedMotion = usePreferredReducedMotion();
+const homeQuotaValues = ref(null);
+let quotaAnimationVersion = 0;
+watch([quotaInfo, isQuotaReady, activePanel, reducedMotion], ([quota, ready, panel, motion]) => {
+  const version = ++quotaAnimationVersion;
+  if (!ready) {
+    homeQuotaValues.value = null;
+    return;
+  }
+  if (panel !== 'home') return;
+  const target = [quota.remaining, quota.used_today];
+  if (!homeQuotaValues.value || motion === 'reduce' || !target.every(Number.isFinite)) {
+    homeQuotaValues.value = target;
+    return;
+  }
+  if (target.every((value, index) => value === homeQuotaValues.value[index])) return;
+  void executeTransition(homeQuotaValues, homeQuotaValues.value, target, {
+    duration: 320,
+    transition: [0.22, 1, 0.36, 1],
+    abort: () => version !== quotaAnimationVersion,
+  });
+});
 const showIntegrationHub = false;
 
 const allowedPanelSet = new Set(['home', 'document', 'profile', 'qa']);
@@ -1396,11 +1433,11 @@ const userDisplayName = computed(() => {
 
 const normalizeReportId = (value) => {
   const parsed = Number(value);
-  if (!Number.isFinite(parsed) || parsed <= 0) return null;
+  if (!Number.isSafeInteger(parsed) || parsed <= 0) return null;
   return parsed;
 };
 
-const triggerBlobDownload = (blob, filename = 'aidetector-report.pdf') => {
+const triggerBlobDownload = (blob, filename = 'repreguard-report.pdf') => {
   if (typeof window === 'undefined') return;
   const objectUrl = window.URL.createObjectURL(blob);
   const anchor = document.createElement('a');
@@ -1423,12 +1460,9 @@ const buildReportPayload = ({
     reportType,
     locale: locale.value,
     historyId: normalizedHistoryId,
+    includeEvidence: evidenceEnabled,
+    timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC',
   };
-};
-
-const downloadReport = async (payload, fallbackFileName) => {
-  const response = await requestPdfReport(payload);
-  triggerBlobDownload(response.blob, response.fileName || fallbackFileName);
 };
 
 const showExportLockedToast = () => {
@@ -1755,7 +1789,6 @@ const formatQuotaValue = (value) => {
 };
 
 const quotaLimitDisplay = computed(() => formatQuotaValue(quotaInfo.value.limit));
-const quotaUsedDisplay = computed(() => formatQuotaValue(quotaInfo.value.used_today));
 const quotaRemainingDisplay = computed(() => formatQuotaValue(quotaInfo.value.remaining));
 const quotaRemainingValue = computed(() => Number(quotaInfo.value.remaining || 0));
 
@@ -1773,18 +1806,16 @@ const resolveHistoryTitle = (record) => {
 const homeStatCards = computed(() => [
   {
     label: dashboardHomeCopy.value.stats.remaining,
-    value: quotaRemainingDisplay.value,
-    description: dashboardHomeCopy.value.stats.remainingDescription,
+    value: isQuotaReady.value ? formatQuotaValue(Math.round(homeQuotaValues.value?.[0] ?? quotaInfo.value.remaining)) : '--',
+    description: isQuotaReady.value ? '' : t(isQuotaLoading.value ? 'scan.results.loading' : 'scan.results.error'),
   },
   {
     label: dashboardHomeCopy.value.stats.used,
-    value: quotaUsedDisplay.value,
-    description: dashboardHomeCopy.value.stats.usedDescription,
+    value: isQuotaReady.value ? formatQuotaValue(Math.round(homeQuotaValues.value?.[1] ?? quotaInfo.value.used_today)) : '--',
   },
   {
     label: dashboardHomeCopy.value.stats.records,
-    value: historyRecords.value.length.toLocaleString(),
-    description: dashboardHomeCopy.value.stats.recordsDescription,
+    value: scanStore.isHistoryLoading || scanStore.historyLoadFailed ? '--' : t('scan.dashboard.stats.recordsValue', { count: historyRecords.value.length.toLocaleString() }),
   },
 ]);
 
@@ -1801,8 +1832,8 @@ const homeActivityItems = computed(() => {
         ? dashboardHomeCopy.value.activity.reviewBadge
         : dashboardHomeCopy.value.activity.savedBadge,
       badgeClass: needsReview
-        ? 'bg-rose-50 text-rose-700 ring-1 ring-rose-700/10'
-        : 'bg-emerald-50 text-emerald-700 ring-1 ring-emerald-700/10',
+        ? 'bg-primary-50 text-primary-700'
+        : 'bg-slate-100 text-slate-600',
     };
   });
 });
@@ -1860,9 +1891,9 @@ const refreshQuota = async ({ retryOnGuestError = true } = {}) => {
     const limit = Number(response?.limit ?? 0);
     const remaining = Number(response?.remaining ?? 0);
     quotaInfo.value = {
-      actor_type: response?.actor_type || '',
+      actor_type: response?.actorType ?? response?.actor_type ?? '',
       limit,
-      used_today: response?.used_today ?? 0,
+      used_today: Number(response?.usedToday ?? response?.used_today ?? 0),
       remaining,
     };
     isQuotaReady.value = true;
@@ -2402,6 +2433,8 @@ const resetPageSessionState = () => {
   isQuotaLoading.value = false;
   quotaInfo.value = { actor_type: '', limit: 0, used_today: 0, remaining: 0 };
   isQuotaReady.value = false;
+  homeQuotaValues.value = null;
+  quotaAnimationVersion += 1;
   if (!authStore.isAuthenticated) {
     authStore.setCredits({ total: 0, remaining: 0 });
   }
@@ -2448,6 +2481,7 @@ onMounted(async () => {
 });
 
 onBeforeUnmount(() => {
+  quotaAnimationVersion += 1;
   document.removeEventListener('click', onGlobalClick);
   document.removeEventListener('keydown', featureModalKeyHandler);
   document.removeEventListener('keydown', onDetailKeydown);
@@ -2457,10 +2491,10 @@ onBeforeUnmount(() => {
 });
 
 watch(
-  () => scanStore.editorHtml,
-  () => {
-    syncEditorFromStore();
-  }
+  // Panel navigation remounts the editor even when the stored HTML is unchanged.
+  [editorRef, () => scanStore.editorHtml],
+  syncEditorFromStore,
+  { flush: 'post' }
 );
 
 watch(
@@ -2539,6 +2573,15 @@ watch(activePanel, async (panel) => {
   } else {
     closeFeatureModal();
   }
+});
+
+watch(locale, () => {
+  pickRandomQuote();
+  onboardingSteps.value = onboardingSteps.value.map((step) => ({
+    ...step,
+    label: t(`scan.onboarding.${step.key}.label`),
+    description: t(`scan.onboarding.${step.key}.description`),
+  }));
 });
 
 watch(historySearchQuery, () => {
@@ -2875,30 +2918,45 @@ const handleScan = async () => {
 };
 
 const exportReport = async () => {
-  if (!scanStore.result) return;
+  if (isExportingReport.value || !scanStore.result) return;
   if (!authStore.isAuthenticated) {
     showExportLockedToast();
     return;
   }
 
-  try {
-    const payload = buildReportPayload({
-      reportType: 'scan',
-      historyId: scanStore.currentResultHistoryId,
-    });
-    if (!payload) {
-      showToast({
-        title: t('scan.results.exportErrorTitle'),
-        message: t('scan.results.exportErrorMessage'),
-      });
-      return;
-    }
-    await downloadReport(payload, 'aidetector-report.pdf');
-  } catch {
+  const payload = buildReportPayload({
+    reportType: 'scan',
+    historyId: scanStore.currentResultHistoryId,
+  });
+  if (!payload) {
     showToast({
       title: t('scan.results.exportErrorTitle'),
-      message: t('scan.results.exportErrorMessage'),
+      message: t('scan.results.exportRecordUnavailable'),
     });
+    return;
+  }
+  const context = capturePageActorContext();
+  isExportingReport.value = true;
+  try {
+    const response = await requestPdfReport(payload);
+    if (!isPageActorContextCurrent(context)) return;
+    triggerBlobDownload(response.blob, response.fileName || 'repreguard-report.pdf');
+  } catch (error) {
+    if (!isPageActorContextCurrent(context)) return;
+    const code = extractApiErrorCode(error);
+    let messageKey = 'exportErrorMessage';
+    if (error?.status === 401 || code === 'UNAUTHORIZED') {
+      messageKey = 'exportSessionExpired';
+    } else if ([403, 404, 422].includes(error?.status) || ['HISTORY_NOT_FOUND', 'REPORT_SOURCE_INVALID'].includes(code)) {
+      messageKey = 'exportRecordUnavailable';
+    } else if (error?.status === 408 || error?.name === 'AbortError') {
+      messageKey = 'exportTimeout';
+    } else if (error?.status === 0 || code === 'NETWORK_ERROR') {
+      messageKey = 'exportNetworkError';
+    }
+    showToast({ title: t('scan.results.exportErrorTitle'), message: t(`scan.results.${messageKey}`) });
+  } finally {
+    isExportingReport.value = false;
   }
 };
 
@@ -3017,6 +3075,259 @@ const onGlobalClick = (event) => {
 </script>
 
 <style scoped>
+.workbench-theme {
+  --workbench-history-width: 224px;
+  --workbench-results-width: 320px;
+  --workbench-document-gutter: 24px;
+}
+
+.home-surface {
+  border: 1px solid #e4e9f0;
+  background: #fff;
+  box-shadow: 0 2px 6px rgb(24 34 48 / 0.035);
+}
+
+.home-overview {
+  border: 1px solid #adc6e9;
+  background: linear-gradient(135deg, #d4e3fb, #bbd1f0);
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.65), 0 4px 14px rgb(36 86 199 / 0.07);
+}
+
+.home-overview h2 {
+  text-wrap: balance;
+}
+
+.workbench-theme .workbench-navigation {
+  background: linear-gradient(165deg, #fff 25%, #f0f4fc);
+}
+
+.workbench-theme .nav-item.liquid-glass {
+  min-height: 42px;
+  margin-bottom: 8px;
+  border-radius: 999px;
+  border-color: rgb(255 255 255 / 0.65);
+}
+
+.workbench-theme .nav-item.liquid-glass-selected {
+  color: #2456c7;
+}
+
+.workbench-nav-selection,
+.workbench-mode-selection {
+  position: absolute;
+  border-radius: 999px;
+  pointer-events: none;
+  transition: transform 200ms cubic-bezier(0.2, 0.7, 0.2, 1);
+}
+
+.workbench-nav-selection {
+  inset: 0 0 auto;
+  height: calc((100% - 8px) / 2);
+}
+
+.workbench-nav-selection.is-document {
+  transform: translateY(calc(100% + 8px));
+}
+
+.workbench-mode-selection {
+  inset: 4px auto 4px 4px;
+  width: calc((100% - 8px) / 2);
+}
+
+.workbench-mode-selection.is-preview {
+  transform: translateX(100%);
+}
+
+.workbench-theme .workbench-panel-navigation .nav-item {
+  margin-bottom: 0;
+}
+
+.workbench-theme .workbench-panel-navigation .nav-item.liquid-glass-selected {
+  background: transparent;
+  border-color: transparent;
+  box-shadow: none;
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+
+.workbench-theme .workbench-new {
+  transform: none;
+}
+
+.workbench-theme .workbench-new :is(svg, span) {
+  color: inherit;
+}
+
+.workbench-document-header {
+  background: rgb(248 250 254 / 0.84);
+  padding-inline: 0;
+}
+
+.workbench-header-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  padding-inline: var(--workbench-document-gutter);
+}
+
+.workbench-document-meta {
+  grid-column: 1 / -1;
+  min-width: 0;
+}
+
+.workbench-document-meta > span:last-child {
+  overflow-wrap: anywhere;
+}
+
+.workbench-document {
+  padding-inline: var(--workbench-document-gutter);
+}
+
+.mode-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
+.workbench-theme .workbench-history,
+.workbench-theme .workbench-results {
+  background: rgb(255 255 255 / 0.72);
+}
+
+.workbench-theme .document-paper {
+  box-shadow: 0 2px 4px rgb(24 34 48 / 0.04), 0 8px 24px rgb(24 34 48 / 0.05);
+}
+
+.workbench-theme .analysis-summary {
+  box-shadow: 0 2px 6px rgb(24 34 48 / 0.06);
+  border-color: #e4e9f0;
+}
+
+.analysis-track {
+  background: #eef1f5;
+}
+
+.analysis-bar-ai {
+  background: #3478f6;
+  border-radius: inherit;
+}
+
+.analysis-bar-human {
+  background: #0787a5;
+  border-radius: inherit;
+}
+
+.toolbar-glass {
+  background: linear-gradient(170deg, rgb(255 255 255 / 0.6), rgb(255 255 255 / 0.24) 48%, rgb(233 239 249 / 0.4));
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.75), 0 6px 20px rgb(35 55 85 / 0.1);
+  -webkit-backdrop-filter: blur(9px) saturate(165%);
+  backdrop-filter: blur(9px) saturate(165%);
+}
+
+.toolbar-glass .toolbar-button {
+  min-height: 36px;
+  border-color: transparent;
+  background: transparent;
+  color: #344054;
+}
+
+.toolbar-glass .toolbar-button:hover {
+  background: rgb(255 255 255 / 0.6);
+}
+
+.toolbar-glass :deep(.toolbar-font-size) {
+  padding: 8px;
+  border-color: transparent;
+  background: transparent;
+  box-shadow: none;
+}
+
+.toolbar-glass :deep(.toolbar-font-options) {
+  bottom: calc(100% + 8px);
+  min-width: 100px;
+  margin-top: 0;
+}
+
+@media (min-width: 1024px) {
+  .workbench-navigation {
+    position: sticky;
+    top: calc(4rem + 1px);
+    height: calc(100vh - 4rem - 1px);
+    height: calc(100dvh - 4rem - 1px);
+  }
+
+  .workbench-header-grid {
+    grid-template-columns: var(--workbench-history-width) minmax(0, 1fr) var(--workbench-results-width);
+    column-gap: 0;
+    padding-inline: 0;
+  }
+  .workbench-mode-controls {
+    grid-area: 1 / 1 / 2 / 3;
+    padding-left: 16px;
+    padding-right: 120px;
+  }
+  .workbench-detail {
+    grid-area: 1 / 2;
+    justify-self: end;
+    margin-right: var(--workbench-document-gutter);
+  }
+  .workbench-document-meta {
+    grid-area: 1 / 3;
+    padding-inline: 24px;
+  }
+  .workbench-history {
+    width: var(--workbench-history-width);
+  }
+  .workbench-results {
+    width: var(--workbench-results-width);
+  }
+}
+
+@media (min-width: 1280px) {
+  .workbench-theme {
+    --workbench-history-width: 264px;
+    --workbench-results-width: 360px;
+  }
+}
+
+@media (max-width: 639px) {
+  .workbench-theme {
+    --workbench-document-gutter: 16px;
+  }
+  .workbench-document-header {
+    position: relative;
+    top: auto;
+    padding-block: 16px;
+  }
+  .workbench-document {
+    padding: 20px 16px;
+  }
+  .workbench-theme .editor-surface,
+  .workbench-theme .preview-surface {
+    padding: 24px 20px 144px;
+  }
+  .workbench-results {
+    padding-bottom: 128px;
+  }
+  .workbench-toolbar {
+    bottom: max(12px, env(safe-area-inset-bottom));
+  }
+}
+
+@media (prefers-reduced-transparency: reduce) {
+  .toolbar-glass {
+    background: #f8fafc;
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
+}
+
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .toolbar-glass {
+    background: #f8fafc;
+  }
+}
+
 .fade-enter-active,
 .fade-leave-active {
   transition: opacity 0.15s ease;

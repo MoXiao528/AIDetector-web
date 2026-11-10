@@ -5,17 +5,17 @@ export default {
     extend: {
       colors: {
         primary: {
-          50: '#f6f8f6',
-          100: '#eef2ef',
-          200: '#dfe7e2',
-          300: '#c7d4cc',
-          400: '#9caf9f',
-          500: '#718579',
-          600: '#5b6b62',
-          700: '#4a5851',
-          800: '#38443e',
-          900: '#27302c',
-          950: '#151c19',
+          50: 'rgb(var(--primary-50, 246 248 246) / <alpha-value>)',
+          100: 'rgb(var(--primary-100, 238 242 239) / <alpha-value>)',
+          200: 'rgb(var(--primary-200, 223 231 226) / <alpha-value>)',
+          300: 'rgb(var(--primary-300, 199 212 204) / <alpha-value>)',
+          400: 'rgb(var(--primary-400, 156 175 159) / <alpha-value>)',
+          500: 'rgb(var(--primary-500, 113 133 121) / <alpha-value>)',
+          600: 'rgb(var(--primary-600, 91 107 98) / <alpha-value>)',
+          700: 'rgb(var(--primary-700, 74 88 81) / <alpha-value>)',
+          800: 'rgb(var(--primary-800, 56 68 62) / <alpha-value>)',
+          900: 'rgb(var(--primary-900, 39 48 44) / <alpha-value>)',
+          950: 'rgb(var(--primary-950, 21 28 25) / <alpha-value>)',
         },
         neutral: {
           50: '#fafafa',

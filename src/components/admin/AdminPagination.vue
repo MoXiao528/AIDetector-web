@@ -1,28 +1,29 @@
 <template>
-  <div class="flex flex-wrap items-center justify-between gap-3 rounded-3xl border border-white/10 bg-white/5 px-4 py-4">
-    <p class="text-sm text-slate-400">第 {{ page }} / {{ totalPages }} 页，共 {{ formatNumber(total) }} 条</p>
+  <div class="flex flex-wrap items-center justify-between gap-3 border-t border-slate-200 px-1 py-4">
+    <p class="text-sm text-slate-500">第 {{ page }} / {{ totalPages }} 页，共 {{ formatNumber(total) }} 条</p>
 
     <div class="flex flex-wrap items-center gap-2">
-      <button type="button" class="admin-page-btn" :disabled="loading || page <= 1" @click="changeTo(1)">首页</button>
-      <button type="button" class="admin-page-btn" :disabled="loading || page <= 1" @click="changeTo(page - 1)">上一页</button>
+      <button type="button" class="admin-page-btn liquid-glass" :disabled="loading || page <= 1" @click="changeTo(1)">首页</button>
+      <button type="button" class="admin-page-btn liquid-glass" :disabled="loading || page <= 1" @click="changeTo(page - 1)">上一页</button>
 
-      <div class="flex items-center gap-2 rounded-full border border-white/10 bg-slate-950/60 px-3 py-2">
-        <span class="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">跳页</span>
+      <div class="flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2">
+        <span class="text-xs font-medium text-slate-500">跳页</span>
         <input
           v-model="draftPage"
           type="text"
           inputmode="numeric"
           pattern="[0-9]*"
           class="admin-page-input"
+          aria-label="跳转页码"
           @input="sanitizeDraft"
           @keydown.enter.prevent="submitJump"
         />
         <span class="text-sm text-slate-500">/ {{ totalPages }}</span>
       </div>
 
-      <button type="button" class="admin-page-btn" :disabled="loading" @click="submitJump">前往</button>
-      <button type="button" class="admin-page-btn" :disabled="loading || page >= totalPages" @click="changeTo(page + 1)">下一页</button>
-      <button type="button" class="admin-page-btn" :disabled="loading || page >= totalPages" @click="changeTo(totalPages)">末页</button>
+      <button type="button" class="admin-page-btn liquid-glass" :disabled="loading" @click="submitJump">前往</button>
+      <button type="button" class="admin-page-btn liquid-glass" :disabled="loading || page >= totalPages" @click="changeTo(page + 1)">下一页</button>
+      <button type="button" class="admin-page-btn liquid-glass" :disabled="loading || page >= totalPages" @click="changeTo(totalPages)">末页</button>
     </div>
   </div>
 </template>
@@ -87,11 +88,11 @@ function formatNumber(value) {
 
 <style scoped>
 .admin-page-btn {
-  @apply inline-flex items-center justify-center rounded-full border border-white/10 bg-white/5 px-4 py-2 text-sm font-semibold text-slate-200 transition hover:border-white/20 hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-50;
+  @apply inline-flex items-center justify-center rounded-full px-3 py-2 text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-50;
 }
 
 .admin-page-input {
-  @apply w-16 border-0 bg-transparent p-0 text-center text-sm font-semibold text-white outline-none ring-0;
+  @apply w-12 border-0 bg-transparent p-0 text-center text-sm font-semibold text-slate-800 outline-none ring-0;
 }
 
 .admin-page-input::-webkit-outer-spin-button,

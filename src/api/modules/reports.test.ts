@@ -15,6 +15,8 @@ describe('exportPdfReport', () => {
       reportType: 'history',
       historyId: 42,
       locale: 'zh-CN',
+      includeEvidence: false,
+      timeZone: 'Asia/Shanghai',
     });
 
     const [, requestOptions] = fetchMock.mock.calls[0];
@@ -24,6 +26,8 @@ describe('exportPdfReport', () => {
       reportType: 'history',
       historyId: 42,
       locale: 'zh-CN',
+      includeEvidence: false,
+      timeZone: 'Asia/Shanghai',
     });
   });
 });

@@ -224,6 +224,7 @@ describe('scan store guest history boundary', () => {
   beforeEach(() => {
     setActivePinia(createPinia());
     vi.clearAllMocks();
+    exampleApiMocks.fetchScanExamples.mockReset().mockResolvedValue({});
     window.localStorage.clear();
     window.sessionStorage.clear();
     window.localStorage.setItem('guest_token', 'guest:sid-a:token');
@@ -577,19 +578,45 @@ describe('scan store guest history boundary', () => {
     expect(result?.evidence).toEqual(evidence);
   });
 
-  it('旧示例响应把第三类并入 Human，store 不再暴露第三个分桶', async () => {
+  it('旧接口不能覆盖首页长示例，使用示例仍兼容第三类合并', async () => {
     exampleApiMocks.fetchScanExamples.mockResolvedValueOnce({
-      heroExamples: [{ key: 'legacy-hero', content: 'hero', ai: 45, mixed: 25, human: 30 }],
+      heroExamples: [
+        { key: 'chatgpt', label: 'ChatGPT', content: '旧的短示例', ai: 45, mixed: 25, human: 30 },
+        { key: 'hybrid', label: 'AI + 人工', content: '旧的混合示例' },
+      ],
       usageExamples: [{ key: 'legacy-usage', content: 'usage', ai: 20, mixed: 15, human: 65 }],
     });
     const scanStore = useScanStore();
 
     await scanStore.loadExamples('zh-CN');
 
-    expect(scanStore.examples[0]).toMatchObject({ ai: 45, human: 55 });
-    expect(scanStore.examples[0]).not.toHaveProperty('mixed');
+    expect(scanStore.examples.map((example) => example.label)).toEqual(['AI', '人工写作']);
+    for (const example of scanStore.examples) {
+      expect(example.content.replace(/\s/g, '').length).toBeGreaterThanOrEqual(300);
+      expect(scanStore.applyExample(example.key)).toBe(example.content);
+      expect(scanStore.inputText).toBe(example.content);
+      expect(scanStore.editorHtml).toContain('<p>');
+      expect(scanStore.selectedExampleKey).toBe(example.key);
+      expect(scanStore.result).toBeNull();
+      expect(example).not.toHaveProperty('ai');
+      expect(example).not.toHaveProperty('human');
+    }
+    expect(scanApiMocks.detectText).not.toHaveBeenCalled();
     expect(scanStore.usageExamples[0]).toMatchObject({ ai: 20, human: 80 });
     expect(scanStore.usageExamples[0]).not.toHaveProperty('mixed');
+  });
+
+  it('示例接口不可用时中英文仍提供可送检的两种示例', async () => {
+    exampleApiMocks.fetchScanExamples.mockRejectedValue(new Error('offline'));
+    const scanStore = useScanStore();
+    await flushPromises();
+    await scanStore.loadExamples('en-US');
+
+    expect(scanStore.examples.map((example) => example.label)).toEqual(['AI', 'Human']);
+    expect(scanStore.examples.every((example) => example.content.replace(/\s/g, '').length >= 300)).toBe(true);
+    expect(scanStore.examples.find((example) => example.key === 'human')?.content).toContain('我所记得的故乡全不如此');
+    expect(scanStore.applyExample('human')).toBe(scanStore.inputText);
+    expect(scanStore.usageExamples.length).toBeGreaterThan(0);
   });
 
   it('未 opt-in 的游客正文、HTML 和完整分析只留当前 Pinia，新实例不从 Web Storage 恢复', async () => {

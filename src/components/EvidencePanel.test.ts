@@ -78,6 +78,22 @@ const mountPanel = (
   props: { detailed?: boolean; submittedText?: string; initialDimension?: EvidenceSignal['dimension']; initialShowAll?: boolean } = {},
 ) => mount(Harness, { props: { evidence, ...props }, global: { plugins: [createI18n()] } });
 
+const toggleAll = async (wrapper: ReturnType<typeof mountPanel>) => {
+  const button = wrapper.find('[data-testid="evidence-show-all"]');
+  if (!button.exists()) return;
+  const recommended = wrapper.find('[data-testid="evidence-show-recommended"]');
+  const target = recommended.exists() && button.attributes('aria-pressed') === 'true' ? recommended : button;
+  await target.trigger('click');
+};
+
+// Native details toggles are not simulated by jsdom clicks, so dispatch the browser's toggle event.
+const toggleNotes = async (wrapper: ReturnType<typeof mountPanel>) => {
+  const details = wrapper.get('[data-testid="evidence-professional"]');
+  const element = details.element as HTMLDetailsElement;
+  element.open = !element.open;
+  await details.trigger('toggle');
+};
+
 describe('EvidencePanel', () => {
   it.each([false, true])('关闭展示时隐藏概要和详情中的所有 Evidence 内容及入口（detailed=%s）', async (detailed) => {
     vi.stubEnv('VITE_EVIDENCE_ENABLED', 'false');
@@ -155,7 +171,7 @@ describe('EvidencePanel', () => {
     expect(wrapper.get('[data-dimension="rhythm"]').attributes('aria-pressed')).toBe('true');
   });
 
-  it('词汇多样性默认展示含义和解读边界，同时保留 MATTR 数值、百分位及专业数据', async () => {
+  it('默认只展示具体参考关系和图形，定义与真实数值统一放入折叠说明', async () => {
     const evidence = makeEvidence();
     Object.assign(evidence.signals[0], {
       observed: 0.73231, humanPercentile: 42.5,
@@ -166,29 +182,28 @@ describe('EvidencePanel', () => {
     const card = wrapper.get('[data-summary-metric="mattr"]');
     expect(wrapper.get('[data-dimension="lexical"]').text()).toBe('词汇多样性');
     expect(card.get('h4').text()).toBe('词汇多样性');
-    expect(card.text()).toContain('词汇多样性指数（MATTR）');
-    expect(card.text()).toContain('0.7323');
-    expect(card.get('[data-range-label="human"]').text()).toBe('0.6 – 0.8');
+    expect(card.get('[data-testid="range-comparison-summary"]').text()).toBe('落在人工常见范围内，且低于 AI 常见范围。');
+    expect(card.text()).not.toMatch(/MATTR|0\.7323|0\.6|0\.8|百分位/);
     expect(card.find('[data-testid="reference-values"]').exists()).toBe(true);
-    expect(card.find('[data-testid="metric-definition"]').exists()).toBe(false);
-    const method = card.get('details[data-testid="range-method"]');
-    expect(method.attributes('open')).toBeUndefined();
-    expect(method.get('summary').text()).toBe('范围如何得出');
-    expect(method.text()).toContain('中间约 90%');
-    expect(method.text()).toContain('10 组有效配对来源');
-    expect(card.get('[data-testid="lexical-definition"]').isVisible()).toBe(true);
-    const context = card.get('[data-testid="lexical-context"]');
-    expect(context.isVisible()).toBe(true);
-    for (const term of ['主题词', '称谓', '术语', '重复很正常', '不能单独判断是否由 AI 生成']) expect(context.text()).toContain(term);
-    expect(wrapper.get('[data-metric="mattr"] [data-value="observed"]').text()).toBe('0.7323');
-    expect(wrapper.get('[data-metric="mattr"] [data-value="human-percentile"]').text()).toBe('42.5');
+    expect(card.find('details, [data-testid="lexical-definition"], [data-testid="lexical-context"]').exists()).toBe(false);
+    expect(wrapper.findAll('details')).toHaveLength(1);
+    const notes = wrapper.get('[data-testid="evidence-professional"]');
+    expect(notes.attributes('open')).toBeUndefined();
+    expect(notes.get('summary').text()).toBe('全部指标数据与参考说明');
+    const row = wrapper.get('[data-metric="mattr"]');
+    expect(row.get('[data-testid="metric-definition"]').text()).toContain('按固定长度的文本片段');
+    expect(row.get('[data-value="observed"]').text()).toBe('0.7323');
+    expect(row.get('[data-value="human"]').text()).toBe('0.6 – 0.8');
+    expect(row.get('[data-value="human-percentile"]').text()).toBe('42.5');
+    expect(row.text()).toContain('10 组有效配对来源');
+    expect(notes.text()).toContain('中间约 90%');
     expect(JSON.stringify(evidence)).toBe(original);
     wrapper.vm.setLocale('en-US');
     await nextTick();
     expect(wrapper.get('[data-dimension="lexical"]').text()).toBe('Lexical diversity');
     expect(card.get('h4').text()).toBe('Lexical diversity');
-    expect(card.text()).toContain('MATTR');
-    expect(card.text()).not.toMatch(/scan\.evidence\.|[\u4e00-\u9fff]/);
+    expect(card.text()).not.toContain('MATTR');
+    expect(wrapper.text()).not.toMatch(/scan\.evidence\.|[\u4e00-\u9fff]/);
   });
 
   it('所有语言均移除词汇列表，重复词组和句首示例仍保留原次数和安全边界', async () => {
@@ -229,15 +244,15 @@ describe('EvidencePanel', () => {
     expect(wrapper.get('[data-testid="evidence-examples"]').text()).toContain('Alpha');
     expect(wrapper.text()).not.toContain('Beta');
 
-    await wrapper.get('[data-testid="evidence-show-all"]').trigger('click');
+    await toggleAll(wrapper);
     expect(wrapper.findAll('[data-testid="evidence-examples"]')).toHaveLength(2);
     expect(wrapper.text()).toContain('Beta');
   });
 
-  it('词汇多样性三种参考关系使用局部变化文案，不重新解释 AI 参考方向', async () => {
+  it('词汇多样性默认只保留具体参考关系，不叠加第二条概括', async () => {
     const evidence = makeEvidence();
     const wrapper = mountPanel(evidence);
-    const messages = { below: '局部用词变化较少', within: '用词变化处于参考样本的常见范围', above: '局部用词变化较多' } as const;
+    const messages = { below: '超出两类常见范围', within: '落在人工常见范围内，且低于 AI 常见范围。', above: '超出两类常见范围' } as const;
     for (const relation of ['below', 'within', 'above'] as const) {
       await wrapper.setProps({ evidence: {
         ...evidence,
@@ -245,7 +260,7 @@ describe('EvidencePanel', () => {
           ? { ...signal, relation: { human: relation, ai: 'below' as const } } : signal),
       } });
       if (relation !== 'within') {
-        await wrapper.get('[data-testid="evidence-show-all"]').trigger('click');
+        await toggleAll(wrapper);
         await wrapper.get('[data-dimension="lexical"]').trigger('click');
       }
       expect(wrapper.get('[data-summary-metric="mattr"]').text()).toContain(messages[relation]);
@@ -259,7 +274,7 @@ describe('EvidencePanel', () => {
     const professional = wrapper.get('details[data-testid="evidence-professional"]');
     expect(professional.attributes('open')).toBeUndefined();
     expect(wrapper.findAll('[data-metric]')).toHaveLength(22);
-    expect(professional.findAll('thead th')).toHaveLength(4);
+    expect(professional.findAll('thead th')).toHaveLength(3);
     expect(wrapper.find('[data-value="sample-count"]').exists()).toBe(false);
     for (const definition of wrapper.findAll('[data-testid="metric-definition"]')) expect(definition.attributes('open')).toBeUndefined();
     expect(professional.findAll('[data-metric]').map((row) => row.attributes('data-metric')))
@@ -276,22 +291,23 @@ describe('EvidencePanel', () => {
     evidence.signals[3].referenceRanges = null;
     const original = JSON.stringify(evidence);
     const wrapper = mountPanel(evidence);
-    expect(wrapper.findAll('[data-metric]')).toHaveLength(18);
-    for (const metric of metrics.lexical.slice(0, 4)) expect(wrapper.find(`[data-metric="${metric}"]`).exists()).toBe(false);
+    expect(wrapper.findAll('[data-metric]')).toHaveLength(22);
+    for (const metric of metrics.lexical.slice(0, 4)) expect(wrapper.find(`[data-summary-metric="${metric}"]`).exists()).toBe(false);
+    expect(wrapper.get('[data-testid="evidence-professional"]').attributes('open')).toBeUndefined();
     expect(wrapper.find('[data-dimension="lexical"]').exists()).toBe(false);
     expect(wrapper.get('[data-dimension="phrase_template"]').attributes('aria-pressed')).toBe('true');
-    expect(wrapper.get('[data-testid="evidence-show-all"]').text()).toContain('4 项');
-    expect(wrapper.get('[data-value="coverage"]').text()).toBe('100%');
-    await wrapper.get('[data-testid="evidence-show-all"]').trigger('click');
-    expect(wrapper.get('[data-testid="evidence-show-all"]').attributes('aria-pressed')).toBe('true');
+    expect(wrapper.find('[data-value="coverage"]').exists()).toBe(false);
+    expect(evidence.quality.coverage).toBe(1);
+    await toggleAll(wrapper);
+    expect(wrapper.get('[data-testid="evidence-professional"]').attributes('open')).toBeUndefined();
     expect(wrapper.findAll('[data-metric]')).toHaveLength(22);
-    expect(wrapper.get('[data-metric="mattr"] [data-testid="high-overlap"]').text()).toContain('参考区间高度重叠');
+    expect(wrapper.get('[data-metric="mattr"] [data-testid="high-overlap"]').text()).toContain('两类参考范围重叠较多');
     expect(wrapper.find('[data-metric="token_entropy"] [data-testid="high-overlap"]').exists()).toBe(false);
     await wrapper.get('[data-dimension="lexical"]').trigger('click');
-    expect(wrapper.get('[data-summary-metric="mattr"] [data-testid="high-overlap"]').text()).toContain('本次不建议参考');
-    await wrapper.setProps({ detailed: false });
-    expect(wrapper.get('[data-testid="evidence-summary"][data-dimension="lexical"]').text()).toContain('参考区间高度重叠');
-    await wrapper.get('[data-testid="evidence-show-all"]').trigger('click');
+    expect(wrapper.get('[data-summary-metric="mattr"] [data-testid="high-overlap"]').text()).toContain('本项区分来源的作用有限');
+    await wrapper.setProps({ detailed: false, initialShowAll: true });
+    expect(wrapper.get('[data-testid="evidence-summary"][data-dimension="lexical"]').text()).toContain('两类参考范围重叠较多');
+    await toggleAll(wrapper);
     expect(wrapper.find('[data-dimension="lexical"]').exists()).toBe(false);
     expect(wrapper.findAll('[data-testid="evidence-summary"]')).toHaveLength(3);
     expect(JSON.stringify(evidence)).toBe(original);
@@ -303,13 +319,16 @@ describe('EvidencePanel', () => {
     const original = JSON.stringify(evidence);
     const wrapper = mountPanel(evidence);
     expect(wrapper.get('[data-testid="evidence-empty-selection"]').text()).toBe('本次写作特点未提供清晰的区间差异，暂不能为来源判断提供补充依据。');
-    expect(wrapper.find('[data-testid="evidence-dimension"], [data-testid="evidence-explanation"], [data-metric]').exists()).toBe(false);
-    await wrapper.get('[data-testid="evidence-show-all"]').trigger('click');
+    expect(wrapper.text()).not.toContain('默认展示本次有明确区间差异的指标');
+    expect(wrapper.find('[data-testid="evidence-dimension"], [data-testid="evidence-explanation"]').exists()).toBe(false);
+    expect(wrapper.findAll('[data-metric]')).toHaveLength(22);
+    expect(wrapper.get('[data-testid="evidence-professional"]').attributes('open')).toBeUndefined();
+    await toggleAll(wrapper);
     expect(wrapper.find('[data-testid="evidence-empty-selection"]').exists()).toBe(false);
     expect(wrapper.findAll('[data-testid="evidence-dimension"]')).toHaveLength(4);
     expect(wrapper.findAll('[data-metric]')).toHaveLength(22);
     expect(wrapper.findAll('[data-metric] [data-testid="high-overlap"]')).toHaveLength(22);
-    await wrapper.get('[data-testid="evidence-show-all"]').trigger('click');
+    await toggleAll(wrapper);
     expect(wrapper.find('[data-testid="evidence-empty-selection"]').exists()).toBe(true);
     expect(JSON.stringify(evidence)).toBe(original);
   });
@@ -329,10 +348,12 @@ describe('EvidencePanel', () => {
     }
     const original = JSON.stringify(evidence);
     const wrapper = mountPanel(evidence);
-    expect(wrapper.findAll('[data-metric]').map((row) => row.attributes('data-metric'))).toEqual(['repeat_ngram_coverage', 'sentence_length_median']);
+    expect(wrapper.findAll('[data-metric]').map((row) => row.attributes('data-metric'))).toEqual(Object.keys(relations));
+    expect(wrapper.find('[data-summary-metric="mattr"], [data-summary-metric="transition_per_1k"]').exists()).toBe(false);
     expect(wrapper.findAll('[data-testid="evidence-dimension"]').map((button) => button.attributes('data-dimension'))).toEqual(['phrase_template', 'rhythm']);
-    expect(wrapper.get('[data-value="coverage"]').text()).toBe('100%');
-    await wrapper.get('[data-testid="evidence-show-all"]').trigger('click');
+    expect(wrapper.find('[data-value="coverage"]').exists()).toBe(false);
+    expect(evidence.quality.coverage).toBe(1);
+    await toggleAll(wrapper);
     expect(wrapper.findAll('[data-metric]')).toHaveLength(4);
     await wrapper.get('[data-dimension="lexical"]').trigger('click');
     expect(wrapper.get('[data-summary-metric="mattr"] [data-testid="range-comparison-summary"]').attributes('data-comparison-state')).toBe('both');
@@ -352,9 +373,10 @@ describe('EvidencePanel', () => {
     const wrapper = mountPanel(evidence, { detailed: false });
     expect(wrapper.find('[data-testid="evidence-summary"]').exists()).toBe(false);
     expect(wrapper.get('[data-testid="evidence-empty-selection"]').text()).toBe('本次写作特点未提供清晰的区间差异，暂不能为来源判断提供补充依据。');
-    await wrapper.get('[data-testid="evidence-show-all"]').trigger('click');
+    expect(wrapper.text()).not.toContain('默认展示本次有明确区间差异的指标');
+    await toggleAll(wrapper);
     expect(wrapper.findAll('[data-testid="evidence-summary"]')).toHaveLength(4);
-    expect(wrapper.text()).not.toContain('参考区间高度重叠');
+    expect(wrapper.text()).not.toContain('两类参考范围重叠较多');
     expect(JSON.stringify(evidence)).toBe(original);
   });
 
@@ -362,11 +384,11 @@ describe('EvidencePanel', () => {
     const evidence = makeEvidence();
     evidence.signals[0].referenceRanges = { human: [0, 1], ai: [0, 1] };
     const wrapper = mountPanel(evidence, { initialDimension: 'rhythm' });
-    await wrapper.get('[data-testid="evidence-show-all"]').trigger('click');
+    await toggleAll(wrapper);
     await wrapper.get('[data-dimension="discourse"]').trigger('click');
     expect(wrapper.get('[data-dimension="discourse"]').attributes('aria-pressed')).toBe('true');
     await wrapper.setProps({ evidence: { ...evidence, signals: [...evidence.signals] } });
-    expect(wrapper.get('[data-testid="evidence-show-all"]').attributes('aria-pressed')).toBe('false');
+    expect(wrapper.get('[data-testid="evidence-professional"]').attributes('open')).toBeUndefined();
     expect(wrapper.get('[data-dimension="rhythm"]').attributes('aria-pressed')).toBe('true');
     await wrapper.setProps({ initialDimension: 'lexical' });
     expect(wrapper.find('[data-dimension="lexical"]').exists()).toBe(false);
@@ -384,16 +406,164 @@ describe('EvidencePanel', () => {
     await compact.findAll('button').find((button) => button.text() === '查看依据')!.trigger('click');
     expect(compact.getComponent(EvidencePanel).emitted('view-details')?.slice(-1)[0]).toEqual(['lexical', true]);
     const detail = mountPanel(evidence, { initialDimension: 'lexical', initialShowAll: true });
+    expect(detail.get('[data-testid="evidence-professional"]').attributes('open')).toBeUndefined();
     expect(detail.get('[data-testid="evidence-show-all"]').attributes('aria-pressed')).toBe('true');
     expect(detail.get('[data-dimension="lexical"]').attributes('aria-pressed')).toBe('true');
-    expect(detail.get('[data-summary-metric="mattr"] [data-testid="high-overlap"]').text()).toContain('参考区间高度重叠');
+    expect(detail.get('[data-summary-metric="mattr"] [data-testid="high-overlap"]').text()).toContain('两类参考范围重叠较多');
     await detail.setProps({ initialShowAll: false });
     expect(detail.find('[data-dimension="lexical"]').exists()).toBe(false);
     await detail.setProps({ initialShowAll: true });
     expect(detail.find('[data-dimension="lexical"]').exists()).toBe(true);
     await detail.setProps({ evidence: { ...evidence, signals: [...evidence.signals] } });
-    expect(detail.get('[data-testid="evidence-show-all"]').attributes('aria-pressed')).toBe('false');
+    expect(detail.get('[data-testid="evidence-professional"]').attributes('open')).toBeUndefined();
     expect(detail.find('[data-dimension="lexical"]').exists()).toBe(false);
+  });
+
+  it('范围切换与详细数据折叠独立，单维隐藏切换、全部范围保留原文示例', async () => {
+    const evidence = makeEvidence();
+    for (const signal of evidence.signals.slice(1)) signal.referenceRanges = { human: [0, 1], ai: [0, 1] };
+    evidence.patterns!.repeated_phrases = [{ count: 2, offsets: [{ start: 0, end: 4 }] }];
+    const original = JSON.stringify(evidence);
+    const wrapper = mountPanel(evidence, { submittedText: '重复片段，重复片段。' });
+    const panel = wrapper.getComponent(EvidencePanel);
+    const notes = wrapper.get('[data-testid="evidence-professional"]');
+    const scope = wrapper.get('[data-testid="evidence-show-all"]');
+    expect(scope.text()).toBe('全部写作特点');
+    expect(scope.element.closest('header')).toBeNull();
+    expect(wrapper.get('[data-testid="evidence-scope-control"]').findAll('button')).toHaveLength(2);
+    expect(scope.text()).not.toMatch(/21|22/);
+    expect(wrapper.find('[data-testid="evidence-dimension"]').exists()).toBe(false);
+    expect(wrapper.get('[data-testid="evidence-explanation"]').attributes('data-summary-metric')).toBe('mattr');
+    expect(wrapper.find('[data-testid="evidence-examples"]').exists()).toBe(false);
+    expect(wrapper.findAll('details')).toHaveLength(1);
+
+    await toggleNotes(wrapper);
+    expect(notes.attributes('open')).toBe('');
+    expect(scope.attributes('aria-pressed')).toBe('false');
+    expect(wrapper.find('[data-testid="evidence-dimension"]').exists()).toBe(false);
+    expect(panel.emitted('update:showAll')).toBeUndefined();
+
+    await toggleAll(wrapper);
+    expect(notes.attributes('open')).toBe('');
+    expect(scope.text()).toBe('全部写作特点');
+    expect(wrapper.get('[data-testid="evidence-show-recommended"]').text()).toBe('本次差异');
+    expect(wrapper.findAll('[data-testid="evidence-dimension"]')).toHaveLength(4);
+    expect(wrapper.findAll('[data-metric]')).toHaveLength(22);
+    await wrapper.get('[data-dimension="phrase_template"]').trigger('click');
+    expect(wrapper.get('[data-testid="evidence-examples"] li').text()).toBe('重复片段出现 2 次');
+    expect(wrapper.findAll('[data-testid="evidence-examples"]')).toHaveLength(1);
+
+    await toggleNotes(wrapper);
+    expect(notes.attributes('open')).toBeUndefined();
+    expect(scope.attributes('aria-pressed')).toBe('true');
+    expect(wrapper.findAll('[data-testid="evidence-dimension"]')).toHaveLength(4);
+    expect(wrapper.get('[data-dimension="phrase_template"]').attributes('aria-pressed')).toBe('true');
+    expect(wrapper.find('[data-testid="evidence-examples"]').exists()).toBe(true);
+    expect(panel.emitted('update:showAll')).toEqual([[true]]);
+
+    await toggleNotes(wrapper);
+    await wrapper.setProps({ initialShowAll: true });
+    await wrapper.setProps({ initialShowAll: false });
+    expect(notes.attributes('open')).toBe('');
+    expect(scope.attributes('aria-pressed')).toBe('false');
+    expect(wrapper.find('[data-testid="evidence-dimension"], [data-testid="evidence-examples"]').exists()).toBe(false);
+    expect(wrapper.get('[data-testid="evidence-explanation"]').attributes('data-summary-metric')).toBe('mattr');
+    expect(panel.emitted('update:showAll')).toEqual([[true]]);
+    await wrapper.setProps({ evidence: { ...evidence, signals: [...evidence.signals] } });
+    expect(notes.attributes('open')).toBeUndefined();
+    expect(scope.attributes('aria-pressed')).toBe('false');
+    expect(JSON.stringify(evidence)).toBe(original);
+  });
+
+  it.each([false, true])('范围按钮发出同步事件，外部属性同步不反向发事件或展开数据（detailed=%s）', async (detailed) => {
+    const evidence = makeEvidence();
+    evidence.signals[0].referenceRanges = { human: [0, 1], ai: [0, 1] };
+    const original = JSON.stringify(evidence);
+    const wrapper = mountPanel(evidence, { detailed });
+    const panel = wrapper.getComponent(EvidencePanel);
+    const scope = wrapper.get('[data-testid="evidence-show-all"]');
+    expect(scope.attributes('aria-pressed')).toBe('false');
+    await scope.trigger('click');
+    expect(scope.attributes('aria-pressed')).toBe('true');
+    expect(panel.emitted('update:showAll')).toEqual([[true]]);
+    await toggleAll(wrapper);
+    expect(scope.attributes('aria-pressed')).toBe('false');
+    expect(panel.emitted('update:showAll')).toEqual([[true], [false]]);
+    await wrapper.setProps({ initialShowAll: true });
+    expect(scope.attributes('aria-pressed')).toBe('true');
+    expect(wrapper.find('[data-dimension="lexical"]').exists()).toBe(true);
+    await wrapper.setProps({ initialShowAll: false });
+    expect(scope.attributes('aria-pressed')).toBe('false');
+    expect(wrapper.find('[data-dimension="lexical"]').exists()).toBe(false);
+    expect(panel.emitted('update:showAll')).toEqual([[true], [false]]);
+    if (detailed) expect(wrapper.get('[data-testid="evidence-professional"]').attributes('open')).toBeUndefined();
+    expect(JSON.stringify(evidence)).toBe(original);
+  });
+
+  it('详细范围始终显示两个选项，重复点击当前选项不反向切换或发事件', async () => {
+    // All metrics are already recommended; the detailed control remains explicit and visible.
+    const wrapper = mountPanel();
+    const panel = wrapper.getComponent(EvidencePanel);
+    const control = wrapper.get('[data-testid="evidence-scope-control"]');
+    const recommended = control.get('[data-testid="evidence-show-recommended"]');
+    const all = control.get('[data-testid="evidence-show-all"]');
+    const selection = control.get('[data-testid="evidence-scope-selection"]');
+    expect(control.findAll('button')).toHaveLength(2);
+    expect(recommended.text()).toBe('本次差异');
+    expect(all.text()).toBe('全部写作特点');
+    expect(recommended.attributes('aria-pressed')).toBe('true');
+    expect(all.attributes('aria-pressed')).toBe('false');
+    expect(selection.classes()).not.toContain('is-all');
+    await recommended.trigger('click');
+    expect(panel.emitted('update:showAll')).toBeUndefined();
+    expect(recommended.attributes('aria-pressed')).toBe('true');
+
+    await all.trigger('click');
+    expect(recommended.attributes('aria-pressed')).toBe('false');
+    expect(all.attributes('aria-pressed')).toBe('true');
+    expect(selection.classes()).toContain('is-all');
+    expect(panel.emitted('update:showAll')).toEqual([[true]]);
+    await all.trigger('click');
+    expect(all.attributes('aria-pressed')).toBe('true');
+    expect(panel.emitted('update:showAll')).toEqual([[true]]);
+
+    await recommended.trigger('click');
+    expect(selection.classes()).not.toContain('is-all');
+    expect(recommended.attributes('aria-pressed')).toBe('true');
+    expect(panel.emitted('update:showAll')).toEqual([[true], [false]]);
+    const notes = wrapper.get('[data-testid="evidence-professional"]');
+    expect(notes.get('summary').text()).toBe('全部指标数据与参考说明');
+    expect(notes.attributes('open')).toBeUndefined();
+    await toggleNotes(wrapper);
+    expect(notes.get('[data-testid="evidence-data-scope-note"]').text()).toBe('以下包含全部写作特点的指标数据。');
+    expect(notes.findAll('[data-metric]')).toHaveLength(22);
+    expect(recommended.attributes('aria-pressed')).toBe('true');
+    expect(panel.emitted('update:showAll')).toEqual([[true], [false]]);
+  });
+
+  it('insufficient 历史保存的原值区间和关系仍可查阅，但不新增比较结论或图', async () => {
+    const evidence = makeEvidence('insufficient');
+    Object.assign(evidence.signals[0], {
+      observed: 0, humanPercentile: 7.5, aiPercentile: 0,
+      referenceRanges: { human: [0, 0.4], ai: [0.5, 0.9] },
+      referenceExtent: [0, 1], relation: { human: 'within', ai: 'below' },
+    });
+    const original = JSON.stringify(evidence);
+    const wrapper = mountPanel(evidence);
+    await toggleAll(wrapper);
+    const row = wrapper.get('[data-metric="mattr"]');
+    expect(row.get('[data-value="observed"]').text()).toBe('0');
+    expect(row.get('[data-value="human"]').text()).toBe('0 – 0.4');
+    expect(row.get('[data-value="ai"]').text()).toBe('0.5 – 0.9');
+    expect(row.get('[data-value="human-percentile"]').text()).toBe('7.5');
+    expect(row.get('[data-value="ai-percentile"]').text()).toBe('0');
+    expect(row.get('[data-value="human-relation"]').text()).toBe('范围内');
+    expect(row.get('[data-value="ai-relation"]').text()).toBe('低于范围');
+    expect(row.get('[data-testid="metric-comparison"]').text()).toBe('已计算，暂不作范围比较。');
+    const card = wrapper.get('[data-summary-metric="mattr"]');
+    expect(card.find('[data-testid="range-comparison-summary"], [data-testid="reference-values"]').exists()).toBe(false);
+    expect(card.text()).not.toMatch(/较多|较少|常见范围/);
+    expect(JSON.stringify(evidence)).toBe(original);
   });
 
   it('句长在单轨上按整体参考端点归一化，观察点独立于样本百分位', () => {
@@ -407,13 +577,14 @@ describe('EvidencePanel', () => {
     const original = JSON.stringify(evidence);
     const wrapper = mountPanel(evidence, { initialDimension: 'rhythm', initialShowAll: true });
     const card = wrapper.get('[data-summary-metric="sentence_length_median"]');
-    expect(card.get('[data-range-label="human"]').text()).toBe('10 – 20');
-    expect(card.get('[data-range-label="ai"]').text()).toBe('30 – 40');
-    expect(card.get('[data-testid="reference-ticks"]').findAll('span').map((tick) => tick.text())).toEqual(['0%', '25%', '50%', '75%', '100%']);
-    expect(card.get('[data-axis-min]').attributes('data-axis-min')).toBe('0');
-    expect(card.get('[data-axis-max]').attributes('data-axis-max')).toBe('100');
-    expect(card.get('[data-axis-min]').text()).toBe('0% 对应 0');
-    expect(card.get('[data-axis-max]').text()).toBe('100% 对应 100');
+    const row = wrapper.get('[data-metric="sentence_length_median"]');
+    expect(row.get('[data-value="human"]').text()).toBe('10 – 20');
+    expect(row.get('[data-value="ai"]').text()).toBe('30 – 40');
+    expect(card.get('[data-testid="reference-scale"]').findAll('span').map((tick) => tick.text())).toEqual(['低', '高']);
+    expect(wrapper.get('[data-metric="' + card.attributes('data-summary-metric') + '"] [data-axis-min]').attributes('data-axis-min')).toBe('0');
+    expect(wrapper.get('[data-metric="' + card.attributes('data-summary-metric') + '"] [data-axis-max]').attributes('data-axis-max')).toBe('100');
+    expect(row.get('[data-axis-min]').text()).toBe('0');
+    expect(row.get('[data-axis-max]').text()).toBe('100');
     expect(card.findAll('[data-testid="single-range-track"]')).toHaveLength(1);
     expect(card.findAll('[data-testid="observed-marker"]')).toHaveLength(1);
     expect(parseFloat((card.get('[data-testid="observed-marker"]').element as HTMLElement).style.left)).toBe(25);
@@ -428,11 +599,12 @@ describe('EvidencePanel', () => {
     expect(parseFloat((ai.element as HTMLElement).style.left)).toBe(30);
     expect(card.find('[data-testid="overlap-range-band"]').exists()).toBe(false);
     expect(wrapper.get('[data-metric="sentence_length_median"] [data-value="human-percentile"]').text()).toBe('3');
-    const method = card.get('details[data-testid="range-method"]');
-    expect(method.attributes('open')).toBeUndefined();
+    const method = wrapper.get('[data-testid="evidence-professional"]');
+    expect(card.find('details').exists()).toBe(false);
     expect(method.text()).toContain('第 5 和第 95 百分位');
     expect(method.text()).toContain('10 组有效配对来源');
-    expect(wrapper.text()).toContain('百分比仅表示图中相对位置，不是 AI 概率或样本百分位');
+    expect(wrapper.text()).toContain('写作特点仅作辅助参考，不代表 AI 生成概率。');
+    expect(card.text()).not.toContain('%');
     expect(wrapper.text()).not.toContain('无量纲');
     expect(JSON.stringify(evidence)).toBe(original);
   });
@@ -451,14 +623,14 @@ describe('EvidencePanel', () => {
       });
       const original = JSON.stringify(evidence);
       await wrapper.setProps({ evidence });
-      if (observed > 100) await wrapper.get('[data-testid="evidence-show-all"]').trigger('click');
+      if (observed > 100) await toggleAll(wrapper);
       const card = wrapper.get('[data-summary-metric="sentence_length_median"]');
-      expect(card.get('[data-axis-min]').attributes('data-axis-min')).toBe('0');
-      expect(card.get('[data-axis-max]').attributes('data-axis-max')).toBe('100');
+      expect(wrapper.get('[data-metric="' + card.attributes('data-summary-metric') + '"] [data-axis-min]').attributes('data-axis-min')).toBe('0');
+      expect(wrapper.get('[data-metric="' + card.attributes('data-summary-metric') + '"] [data-axis-max]').attributes('data-axis-max')).toBe('100');
       expect(parseFloat((card.get('[data-testid="human-range-band"]').element as HTMLElement).style.left)).toBe(start);
       expect(parseFloat((card.get('[data-testid="observed-marker"]').element as HTMLElement).style.left)).toBeCloseTo(Math.min(observed, 100));
       expect(card.find('[data-testid="outside-reference"]').exists()).toBe(observed > 100);
-      expect(card.text()).toContain('同语言全部可用参考样本（跨领域、长度）');
+      expect(wrapper.get('[data-testid="reference-source"]').text()).toContain('同语言、同指标全部可用参考统计');
       expect(JSON.stringify(evidence)).toBe(original);
     }
   });
@@ -473,9 +645,7 @@ describe('EvidencePanel', () => {
     const original = JSON.stringify(evidence);
     const wrapper = mountPanel(evidence);
     const card = wrapper.get('[data-summary-metric="mattr"]');
-    expect(card.text()).toContain('0.3214');
-    expect(card.get('[data-range-label="human"]').text()).toBe('0.2 – 0.5');
-    expect(card.get('[data-range-label="ai"]').text()).toBe('0.6 – 0.9');
+    expect(card.text()).not.toContain('0.3214');
     expect(card.get('[data-testid="reference-extent-unavailable"]').text()).toContain('未保存可用的整体参考范围');
     expect(card.find('[data-testid="reference-values"], [data-testid="observed-marker"], [data-testid="reference-ticks"]').exists()).toBe(false);
     expect(card.get('[data-testid="range-comparison-summary"]').attributes('data-comparison-state')).toBe('human');
@@ -509,7 +679,7 @@ describe('EvidencePanel', () => {
       await wrapper.setProps({ evidence });
       if (state === 'both' || state === 'neither') {
         expect(wrapper.find('[data-summary-metric="mattr"]').exists()).toBe(false);
-        await wrapper.get('[data-testid="evidence-show-all"]').trigger('click');
+        await toggleAll(wrapper);
         await wrapper.get('[data-dimension="lexical"]').trigger('click');
       }
       const card = wrapper.get('[data-summary-metric="mattr"]');
@@ -540,15 +710,16 @@ describe('EvidencePanel', () => {
       });
       const original = JSON.stringify(evidence);
       await wrapper.setProps({ evidence });
-      await wrapper.get('[data-testid="evidence-show-all"]').trigger('click');
+      await toggleAll(wrapper);
       await wrapper.get('[data-dimension="lexical"]').trigger('click');
       const card = wrapper.get('[data-summary-metric="mattr"]');
-      expect(card.get('[data-axis-min]').attributes('data-axis-min')).toBe('0');
-      expect(card.get('[data-axis-max]').attributes('data-axis-max')).toBe('1');
+      expect(wrapper.get('[data-metric="' + card.attributes('data-summary-metric') + '"] [data-axis-min]').attributes('data-axis-min')).toBe('0');
+      expect(wrapper.get('[data-metric="mattr"] [data-axis-max]').attributes('data-axis-max')).toBe('1');
       expect(card.findAll('[data-testid="observed-marker"]')).toHaveLength(1);
       expect(parseFloat((card.get('[data-testid="observed-marker"]').element as HTMLElement).style.left)).toBe(position);
       expect(card.get('[data-testid="edge-arrow"]').text()).toBe(arrow);
-      expect(card.get('[data-testid="outside-reference"]').text()).toContain(String(observed));
+      expect(card.get('[data-testid="outside-reference"]').text()).toContain(relation === 'below' ? '低于图示范围' : '高于图示范围');
+      expect(wrapper.get('[data-metric="mattr"] [data-value="observed"]').text()).toBe(String(observed));
       expect(card.get('[data-testid="range-comparison-summary"]').attributes('data-comparison-state')).toBe('neither');
       expect(JSON.stringify(evidence)).toBe(original);
     }
@@ -564,7 +735,8 @@ describe('EvidencePanel', () => {
     const original = JSON.stringify(evidence);
     const wrapper = mountPanel(evidence, { initialShowAll: true });
     const card = wrapper.get('[data-summary-metric="mattr"]');
-    expect(card.get('[data-testid="degenerate-range"]').text()).toContain('整体参考范围为单点 0.5');
+    expect(card.get('[data-testid="degenerate-range"]').text()).toContain('整体参考范围为单点');
+    expect(wrapper.get('[data-metric="mattr"] [data-axis-min]').text()).toBe('0.5');
     expect(card.find('[data-testid="reference-ticks"], [data-axis-min], [data-axis-max]').exists()).toBe(false);
     expect(card.findAll('[data-testid="single-range-track"]')).toHaveLength(1);
     expect(card.findAll('[data-testid="observed-marker"]')).toHaveLength(1);
@@ -582,12 +754,12 @@ describe('EvidencePanel', () => {
     evidence.artifactVersion = artifactVersion;
     const original = JSON.stringify(evidence);
     const wrapper = mountPanel(evidence);
-    const source = wrapper.get('details[data-testid="reference-source"]');
-    expect(source.attributes('open')).toBeUndefined();
+    const source = wrapper.get('[data-testid="reference-source"]');
+    expect(wrapper.get('[data-testid="evidence-professional"]').attributes('open')).toBeUndefined();
     expect(source.get('a').text()).toBe('DetectRL-X · Binary General Open');
     expect(source.get('a').attributes('href')).toBe('https://huggingface.co/datasets/WUJUNCHAO/DetectRL-X/blob/main/README.md');
     expect(source.get('a').attributes('rel')).toBe('noopener noreferrer');
-    expect(source.text()).toContain(sourceLabel);
+    expect(source.text()).not.toContain(sourceLabel);
     expect(source.find('code').exists()).toBe(false);
     expect(wrapper.text()).not.toContain(artifactVersion);
     expect(wrapper.text()).not.toContain('参考版本标识');
@@ -677,7 +849,7 @@ describe('EvidencePanel', () => {
     setValue('punctuation_entropy', -0);
     evidence.route!.confidence.language = 0.999978;
     const wrapper = mountPanel(evidence);
-    await wrapper.get('[data-testid="evidence-show-all"]').trigger('click');
+    await toggleAll(wrapper);
     const row = (metric: string) => wrapper.get(`[data-metric="${metric}"]`);
     expect(row('mattr').get('[data-value="observed"]').text()).toBe('0');
     expect(row('mattr').get('[data-value="human"]').text()).toBe('0 – 0');
@@ -689,7 +861,8 @@ describe('EvidencePanel', () => {
     expect(row('transition_per_1k').get('[data-value="observed"]').text()).toBe('1.3158');
     expect(row('transition_per_1k').get('[data-value="human"]').text()).toBe('1.3158 – 1.3158');
     expect(row('punctuation_entropy').get('[data-value="observed"]').text()).toBe('0');
-    expect(wrapper.get('[data-confidence="language"]').text()).toBe('1');
+    expect(wrapper.find('[data-confidence]').exists()).toBe(false);
+    expect(evidence.route!.confidence.language).toBe(0.999978);
     expect(evidence.signals.find((signal) => signal.metric === 'transition_per_1k')!.observed).toBe(1.31579);
     for (const value of wrapper.findAll('[data-value="observed"], [data-value="human"], [data-value="ai"]')) {
       expect(value.text()).not.toContain('%');
@@ -702,15 +875,15 @@ describe('EvidencePanel', () => {
     missing.observed = null;
     missing.reasons.push('insufficient_observations');
     const wrapper = mountPanel(evidence);
-    await wrapper.get('[data-testid="evidence-show-all"]').trigger('click');
+    await toggleAll(wrapper);
     const observedOnly = wrapper.get('[data-metric="paragraph_adjacent_jaccard"]');
     expect(observedOnly.get('[data-value="observed"]').text()).toBe('0');
-    expect(observedOnly.get('[data-value="human"]').text()).toBe('—');
-    expect(observedOnly.get('[data-value="ai"]').text()).toBe('—');
+    expect(observedOnly.get('[data-value="human"]').text()).toBe('暂无可比参考');
+    expect(observedOnly.get('[data-value="ai"]').text()).toBe('暂无可比参考');
     expect(observedOnly.find('[data-value="human-percentile"], [data-value="human-relation"]').exists()).toBe(false);
     const noObservation = wrapper.get('[data-metric="paragraph_nonadjacent_jaccard_q90"]');
     expect(noObservation.get('[data-value="observed"]').text()).toBe('暂无观察值');
-    expect(noObservation.get('[data-value="human"]').text()).toBe('—');
+    expect(noObservation.get('[data-value="human"]').text()).toBe('暂无可比参考');
     expect(wrapper.findAll('[data-metric]')).toHaveLength(22);
   });
 
@@ -718,19 +891,19 @@ describe('EvidencePanel', () => {
     const evidence = makeEvidence();
     evidence.route!.language = language;
     const wrapper = mountPanel(evidence);
-    const heading = (metric: string) => wrapper.get(`[data-metric="${metric}"] h4`).text();
+    const value = (metric: string) => wrapper.get(`[data-metric="${metric}"] td`).text();
     for (const metric of ['sentence_length_median', 'sentence_length_iqr', 'sentence_adjacent_change_median',
       'paragraph_length_median', 'paragraph_length_iqr']) {
-      expect(heading(metric)).toContain(language === 'zh' ? '(汉字)' : '(词元)');
+      expect(value(metric)).toBe(language === 'zh' ? '0汉字' : '0词元');
     }
-    expect(heading('punctuation_per_1k')).toContain(language === 'zh' ? '(次 / 千汉字)' : '(次 / 千词元)');
-    expect(heading('transition_per_1k')).toContain('(次 / 千词元)');
-    expect(heading('mattr')).toContain('(比例)');
-    expect(heading('token_entropy')).toContain('(bit)');
-    expect(heading('punctuation_entropy')).toContain('(bit)');
-    expect(heading('sentence_length_cv')).toBe('句长变化程度');
-    expect(heading('paragraph_length_cv')).toBe('段长变化程度');
-    expect(heading('section_heading_count')).toContain('(个)');
+    expect(value('punctuation_per_1k')).toBe(language === 'zh' ? '0次 / 千汉字' : '0次 / 千词元');
+    expect(value('transition_per_1k')).toBe('0次 / 千词元');
+    expect(value('mattr')).toBe('0比例');
+    expect(value('token_entropy')).toBe('0bit');
+    expect(value('punctuation_entropy')).toBe('0bit');
+    expect(value('sentence_length_cv')).toBe('0');
+    expect(value('paragraph_length_cv')).toBe('0');
+    expect(value('section_heading_count')).toBe('0个');
   });
 
   it('切换中英文同步更新标题、指标、单位和基本态，无未翻译键', async () => {
@@ -742,8 +915,8 @@ describe('EvidencePanel', () => {
     await nextTick();
     expect(wrapper.get('h3').text()).toBe('Writing characteristics');
     expect(wrapper.findAll('[data-testid="evidence-dimension"]')).toHaveLength(4);
-    expect(wrapper.get('[data-metric="sentence_length_median"] h4').text()).toContain('(tokens)');
-    expect(wrapper.text()).toContain('not source probabilities or confidence intervals');
+    expect(wrapper.get('[data-metric="sentence_length_median"] td').text()).toBe('0tokens');
+    expect(wrapper.text()).toContain('not probabilities of AI generation');
     expect(wrapper.text()).not.toMatch(/scan\.evidence\.|undefined|[\u4e00-\u9fff]/);
     const evidence = makeEvidence();
     Object.assign(evidence.signals[0], {
@@ -757,10 +930,8 @@ describe('EvidencePanel', () => {
       relation: { human: 'below', ai: 'below' }, notice: 'outside_both',
     });
     await wrapper.setProps({ evidence });
-    await wrapper.get('[data-testid="evidence-show-all"]').trigger('click');
-    expect(wrapper.get('[data-testid="evidence-route"]').text()).toContain('not represent routing correctness probabilities or AI probabilities');
-    expect(wrapper.get('[data-testid="evidence-quality"]').text()).toContain('denominator is always 22 metrics');
-    expect(wrapper.get('[data-testid="evidence-quality"]').text()).toContain('not an AI probability or classification accuracy');
+    await toggleAll(wrapper);
+    expect(wrapper.find('[data-testid="evidence-route"], [data-testid="evidence-quality"], [data-confidence]').exists()).toBe(false);
     expect(wrapper.get('[data-metric="mattr"] [data-testid="evidence-notice"]').text()).toContain('does not mean the main model is wrong');
     expect(wrapper.get('[data-metric="token_entropy"] [data-testid="evidence-notice"]').text()).toContain('does not establish a new source classification');
     for (const status of ['partial', 'insufficient', 'unsupported', 'failed'] as const) {
@@ -770,7 +941,7 @@ describe('EvidencePanel', () => {
     }
     wrapper.vm.setLocale('zh-CN');
     await wrapper.setProps({ evidence });
-    await wrapper.get('[data-testid="evidence-show-all"]').trigger('click');
+    await toggleAll(wrapper);
     await nextTick();
     expect(wrapper.get('h3').text()).toBe('写作特点');
     expect(wrapper.get('[data-metric="mattr"] [data-testid="evidence-notice"]').text()).toContain('不表示主模型判错');
@@ -778,11 +949,11 @@ describe('EvidencePanel', () => {
   });
 
   it.each([
-    [0, 'insufficient', '0%', '不可比较'],
-    [1, 'partial', '4.5455%', '部分可比'],
-    [19, 'partial', '86.3636%', '部分可比'],
-    [22, 'ready', '100%', '全部可比'],
-  ] as const)('%i / 22 保持后端 Quality 状态及固定分母', async (available, status, coverage, level) => {
+    [0, 'insufficient'],
+    [1, 'partial'],
+    [19, 'partial'],
+    [22, 'ready'],
+  ] as const)('%i / 22 保持原始 Quality 快照，不再展示内部覆盖率', async (available, status) => {
     const evidence = makeEvidence('ready');
     evidence.status = status;
     evidence.quality = { level: status, coverage: available / 22, reasons: available === 22 ? [] : ['reference_metrics_unavailable'] };
@@ -793,11 +964,11 @@ describe('EvidencePanel', () => {
       });
     }
     const wrapper = mountPanel(evidence);
-    if (available < 22) await wrapper.get('[data-testid="evidence-show-all"]').trigger('click');
-    expect(wrapper.get('[data-value="coverage"]').text()).toBe(coverage);
-    expect(wrapper.get('[data-value="quality-level"]').text()).toBe(level);
-    expect(wrapper.get('[data-testid="evidence-quality"]').text()).toContain('分母固定为 22 项');
-    expect(wrapper.get('[data-testid="evidence-quality"]').text()).toContain('不是 AI 概率或判断正确率');
+    if (available < 22) await toggleAll(wrapper);
+    expect(wrapper.find('[data-value="coverage"], [data-value="quality-level"], [data-testid="evidence-quality"]').exists()).toBe(false);
+    expect(evidence.quality.coverage).toBe(available / 22);
+    expect(evidence.quality.level).toBe(status);
+    expect(wrapper.findAll('[data-value="human-relation"]')).toHaveLength(available);
     expect(wrapper.findAll('[data-metric]')).toHaveLength(22);
   });
 
@@ -820,13 +991,9 @@ describe('EvidencePanel', () => {
       }
     }
     const wrapper = mountPanel(evidence);
-    expect(wrapper.get('[data-route="fallbackLevel"]').text()).toBe(label);
-    expect(wrapper.get('[data-route="language"]').text()).toBe('英语');
-    expect(wrapper.get('[data-route="domain"]').text()).toBe('学术');
-    expect(wrapper.get('[data-confidence="language"]').text()).toBe('0');
-    expect(wrapper.get('[data-confidence="domain"]').text()).toBe('0');
-    expect(wrapper.get('[data-testid="evidence-route"]').text()).toContain('不是路由正确概率或 AI 概率');
-    expect(wrapper.get('[data-value="quality-level"]').text()).toBe(fallback === 'unavailable' ? '不可比较' : '全部可比');
+    expect(wrapper.find('[data-confidence], [data-testid="evidence-route"], [data-value="quality-level"]').exists()).toBe(false);
+    expect(evidence.route!.confidence).toEqual({ language: 0, domain: 0 });
+    expect(evidence.quality.level).toBe(fallback === 'unavailable' ? 'insufficient' : 'ready');
     const group = wrapper.get('[data-testid="reference-group"]').text();
     expect(group).toContain(label);
     if (fallback === 'exact') expect(group).toContain('英语 · 学术 · 短文本');
@@ -857,7 +1024,7 @@ describe('EvidencePanel', () => {
     small.reasons = ['fewer_than_10_source_groups'];
     evidence.signals[0].sampleCount = 1234567;
     const wrapper = mountPanel(evidence);
-    await wrapper.get('[data-testid="evidence-show-all"]').trigger('click');
+    await toggleAll(wrapper);
     const emptyRow = wrapper.get('[data-metric="paragraph_adjacent_jaccard"]');
     expect(wrapper.find('[data-value="sample-count"]').exists()).toBe(false);
     expect(missing.sampleCount).toBe(0);
@@ -879,12 +1046,13 @@ describe('EvidencePanel', () => {
       signal.reasons = ['reference_cell_unavailable'];
     }
     const wrapper = mountPanel(evidence);
-    await wrapper.get('[data-testid="evidence-show-all"]').trigger('click');
+    await toggleAll(wrapper);
     expect(wrapper.find('[data-value="sample-count"]').exists()).toBe(false);
     expect(evidence.signals[0].sampleCount).toBeNull();
     expect(wrapper.get('[data-value="observed"]').text()).toBe('0');
     expect(wrapper.find('[data-value="human-relation"]').exists()).toBe(false);
-    expect(wrapper.get('[data-value="coverage"]').text()).toBe('0%');
+    expect(wrapper.find('[data-value="coverage"]').exists()).toBe(false);
+    expect(evidence.quality.coverage).toBe(0);
   });
 
   it('短文概要展示真实观察事实，只在顶部解释比较门槛，不把缺参考写成较多或常见', async () => {
@@ -897,7 +1065,7 @@ describe('EvidencePanel', () => {
     Object.assign(evidence.signals.find((signal) => signal.metric === 'transition_per_1k')!, { observed: 33.5821 });
     const original = JSON.stringify(evidence);
     const wrapper = mountPanel(evidence, { detailed: false });
-    await wrapper.get('[data-testid="evidence-show-all"]').trigger('click');
+    await toggleAll(wrapper);
     expect(wrapper.get('[data-testid="evidence-status"]').text()).toContain('至少 10 句');
     expect(wrapper.text().match(/至少 10 句/g)).toHaveLength(1);
     expect(wrapper.get('[data-testid="evidence-status"]').text()).not.toContain('未覆盖本次文本长度');
@@ -927,7 +1095,7 @@ describe('EvidencePanel', () => {
       Object.assign(evidence.signals.find((signal) => signal.metric === metric)!, { observed: null, reasons: ['insufficient_observations'] });
     }
     const wrapper = mountPanel(evidence, { submittedText: '技术技术技术' });
-    await wrapper.get('[data-testid="evidence-show-all"]').trigger('click');
+    await toggleAll(wrapper);
     expect(wrapper.find('[data-testid="evidence-examples"]').exists()).toBe(false);
     expect(wrapper.get('[data-metric="mattr"] [data-value="observed"]').text()).toBe('0');
     expect(wrapper.get('[data-metric="paragraph_nonadjacent_jaccard_q90"] [data-testid="signal-reasons"]').text()).toContain('至少需要 3 个');
@@ -949,11 +1117,12 @@ describe('EvidencePanel', () => {
       reasons: ['insufficient_observations'],
     });
     const wrapper = mountPanel(evidence, { initialDimension: 'rhythm' });
-    await wrapper.get('[data-testid="evidence-show-all"]').trigger('click');
-    expect(wrapper.get('[data-route="lengthBucket"]').text()).toBe(lengthBucket === 'brief_200_399' ? '200–399 汉字' : '400–599 汉字');
+    await toggleAll(wrapper);
+    expect(wrapper.get('[data-testid="reference-group"]').text()).toContain(lengthBucket === 'brief_200_399' ? '200–399 汉字' : '400–599 汉字');
     expect(wrapper.find('[data-testid="evidence-status"]').exists()).toBe(false);
     const observation = wrapper.get('[data-summary-metric="sentence_length_median"]');
-    expect(observation.text()).toContain('本次文本: 36 汉字');
+    expect(wrapper.get('[data-metric="sentence_length_median"] [data-value="observed"]').text()).toBe('36');
+    expect(wrapper.get('[data-metric="sentence_length_median"] td').text()).toBe('36汉字');
     expect(observation.get('[data-testid="metric-comparison-reason"]').text()).toBe('已计算，暂不作范围比较。');
     expect(observation.text()).not.toMatch(/无法|需要可识别|不足以提取/);
     expect(wrapper.get('[data-metric="sentence_length_median"] [data-testid="signal-reasons"]').text()).toBe('本次文本对该指标的有效观察不足。');
@@ -969,14 +1138,15 @@ describe('EvidencePanel', () => {
       referenceRanges: { human: [0, 1], ai: [0, 1] },
     });
     const wrapper = mountPanel(evidence);
-    await wrapper.get('[data-testid="evidence-show-all"]').trigger('click');
+    await toggleAll(wrapper);
     await wrapper.get('[data-dimension="lexical"]').trigger('click');
     const row = wrapper.get('[data-metric="mattr"]');
     expect(row.get('[data-value="human-percentile"]').text()).toBe(String(percentile));
     expect(row.get('[data-value="ai-percentile"]').text()).toBe(String(percentile));
     expect(row.get('[data-value="human-relation"]').text()).toBe('范围内');
     for (const marker of wrapper.findAll('[data-testid="observed-marker"]')) expect(marker.attributes('style')).toContain(`left: ${observed * 100}%`);
-    expect(wrapper.get('[data-testid="reference-ticks"]').findAll('span').map((tick) => tick.text())).toEqual(['0%', '25%', '50%', '75%', '100%']);
+    expect(wrapper.get('[data-testid="reference-scale"]').findAll('span').map((tick) => tick.text())).toEqual(['低', '高']);
+    expect(wrapper.find('[data-testid="reference-ticks"]').exists()).toBe(false);
     expect(wrapper.find('[data-testid="reference-percentile"]').exists()).toBe(false);
     expect(row.find('[data-testid="evidence-notice"]').exists()).toBe(false);
     expect(wrapper.find('[data-testid="dimension-notice"]').exists()).toBe(false);
@@ -989,14 +1159,15 @@ describe('EvidencePanel', () => {
     });
     evidence.quality.reasons = ['reference_validation_failed', 'reference_metrics_unavailable'];
     const wrapper = mountPanel(evidence, { initialDimension: 'discourse' });
-    await wrapper.get('[data-testid="evidence-show-all"]').trigger('click');
+    await toggleAll(wrapper);
     expect(wrapper.find('[data-testid="evidence-status"]').exists()).toBe(false);
     const comparable = wrapper.get('[data-summary-metric="transition_per_1k"]');
     expect(comparable.find('[data-testid="metric-comparison-reason"]').exists()).toBe(false);
     const observation = wrapper.get('[data-summary-metric="paragraph_adjacent_jaccard"]');
     expect(observation.get('[data-testid="metric-comparison-reason"]').text()).toContain('参考统计未通过验证');
     expect(observation.find('[data-testid="reference-values"]').exists()).toBe(false);
-    expect(observation.text().match(/0\.12/g)).toHaveLength(1);
+    expect(observation.text()).not.toContain('0.12');
+    expect(wrapper.get('[data-metric="paragraph_adjacent_jaccard"] [data-value="observed"]').text()).toBe('0.12');
     wrapper.vm.setLocale('en-US');
     await nextTick();
     expect(observation.get('[data-testid="metric-comparison-reason"]').text()).toContain('failed validation');
@@ -1012,7 +1183,7 @@ describe('EvidencePanel', () => {
     });
     const original = JSON.stringify(evidence);
     const wrapper = mountPanel(evidence);
-    await wrapper.get('[data-testid="evidence-show-all"]').trigger('click');
+    await toggleAll(wrapper);
     const row = wrapper.get('[data-metric="sentence_length_cv"]');
     expect(row.get('[data-value="observed"]').text()).toBe('1');
     expect(row.get('[data-value="human"]').text()).toBe('0 – 1');
@@ -1031,7 +1202,7 @@ describe('EvidencePanel', () => {
       relation: { human: 'below', ai: 'below' }, notice: 'outside_both',
     });
     const wrapper = mountPanel(evidence);
-    await wrapper.get('[data-testid="evidence-show-all"]').trigger('click');
+    await toggleAll(wrapper);
     const row = wrapper.get('[data-metric="mattr"]');
     expect(row.get('[data-value="ai-percentile"]').text()).toBe('0');
     expect(row.get('[data-value="ai-relation"]').text()).toBe('低于范围');

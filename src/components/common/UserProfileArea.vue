@@ -45,12 +45,13 @@
     <div class="flex items-center gap-4">
       <button
         type="button"
-        class="hidden items-center justify-center rounded-full border border-slate-200 bg-white px-3.5 py-1.5 text-[13px] font-semibold text-slate-600 transition hover:border-slate-300 hover:text-slate-800 sm:inline-flex"
+        class="hidden items-center justify-center rounded-full px-3.5 py-1.5 text-[13px] font-semibold sm:inline-flex"
+        :class="variant === 'account' ? 'liquid-glass' : 'border border-slate-200 bg-white text-slate-600 transition hover:border-slate-300 hover:text-slate-800'"
         @click="$emit('feedback')"
       >
         {{ t('profileArea.feedback') }}
       </button>
-      <span class="inline-flex items-center rounded-full bg-slate-200 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wide text-slate-600">
+      <span v-if="variant !== 'account'" class="inline-flex items-center rounded-full bg-slate-200 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wide text-slate-600">
         {{ t('profileArea.freeBadge') }}
       </span>
     </div>

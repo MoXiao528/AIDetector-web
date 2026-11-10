@@ -1,29 +1,28 @@
 <template>
-  <div class="min-h-screen bg-[#fafaf9]">
+  <div class="public-theme min-h-screen">
     <AppHeader mode="marketing" />
     <main>
       <HeroSection v-model="localInput" @scan="handleScan" />
       <CapabilitiesSection />
       <WorkflowSection />
-      <section class="mx-auto mt-12 w-full max-w-6xl px-4 sm:px-6 lg:px-8">
-        <div class="flex flex-col gap-6 rounded-3xl border border-slate-200 bg-white p-6 shadow-sm md:flex-row md:items-center md:justify-between md:gap-10">
+      <section class="mx-auto w-full max-w-6xl px-4 sm:px-6 lg:px-8">
+        <div class="flex flex-col gap-6 rounded-2xl border border-primary-200/80 bg-primary-100/60 p-6 md:flex-row md:items-center md:justify-between md:gap-10 sm:p-8">
           <div class="space-y-2">
-            <p class="text-xs font-semibold uppercase tracking-[0.3em] text-primary-600">{{ t('homePage.examples.badge') }}</p>
+            <p class="text-xs font-semibold text-primary-700">{{ t('homePage.examples.badge') }}</p>
             <h3 class="text-xl font-semibold text-slate-900">{{ t('homePage.examples.title') }}</h3>
-            <p class="text-sm text-slate-500">{{ t('homePage.examples.subtitle') }}</p>
           </div>
           <div class="flex flex-wrap gap-3">
             <button
               type="button"
-              class="inline-flex items-center gap-2 rounded-xl bg-primary-600 px-5 py-2 text-sm font-semibold text-white shadow-sm shadow-primary-200/50 transition hover:-translate-y-0.5 hover:bg-primary-700"
+              class="primary-action liquid-glass inline-flex items-center justify-center gap-2 rounded-full px-5 py-2 text-sm font-semibold"
               @click="showUsageExamples = true"
             >
-              <span class="text-lg">★</span>
+              <DocumentTextIcon class="h-4 w-4" aria-hidden="true" />
               {{ t('homePage.examples.cta') }}
             </button>
             <button
               type="button"
-              class="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-5 py-2 text-sm font-semibold text-slate-700 transition hover:-translate-y-0.5 hover:border-slate-300 hover:bg-slate-50 hover:text-slate-900"
+              class="liquid-glass inline-flex items-center justify-center gap-2 rounded-full px-5 py-2 text-sm font-semibold"
               @click="$router.push({ name: 'dashboard', query: { panel: 'home' } })"
             >
               {{ t('homePage.examples.tryNow') }}
@@ -34,13 +33,14 @@
       <ShowcaseSection />
     </main>
     <AppFooter compact />
-    <UsageExamplesModal :open="showUsageExamples" :examples="usageExampleItems" @close="showUsageExamples = false" />
+    <UsageExamplesModal :open="showUsageExamples" :examples="detectionExamples" @close="showUsageExamples = false" @try-own="focusOwnText" />
   </div>
 </template>
 
 <script setup>
 import { computed, ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
+import { DocumentTextIcon } from '@heroicons/vue/24/outline';
 import { useI18n } from '../i18n';
 import AppHeader from '../sections/AppHeader.vue';
 import HeroSection from '../sections/HeroSection.vue';
@@ -49,6 +49,7 @@ import WorkflowSection from '../sections/WorkflowSection.vue';
 import ShowcaseSection from '../sections/ShowcaseSection.vue';
 import AppFooter from '../sections/AppFooter.vue';
 import UsageExamplesModal from '../components/common/UsageExamplesModal.vue';
+import detectionExamples from '../data/detectionExamples.json';
 import { useScanStore } from '../store/scan';
 import { showToast } from '../utils/toast';
 
@@ -60,7 +61,11 @@ const localInput = computed({
   set: (value) => scanStore.setInputText(value),
 });
 const { t, locale } = useI18n();
-const usageExampleItems = computed(() => scanStore.usageExamples);
+const focusOwnText = () => {
+  const input = document.getElementById('hero-text-input');
+  input?.scrollIntoView({ block: 'center', behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
+  input?.focus({ preventScroll: true });
+};
 
 watch(
   () => locale.value,

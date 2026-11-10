@@ -1,10 +1,14 @@
 <template>
-  <div class="min-h-screen bg-slate-950 text-slate-100">
-    <div class="absolute inset-0 bg-[radial-gradient(circle_at_top_right,_rgba(56,189,248,0.14),_transparent_28%),radial-gradient(circle_at_bottom_left,_rgba(14,165,233,0.18),_transparent_32%)]"></div>
-    <div class="relative mx-auto flex min-h-screen w-full max-w-[1800px] flex-col lg:flex-row">
-      <AdminSidebar :items="navItems" />
+  <div class="public-theme admin-theme min-h-screen font-sans">
+    <div class="mx-auto flex min-h-screen w-full max-w-[1800px] flex-col lg:flex-row">
+      <AdminSidebar
+        :items="navItems"
+        title="RepreGuard"
+        :user-label="authStore.user?.name || authStore.user?.email || '管理员'"
+        :user-meta="authStore.user?.email || ''"
+      />
 
-      <div class="flex min-h-screen flex-1 flex-col">
+      <div class="flex min-w-0 flex-1 flex-col">
         <AdminTopbar
           :title="pageContent.title"
           :description="pageContent.description"
@@ -12,10 +16,8 @@
           @action="handleTopbarAction"
         />
 
-        <main class="flex-1 px-4 pb-6 pt-2 sm:px-6 lg:px-8 lg:pb-8">
-          <div class="min-h-full rounded-[28px] border border-white/10 bg-slate-900/70 p-4 shadow-2xl shadow-slate-950/40 backdrop-blur sm:p-6">
-            <RouterView />
-          </div>
+        <main class="min-w-0 flex-1 px-4 py-6 sm:px-6 lg:px-8 lg:pb-8">
+          <RouterView />
         </main>
       </div>
     </div>

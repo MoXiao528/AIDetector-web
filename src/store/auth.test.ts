@@ -162,8 +162,10 @@ describe('auth store session flow', () => {
 
     const prompt = String(vi.mocked(window.confirm).mock.calls[0][0]);
     expect(prompt).toContain('guest-owner@example.com');
-    expect(prompt).toMatch(/(?:云端|remote)\D*2/i);
-    expect(prompt).toMatch(/(?:本地|local)\D*0/i);
+    expect(prompt).toContain('2 条游客检测记录');
+    expect(prompt).toContain('选择“取消”或按 Esc 将结束当前游客会话并清空当前页面');
+    expect(prompt).toContain('之后无法通过该会话访问这些记录');
+    expect(prompt).not.toMatch(/\{(?:account|remoteCount|localCount)\}/);
     expect(mockState.scanActivateGuestSession).toHaveBeenCalledWith('sid:guest-session-token-1');
     expect(historyApi.claimGuestHistory).toHaveBeenCalledWith('guest-session-token-1');
     expect(historyApi.claimGuestHistory).toHaveBeenCalledTimes(1);
