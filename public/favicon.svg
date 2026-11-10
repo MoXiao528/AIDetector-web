@@ -1,5 +1,4 @@
-<svg width="64" height="64" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
-  <rect x="4" y="4" width="56" height="56" rx="16" fill="#2563EB"/>
-  <path d="M20 40C20 31 28 24 36 24C44 24 48 30 44 36C40 42 28 42 24 48" stroke="white" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
-  <circle cx="24" cy="22" r="4" fill="white"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="17.5 15 70 70" fill="#5b6b62">
+  <style>@media (prefers-color-scheme: dark) { :root { fill: #e1eadd; } }</style>
+  <path d="M25 80V28a8 8 0 0 1 8-8h18c18 0 28 9 28 23q0 2-2 2h-9q-2 0-2-2c0-7-5-10-15-10H40q-2 0-2 2v16q0 2 2 2h36q2 0 1 2c-3 5-7 8-13 10l16 15H62L44 63h-6v17H25Z" />
 </svg>

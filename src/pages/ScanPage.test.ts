@@ -176,6 +176,7 @@ describe('ScanPage panel switching', () => {
   let pinia: ReturnType<typeof createPinia>;
 
   beforeEach(() => {
+    vi.stubEnv('VITE_EVIDENCE_ENABLED', 'true');
     pinia = createPinia();
     setActivePinia(pinia);
     vi.clearAllMocks();
@@ -200,6 +201,7 @@ describe('ScanPage panel switching', () => {
 
   afterEach(() => {
     disposePinia(pinia);
+    vi.unstubAllEnvs();
   });
 
   it('从 home 点击 Document 后应切换到 document 面板', async () => {
@@ -1447,6 +1449,61 @@ describe('ScanPage panel switching', () => {
     expect(scanApi.detectText).toHaveBeenCalledTimes(1);
     expect(vi.mocked(scanApi.detectText).mock.calls[0][1]).toBe('guest-a-token');
     wrapper.unmount();
+  });
+
+  it('关闭 Evidence 时新检测和旧历史均隐藏相关入口，主结果、普通详情和 PDF 入口保留', async () => {
+    vi.stubEnv('VITE_EVIDENCE_ENABLED', 'false');
+    route.query = { panel: 'document' };
+    route.fullPath = '/dashboard?panel=document';
+    const text = 'The main detection paragraph remains available while Evidence is paused. '.repeat(4).trim();
+    const oldText = 'Cached history still retains its original paragraph. '.repeat(4).trim();
+    const evidence: scanApi.EvidenceResult = {
+      status: 'unsupported', artifactVersion: null, featureSchemaVersion: 1, route: null,
+      quality: { level: 'unavailable', coverage: 0, reasons: ['unsupported_language'] },
+      signals: [], patterns: null,
+    };
+    const analysis = (ai: number, paragraph: string) => ({
+      summary: { ai, human: 100 - ai },
+      sentences: [{ id: `main-${ai}`, text: paragraph, raw: paragraph, startParagraph: 1, endParagraph: 1,
+        type: ai > 50 ? 'ai' : 'human', probability: ai / 100, score: ai }],
+    });
+    vi.mocked(historyApi.getHistoryList).mockResolvedValue(makeHistoryResponse([
+      { id: 93, inputText: oldText, evidence, analysis: analysis(23, oldText) },
+    ]));
+    vi.mocked(scanApi.detectText).mockResolvedValue({
+      historyId: 94, inputText: text, score: 0.77, label: 'ai', evidence, result: analysis(77, text),
+    } as scanApi.DetectionResponse);
+    const wrapper = mountScanPage();
+    try {
+      await flushPromises();
+      const state = getScanPageSetupState(wrapper);
+      const scanStore = useScanStore();
+      scanStore.setText(text);
+      await state.handleScan();
+      await flushPromises();
+      expect(scanStore.result?.evidence).toEqual(evidence);
+      expect(wrapper.get('.text-6xl').text()).toBe('77%');
+      expect(wrapper.get('.preview-surface').text()).toContain(text);
+      expect(scanStore.result?.sentences[0].type).toBe('ai');
+      expect(wrapper.find('[data-testid="evidence-panel"]').exists()).toBe(false);
+      const detailsButton = wrapper.findAll('button').find((button) => button.text() === globalT('scan.results.openDetail'));
+      expect(detailsButton).toBeDefined();
+      await detailsButton!.trigger('click');
+      expect(wrapper.get('.text-5xl').text()).toBe('77%');
+      expect(wrapper.findAll('button').filter((button) => button.text().includes(globalT('scan.results.export')))).toHaveLength(2);
+      expect(wrapper.find('[data-testid="evidence-panel"]').exists()).toBe(false);
+      await state.loadHistoryRecord(93);
+      await flushPromises();
+      expect(scanStore.result?.evidence).toEqual(evidence);
+      expect(wrapper.get('.text-6xl').text()).toBe('23%');
+      expect(wrapper.get('.text-5xl').text()).toBe('23%');
+      expect(wrapper.get('.preview-surface').text()).toContain(oldText);
+      expect(scanStore.result?.sentences[0].type).toBe('human');
+      expect(wrapper.find('[data-testid="evidence-panel"], [data-testid="evidence-summary"], [data-testid="evidence-professional"]').exists()).toBe(false);
+      expect(wrapper.text()).not.toContain(globalT('scan.evidence.presentation.title'));
+    } finally {
+      wrapper.unmount();
+    }
   });
 
   it.each([23, 77])('Evidence 随检测和历史切换面板，缺失时恢复旧页面，主摘要 AI=%i 与段落预览不变', async (ai) => {

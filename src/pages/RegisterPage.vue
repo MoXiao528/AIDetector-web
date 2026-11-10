@@ -17,8 +17,8 @@
               <span>{{ registerSideCopy.badge }}</span>
             </div>
             <div class="mt-8">
-              <div class="flex h-14 w-14 items-center justify-center rounded-2xl bg-white/10 text-xl font-semibold text-white shadow-lg shadow-slate-950/20">
-                {{ t('common.brandInitial') }}
+              <div class="flex h-14 w-14 items-center justify-center rounded-2xl bg-white/10 text-white shadow-lg shadow-slate-950/20">
+                <BrandMark class="h-14 w-14" />
               </div>
               <p class="mt-6 text-sm font-semibold uppercase tracking-[0.28em] text-emerald-200">RepreGuard</p>
               <h1 class="mt-4 max-w-xl text-4xl font-semibold tracking-tight text-white lg:text-5xl">{{ registerSideCopy.title }}</h1>
@@ -157,6 +157,7 @@ import {
   SparklesIcon,
 } from '@heroicons/vue/24/outline';
 import AppHeader from '../sections/AppHeader.vue';
+import BrandMark from '../components/common/BrandMark.vue';
 import { extractApiErrorCode } from '../api/client';
 import { useI18n } from '../i18n';
 import { useAuthStore } from '../store/auth';

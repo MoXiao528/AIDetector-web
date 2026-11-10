@@ -4,7 +4,7 @@
       <div v-if="compact" class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div class="space-y-3">
           <div class="flex items-center space-x-3">
-            <span class="inline-flex h-9 w-9 items-center justify-center rounded-full bg-primary-600 font-semibold text-white shadow-sm">{{ t('common.brandInitial') }}</span>
+            <BrandMark class="h-10 w-10 text-white" />
             <span class="text-lg font-semibold tracking-tight text-white">{{ t('common.brand') }}</span>
           </div>
           <p class="max-w-2xl text-sm text-slate-300">{{ t('appFooter.description') }}</p>
@@ -14,7 +14,7 @@
       <div v-else class="grid gap-10 lg:grid-cols-[1.4fr_repeat(3,1fr)]">
         <div class="space-y-4">
           <div class="flex items-center space-x-3">
-            <span class="inline-flex h-9 w-9 items-center justify-center rounded-full bg-primary-600 text-white font-semibold shadow-sm">{{ t('common.brandInitial') }}</span>
+            <BrandMark class="h-10 w-10 text-white" />
             <span class="text-lg font-semibold tracking-tight text-white">{{ t('common.brand') }}</span>
           </div>
           <p class="text-sm text-slate-300">{{ t('appFooter.description') }}</p>
@@ -65,6 +65,7 @@
 <script setup>
 import { computed } from 'vue';
 import { useI18n } from '../i18n';
+import BrandMark from '../components/common/BrandMark.vue';
 
 defineProps({
   compact: {

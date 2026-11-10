@@ -3,7 +3,7 @@
     <div class="mx-auto w-full max-w-7xl px-6 sm:px-10">
       <div class="flex h-16 items-center justify-between gap-6">
         <RouterLink :to="{ name: 'home' }" class="flex items-center space-x-3">
-          <span class="inline-flex h-9 w-9 items-center justify-center rounded-full bg-primary-600 font-semibold text-white shadow-sm">{{ t('common.brandInitial') }}</span>
+          <BrandMark class="h-10 w-10 text-primary-600" />
           <span class="text-lg font-semibold tracking-tight text-slate-900">{{ t('common.brand') }}</span>
         </RouterLink>
         <nav v-if="showMarketingNav" class="hidden flex-1 items-center justify-center md:flex">
@@ -300,6 +300,7 @@ import { useRoute, useRouter } from 'vue-router';
 import { useI18n } from '../i18n';
 import { useAuthStore } from '../store/auth';
 import UserProfileArea from '../components/common/UserProfileArea.vue';
+import BrandMark from '../components/common/BrandMark.vue';
 import BaseListbox from '../components/common/BaseListbox.vue';
 import { showComingSoon } from '../utils/toast';
 
