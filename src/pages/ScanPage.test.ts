@@ -539,11 +539,12 @@ describe('ScanPage panel switching', () => {
   it.each([
     { source: 'history', locale: 'zh-CN' },
     { source: 'detection', locale: 'en-US' },
-  ])('$source的metadata不着色/判定，$locale详情仅显示上下文，普通短段保持原判定', async ({ source, locale }) => {
+  ])('$source的$locale详情显示标题和作者，正文从1编号且普通短段保持原判定', async ({ source, locale }) => {
     route.query = { panel: 'document' };
-    const paragraphs = ['标题', '作者：张三', '好。', '“去吧。”'];
+    const byline = locale === 'zh-CN' ? '作者：张三' : 'AUTHOR: Zhang San';
+    const paragraphs = ['标题', byline, '好。', '“去吧。”'];
     const text = paragraphs.join('\n\n');
-    const html = '<h1><strong>标题</strong></h1><p><em>作者：张三</em></p><p>好。</p><p>“去吧。”</p>';
+    const html = `<h1><strong>标题</strong></h1><p><em>${byline}</em></p><p>好。</p><p>“去吧。”</p>`;
     const types = ['metadata', 'metadata', 'ai', 'human'] as const;
     const analysis = {
       summary: { ai: 73, human: 27 },
@@ -590,7 +591,7 @@ describe('ScanPage panel switching', () => {
       await flushPromises();
       const preview = wrapper.get('.preview-surface');
       expect(preview.get('h1 strong').text()).toBe('标题');
-      expect(preview.get('p em').text()).toBe('作者：张三');
+      expect(preview.get('p em').text()).toBe(byline);
       expect(preview.find('[data-sentence-id="meta-test-0"], [data-sentence-id="meta-test-1"]').exists()).toBe(false);
       expect(preview.findAll('.highlight-chip')).toHaveLength(2);
       expect(preview.get('[data-sentence-id="meta-test-2"]').classes()).toContain('bg-rose-100');
@@ -604,11 +605,27 @@ describe('ScanPage panel switching', () => {
       expect(metadataTextNodes).toHaveLength(4);
       for (const node of metadataTextNodes) {
         const card = node.element.parentElement!;
-        expect(card.textContent).toContain(locale === 'zh-CN' ? '元信息 · 仅作上下文' : 'Metadata · Context only');
+        const header = node.element.previousElementSibling!;
+        const expectedLabel = node.text() === byline
+          ? locale === 'zh-CN' ? '作者' : 'Author'
+          : locale === 'zh-CN' ? '标题' : 'Title';
+        expect(header.textContent?.trim()).toBe(expectedLabel);
+        expect(header.querySelectorAll('span')).toHaveLength(1);
         expect(card.textContent).not.toMatch(/\d+%/);
         expect(card.className).not.toMatch(/orange|emerald|rose|amber|lime/);
         expect(node.html()).not.toMatch(/text-(?:rose|orange|amber|lime|emerald)/);
       }
+      const bodyTextNodes = wrapper.findAll('.result-sentence-text').filter((node) => paragraphs.slice(2).includes(node.text()));
+      expect(bodyTextNodes).toHaveLength(4);
+      for (const node of bodyTextNodes) {
+        const bodyIndex = node.text() === paragraphs[2] ? 1 : 2;
+        const header = node.element.previousElementSibling!;
+        expect(header.firstElementChild?.textContent?.trim()).toBe(`${locale === 'zh-CN' ? '段落' : 'Paragraph'} ${bodyIndex}`);
+        expect(header.textContent).toContain(bodyIndex === 1 ? '90%' : '10%');
+        expect(node.get('p').attributes('data-sentence-id')).toBe(`meta-test-${bodyIndex + 1}`);
+      }
+      expect(store.result.sentences.map((sentence) => sentence.startParagraph)).toEqual([1, 2, 3, 4]);
+      expect(wrapper.text()).not.toMatch(/元信息|仅作上下文|Metadata|Context only/);
     } finally {
       wrapper.unmount();
       restoreLocale();

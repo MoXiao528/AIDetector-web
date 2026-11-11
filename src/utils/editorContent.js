@@ -473,6 +473,32 @@ export const resolveSentenceRange = (sentence, fallbackIndex = 0) => {
   return { start: index, end: index };
 };
 
+export const buildSentenceDisplayLabels = (sentences, t) => {
+  const metadataRanges = sentences.flatMap((sentence, index) =>
+    sentence.type === 'metadata' ? [resolveSentenceRange(sentence, index)] : []
+  );
+  const bodyIndex = (paragraph) => paragraph - metadataRanges.reduce(
+    (count, { start, end }) => count + Math.max(0, Math.min(end, paragraph - 1) - start + 1), 0
+  );
+  let metadataBlocks = 0;
+  return sentences.map((sentence, index) => {
+    if (sentence.type === 'metadata') {
+      metadataBlocks += 1;
+      const isAuthor = /^(?:作者|author)\s*[:：]\s*\S[^\r\n]*$/i.test(String(sentence.raw || sentence.text || '').trim());
+      return t(isAuthor ? 'scan.results.author' : 'scan.results.documentTitle');
+    }
+    if (!hasParagraphRange(sentence)) {
+      return t('scan.results.block', { value: index + 1 - metadataBlocks });
+    }
+    const range = resolveSentenceRange(sentence, index);
+    const start = bodyIndex(range.start);
+    const end = bodyIndex(range.end);
+    return start === end
+      ? t('scan.results.paragraph', { value: start })
+      : t('scan.results.mergedParagraphs', { start, end });
+  });
+};
+
 export const buildSentenceParagraphLinkId = (sentence, paragraphIndex = 0) => {
   const fallbackIndex = Math.max(Number(paragraphIndex) || 1, 1) - 1;
   const range = resolveSentenceRange(sentence, fallbackIndex);

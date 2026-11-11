@@ -43,8 +43,8 @@
                   <div v-else-if="view === 'paragraphs'" class="divide-y divide-slate-100 px-4 sm:px-6" data-testid="example-paragraphs">
                     <article v-for="(paragraph, index) in report.analysis.sentences" :key="paragraph.id || index" class="py-4">
                       <div class="mb-2 flex flex-wrap items-center justify-between gap-2 text-xs font-semibold">
-                        <span class="text-slate-500">{{ t('usageExamples.paragraph', { value: index + 1 }) }}</span>
-                        <span :class="paragraph.type === 'metadata' ? 'text-slate-500' : 'text-primary-800'">{{ formatParagraphLabel(paragraph) }}</span>
+                        <span class="text-slate-500">{{ paragraphDisplayLabels[index] }}</span>
+                        <span v-if="paragraph.type !== 'metadata'" class="text-primary-800">{{ formatParagraphLabel(paragraph) }}</span>
                       </div>
                       <p class="whitespace-pre-line break-words text-sm leading-7 text-slate-700">{{ paragraph.raw || paragraph.text }}</p>
                     </article>
@@ -98,7 +98,7 @@ import { Dialog, DialogDescription, DialogPanel, DialogTitle, TransitionChild, T
 import { XMarkIcon } from '@heroicons/vue/24/outline';
 import { useI18n } from '../../i18n';
 import EvidencePanel from '../EvidencePanel.vue';
-import { buildHighlightedPreviewHtml } from '../../utils/editorContent';
+import { buildHighlightedPreviewHtml, buildSentenceDisplayLabels } from '../../utils/editorContent';
 
 const props = defineProps({
   open: { type: Boolean, default: false },
@@ -107,7 +107,6 @@ const props = defineProps({
 const emit = defineEmits(['close', 'try-own']);
 const { t } = useI18n();
 const formatParagraphLabel = (paragraph) => {
-  if (paragraph.type === 'metadata') return t('scan.results.metadata');
   if (paragraph.type === 'too_short') return t('scan.results.tooShort');
   return t('usageExamples.paragraphProbability', { value: Math.round(paragraph.probability * 100) });
 };
@@ -126,6 +125,7 @@ const readingArea = ref(null);
 let returnFocusTarget = null;
 let focusOwnInput = false;
 const report = computed(() => props.examples.find((item) => item.key === selectedKey.value) || props.examples[0]);
+const paragraphDisplayLabels = computed(() => buildSentenceDisplayLabels(report.value?.analysis.sentences || [], t));
 const viewTitle = computed(() => t('usageExamples.' + (view.value === 'evidence' ? 'evidenceDetails' : view.value === 'paragraphs' ? 'details' : 'original')));
 const highlightedHtml = computed(() => report.value ? buildHighlightedPreviewHtml({
   // Saved plain-text examples use blank lines as paragraph separators, not empty editor blocks.

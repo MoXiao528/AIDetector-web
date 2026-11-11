@@ -896,9 +896,9 @@
                           >
                             <div class="mb-3 flex items-center justify-between gap-3">
                               <span class="inline-flex items-center rounded-full bg-white/80 px-2.5 py-1 text-[11px] font-semibold text-slate-600 ring-1 ring-slate-200">
-                                {{ formatSentenceBlockLabel(sentence, index) }}
+                                {{ sentenceDisplayLabels[index] }}
                               </span>
-                              <span class="text-xs font-semibold text-slate-500">
+                              <span v-if="sentence.type !== 'metadata'" class="text-xs font-semibold text-slate-500">
                                 {{ formatSentenceProbabilityLabel(sentence) }}
                               </span>
                             </div>
@@ -1145,9 +1145,9 @@
                 >
                   <div class="mb-4 flex items-center justify-between gap-3">
                     <span class="inline-flex items-center rounded-full bg-white/80 px-3 py-1 text-xs font-semibold text-slate-600 ring-1 ring-slate-200">
-                      {{ formatSentenceBlockLabel(sentence, index) }}
+                      {{ sentenceDisplayLabels[index] }}
                     </span>
-                    <span class="text-xs font-semibold text-slate-500">
+                    <span v-if="sentence.type !== 'metadata'" class="text-xs font-semibold text-slate-500">
                       {{ formatSentenceProbabilityLabel(sentence) }}
                     </span>
                   </div>
@@ -1261,6 +1261,7 @@ import { useScanStore } from '../store/scan';
 import { clampProbability, getProbabilityCardClasses, getProbabilityTextClasses } from '../utils/detectionStyles';
 import {
   buildHighlightedPreviewHtml,
+  buildSentenceDisplayLabels,
   buildSentenceParagraphLinkId,
   escapeHtml,
   extractTextFromHtml,
@@ -2151,10 +2152,9 @@ const resultDetailTitle = computed(() => {
 const isTooShortSentence = (sentence) => sentence?.type === 'too_short';
 const highlightBorderClass = (sentence) =>
   getProbabilityCardClasses(clampProbability(sentence?.probability), sentence?.type);
+const sentenceDisplayLabels = computed(() => buildSentenceDisplayLabels(scanStore.result?.sentences || [], t));
 const formatSentenceProbabilityLabel = (sentence) =>
-  sentence?.type === 'metadata'
-    ? t('scan.results.metadata')
-    : isTooShortSentence(sentence)
+  isTooShortSentence(sentence)
     ? t('scan.results.tooShort')
     : t('scan.results.probability', { value: Math.round((sentence?.probability || 0) * 100) });
 const setActiveSentence = (sentenceId = '') => {
@@ -2773,22 +2773,6 @@ const formatHighlightedSentence = (sentence) => {
       return `<p class="font-semibold leading-relaxed ${classes}" data-sentence-id="${escapeHtml(sentenceId)}"${blockAttribute}>${escapeHtml(item)}</p>`;
     })
     .join('');
-};
-
-const formatSentenceBlockLabel = (sentence, index = 0) => {
-  const start = Number(sentence?.startParagraph ?? sentence?.start_paragraph);
-  const end = Number(sentence?.endParagraph ?? sentence?.end_paragraph);
-  const isChinese = String(locale.value || '').toLowerCase().startsWith('zh');
-
-  if (Number.isFinite(start) && Number.isFinite(end) && start > 0 && end > 0) {
-    if (start === end) {
-      return isChinese ? `段落 ${start}` : `Paragraph ${start}`;
-    }
-    return isChinese ? `段落 ${start}-${end} · 合并检测` : `Paragraphs ${start}-${end} · Merged`;
-  }
-
-  const displayIndex = index + 1;
-  return isChinese ? `检测块 ${displayIndex}` : `Block ${displayIndex}`;
 };
 
 const openFeatureModal = (card) => {

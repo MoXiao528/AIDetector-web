@@ -1,8 +1,38 @@
 import { describe, expect, it } from 'vitest';
 
-import { buildHighlightedPreviewHtml, buildSentenceParagraphLinkId, extractTextFromHtml, sanitizeHtmlForEditor } from './editorContent';
+import { buildHighlightedPreviewHtml, buildSentenceDisplayLabels, buildSentenceParagraphLinkId, extractTextFromHtml, sanitizeHtmlForEditor } from './editorContent';
+import zhCN from '../i18n/zh-CN';
+import enUS from '../i18n/en-US';
 
 describe('editorContent utils', () => {
+  it.each([
+    { copy: zhCN, author: ' 作者：张三 ', expected: ['标题', '作者', '段落 1-2 · 合并检测', '标题', '段落 3', '段落 4'] },
+    { copy: enUS, author: 'AUTHOR: Jane Doe', expected: ['Title', 'Author', 'Paragraphs 1-2 · Merged', 'Title', 'Paragraph 3', 'Paragraph 4'] },
+  ])('正文编号跳过开头和中间标题，保留合并范围与原定位：$author', ({ copy, author, expected }) => {
+    const t = (key, values = {}) => copy.scan.results[key.split('.').at(-1)].replace(/\{([^}]+)\}/g, (_, name) => values[name]);
+    const sentences = [
+      { id: 'title', type: 'metadata', text: '背影', startParagraph: 1, endParagraph: 1 },
+      { id: 'author', type: 'metadata', raw: author, startParagraph: 2, endParagraph: 2 },
+      { id: 'merged', type: 'ai', raw: '第一段\n第二段', startParagraph: 3, endParagraph: 4 },
+      { id: 'section', type: 'metadata', text: '章节标题', start_paragraph: 5, end_paragraph: 5 },
+      { id: 'dialogue', type: 'too_short', text: '好。', startParagraph: 6, endParagraph: 6 },
+      { id: 'body', type: 'human', text: '作者：这句仍是正文。', startParagraph: 7, endParagraph: 7 },
+    ];
+    const original = structuredClone(sentences);
+    expect(buildSentenceDisplayLabels(sentences, t)).toEqual(expected);
+    expect(sentences).toEqual(original);
+    expect(buildSentenceParagraphLinkId(sentences[2], 3)).toBe('merged:p-3');
+    expect(buildSentenceParagraphLinkId(sentences[2], 4)).toBe('merged:p-4');
+    expect(buildSentenceDisplayLabels([
+      { type: 'metadata', text: '旧标题' },
+      { type: 'ai', text: '旧正文无段落范围' },
+    ], t)).toEqual([expected[0], copy.scan.results.block.replace('{value}', '1')]);
+    expect(buildSentenceDisplayLabels([
+      { type: 'metadata', raw: '', text: author },
+      { type: 'metadata', text: 'Author: notes\nA second heading line' },
+    ], t)).toEqual([expected[1], expected[0]]);
+  });
+
   it('仅服务端metadata跳过高亮，保留标题格式和普通短段/对话的原分类', () => {
     const html = '<h2 style="text-align: center"><strong>标题</strong></h2><p><em>作者：张三</em></p><p>好。</p><p>“去吧。”</p>';
     const sentences = [

@@ -47,9 +47,12 @@ const openReport = async (examples = detectionExamples) => {
 };
 
 describe('UsageExamplesModal', () => {
-  it('示例报告metadata只作上下文，原文无高亮且段落详情不显示占位概率', async () => {
+  it('示例报告区分标题作者，正文从1编号且metadata不显示占位概率', async () => {
     const examples = structuredClone(detectionExamples);
-    Object.assign(examples[0].analysis.sentences[0], { type: 'metadata', probability: 0, score: 0 });
+    ['背影', '作者: 朱自清'].forEach((raw, index) => {
+      Object.assign(examples[0].analysis.sentences[index], { raw, text: raw, type: 'metadata', probability: 0, score: 0 });
+    });
+    examples[0].text = examples[0].analysis.sentences.map((paragraph) => paragraph.raw).join('\n\n');
     const { wrapper } = await openReport(examples);
     try {
       const first = examples[0].analysis.sentences[0];
@@ -58,9 +61,13 @@ describe('UsageExamplesModal', () => {
       expect(original.textContent).toContain(first.raw);
       findButton('段落详情').click();
       await flushPromises();
-      const firstDetail = document.querySelector('[data-testid="example-paragraphs"] article')!;
-      expect(firstDetail.textContent).toContain('元信息 · 仅作上下文');
-      expect(firstDetail.textContent).not.toContain('AI 概率');
+      const details = Array.from(document.querySelectorAll('[data-testid="example-paragraphs"] article'));
+      expect(details.map((detail) => detail.querySelector('span')?.textContent)).toEqual(['标题', '作者', '段落 1']);
+      for (const detail of details.slice(0, 2)) {
+        expect(detail.querySelectorAll('span')).toHaveLength(1);
+        expect(detail.textContent).not.toMatch(/AI 概率|\d+%|元信息|仅作上下文/);
+      }
+      expect(details[2].textContent).toContain('AI 概率');
       expect(document.querySelector('[data-testid="example-ai-score"]')?.textContent).toBe(`${examples[0].analysis.summary.ai}%`);
     } finally {
       wrapper.unmount();
