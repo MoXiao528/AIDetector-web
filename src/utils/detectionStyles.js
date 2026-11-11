@@ -44,9 +44,17 @@ const toneMap = {
     card: 'border-slate-200 bg-slate-50',
     text: 'text-slate-500',
   },
+  metadata: {
+    chip: '',
+    card: 'border-slate-200 bg-white',
+    text: 'text-slate-700',
+  },
 };
 
-const resolveTone = (value, type = '') => (type === 'too_short' ? 'tooShort' : getProbabilityTone(value));
+const resolveTone = (value, type = '') => {
+  if (type === 'metadata') return 'metadata';
+  return type === 'too_short' ? 'tooShort' : getProbabilityTone(value);
+};
 
 export const getProbabilityChipClasses = (value, type = '') => toneMap[resolveTone(value, type)].chip;
 

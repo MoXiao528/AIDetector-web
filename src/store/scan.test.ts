@@ -239,6 +239,37 @@ describe('scan store guest history boundary', () => {
     historyMocks.getHistoryList.mockResolvedValue({ items: [] });
   });
 
+  it.each([true, false])('metadata保留分类并排除本地统计，全文summary按服务端原值保留（有summary=%s）', async (hasSummary) => {
+    const store = useScanStore();
+    store.activateGuestSession('sid-a');
+    const text = '标题\n作者：张三\n好。\n“去吧。”';
+    const sentences = [
+      { id: 'title', text: '标题', raw: '标题', type: 'metadata', score: 0, probability: 0 },
+      { id: 'byline', text: '作者：张三', raw: '作者：张三', type: 'metadata', score: 0, probability: 0 },
+      { id: 'short', text: '好。', raw: '好。', type: 'ai', score: 90, probability: 0.9 },
+      { id: 'dialogue', text: '“去吧。”', raw: '“去吧。”', type: 'human', score: 10, probability: 0.1 },
+    ].map((sentence, index) => ({ ...sentence, startParagraph: index + 1, endParagraph: index + 1 }));
+    scanApiMocks.detectText.mockResolvedValueOnce({
+      historyId: 980, inputText: text,
+      result: { sentences, ...(hasSummary ? { summary: { ai: 73, human: 27 } } : {}) },
+    });
+    const result = await store.analyzeText(text, { functions: ['scan'], guestToken: 'guest:sid-a:token' });
+    expect(result.sentences.map((item) => item.type)).toEqual(['metadata', 'metadata', 'ai', 'human']);
+    expect(result.aiLikelyCount).toBe(1);
+    expect(result.summary).toEqual(hasSummary ? { ai: 73, human: 27 } : { ai: 50, human: 50 });
+    expect(result.highlightedHtml).not.toContain('data-sentence-id="title"');
+    expect(result.highlightedHtml).toContain('data-sentence-id="short"');
+
+    const record = store.historyRecords.find((item) => item.id === store.currentResultHistoryId);
+    historyMocks.getHistoryList.mockResolvedValueOnce({ items: [makeBackendRecord(record, 980)] });
+    await store.syncHistoryFromBackend();
+    store.loadHistoryRecord(store.historyRecords[0]);
+    expect(store.result.sentences.map((item) => item.type)).toEqual(['metadata', 'metadata', 'ai', 'human']);
+    expect(store.result.aiLikelyCount).toBe(1);
+    expect(store.result.summary).toEqual(result.summary);
+  });
+
+
   it.each(['inputText', 'input_text', 'request'])(
     '结果原文取自 %s，搜索与编辑不改变快照，切换历史和重置同步更新',
     async (source) => {

@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { detectText } from './scan';
+import { detectText, preflightText } from './scan';
 import type { EvidenceResult } from './scan';
 import { getHistoryList, getHistoryRecord, updateHistoryRecord } from './history';
 
@@ -17,6 +17,24 @@ describe('detectText guest identity pinning', () => {
   afterEach(() => {
     vi.unstubAllGlobals();
     window.localStorage.clear();
+  });
+
+  it.each(['guest-a-token', ''])('长度预检固定当前凭据%s，使用cookie或显式游客Bearer且不发送检测任务参数', async (guestToken) => {
+    const response = { characterCount: 200, tokenCount: 123, minimumTokens: 256, ready: false, estimatedAdditionalCharacters: 220 };
+    const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify(response), {
+      status: 200, headers: { 'content-type': 'application/json' },
+    }));
+    vi.stubGlobal('fetch', fetchMock);
+    window.localStorage.setItem('guest_token', 'other-tab-token');
+    const controller = new AbortController();
+    expect(await preflightText('text to check', guestToken, controller.signal)).toEqual(response);
+    const [url, options] = fetchMock.mock.calls[0];
+    expect(url).toBe('/api/v1/detect/preflight');
+    expect(options.method).toBe('POST');
+    expect(options.credentials).toBe('include');
+    expect(JSON.parse(options.body)).toEqual({ text: 'text to check' });
+    expect(new Headers(options.headers).get('Authorization')).toBe(guestToken ? `Bearer ${guestToken}` : null);
+    expect(new Headers(options.headers).has('Idempotency-Key')).toBe(false);
   });
 
   it('显式 guest token 不会被另一个标签刚写入的 token 覆盖', async () => {

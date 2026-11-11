@@ -71,6 +71,7 @@ vi.mock('../api/modules/examples', () => ({
 
 vi.mock('../api/modules/scan', () => ({
   detectText: vi.fn(),
+  preflightText: vi.fn(),
 }));
 
 vi.mock('../api/modules/history', () => ({
@@ -155,6 +156,9 @@ type ScanPageSetupState = {
   deleteSingleHistoryRecord: (record: { id: number }) => Promise<void>;
   deleteSelectedHistoryRecords: () => Promise<void>;
   handleScan: () => Promise<void>;
+  retryLengthPreflight: () => Promise<void>;
+  canStartScan: boolean;
+  preflightStatus: string;
   exportReport: () => Promise<void>;
   loadHistoryRecord: (id: string | number) => Promise<void>;
   onFileChange: (event: { target: { files: File[]; value: string } }) => Promise<void>;
@@ -189,10 +193,14 @@ describe('ScanPage panel switching', () => {
     vi.clearAllMocks();
     window.localStorage.clear();
     vi.mocked(authApi.ensureGuestToken).mockResolvedValue('guest-token');
+    vi.mocked(authApi.clearGuestToken).mockReset().mockReturnValue(true);
     vi.mocked(authApi.getGuestSessionId).mockImplementation((token) => (token ? `sid:${token}` : ''));
     window.localStorage.setItem('guest_token', 'guest-token');
     vi.mocked(authApi.getStoredGuestToken).mockImplementation(() => window.localStorage.getItem('guest_token') || '');
     vi.mocked(scanApi.detectText).mockReset();
+    vi.mocked(scanApi.preflightText).mockReset().mockResolvedValue({
+      characterCount: 200, tokenCount: 256, minimumTokens: 256, ready: true, estimatedAdditionalCharacters: null,
+    });
     vi.mocked(reportsApi.exportPdfReport).mockReset();
     vi.mocked(historyApi.getHistoryList).mockReset().mockResolvedValue(makeHistoryResponse());
     vi.mocked(historyApi.getHistoryRecord).mockReset();
@@ -211,6 +219,400 @@ describe('ScanPage panel switching', () => {
   afterEach(() => {
     disposePinia(pinia);
     vi.unstubAllEnvs();
+  });
+
+  const mockGuestRenewal = (issueToken: () => Promise<string>) => {
+    vi.mocked(authApi.clearGuestToken).mockImplementation((expected) => {
+      if (window.localStorage.getItem('guest_token') !== expected) return false;
+      window.localStorage.removeItem('guest_token');
+      return true;
+    });
+    vi.mocked(authApi.ensureGuestToken).mockImplementation(async () => {
+      const stored = window.localStorage.getItem('guest_token');
+      if (stored) return stored;
+      const token = await issueToken();
+      window.localStorage.setItem('guest_token', token);
+      return token;
+    });
+  };
+
+  const rejectGuestPreflight = async (state: ScanPageSetupState) => {
+    vi.mocked(scanApi.preflightText).mockRejectedValueOnce({ status: 401, code: 'GUEST_SESSION_INVALID' });
+    await state.retryLengthPreflight();
+    await nextTick();
+    expect(state.preflightStatus).toBe('error');
+  };
+
+  it('撤销但本地未过期的游客可显式恢复一次，保留等待期间最新草稿并清理旧主体历史', async () => {
+    route.query = { panel: 'document' };
+    const issued = createDeferred<string>();
+    const issueToken = vi.fn(() => issued.promise);
+    mockGuestRenewal(issueToken);
+    const wrapper = mountScanPage();
+    try {
+      await flushPromises();
+      const store = useScanStore();
+      const state = getScanPageSetupState(wrapper);
+      store.setEditorHtml('<p>Initial <strong>draft</strong></p>');
+      store.lastUploadedFileName = 'draft.txt';
+      store.historyRecords = [{ id: 'revoked-history', inputText: 'old actor record' }];
+      await rejectGuestPreflight(state);
+      expect(wrapper.get('.scan-readiness button').text()).toBe(globalT('scan.editor.preflightSessionRetry'));
+      expect(authApi.clearGuestToken).not.toHaveBeenCalled();
+      const recovery = state.retryLengthPreflight();
+      await state.retryLengthPreflight();
+      await nextTick();
+      expect(wrapper.get('.scan-readiness button').attributes('disabled')).toBeDefined();
+      expect(issueToken).toHaveBeenCalledTimes(1);
+      store.setEditorHtml('<p>Newest <strong>draft 😀</strong></p>');
+      const latestHtml = store.editorHtml;
+      await nextTick();
+      issued.resolve('fresh-guest-token');
+      await recovery;
+      await flushPromises();
+      expect(store.inputText).toBe('Newest draft 😀');
+      expect(store.editorHtml).toBe(latestHtml);
+      expect(wrapper.get('.editor-surface').element.innerHTML).toBe(latestHtml);
+      expect(wrapper.get('.editor-surface').text()).toBe('Newest draft 😀');
+      expect(store.lastUploadedFileName).toBe('draft.txt');
+      expect(store.historyRecords).toEqual([]);
+      expect(state.canStartScan).toBe(true);
+      expect(authApi.clearGuestToken).toHaveBeenCalledExactlyOnceWith('guest-token');
+      expect(vi.mocked(scanApi.preflightText).mock.lastCall?.slice(0, 2)).toEqual(['Newest draft 😀', 'fresh-guest-token']);
+      expect(window.localStorage.getItem('ai-detector-scan-draft') || '').not.toContain('Newest draft');
+    } finally {
+      wrapper.unmount();
+    }
+  });
+
+  it('恢复后的新游客仍401时不循环新建会话，继续输入也保留显式恢复入口', async () => {
+    route.query = { panel: 'document' };
+    vi.useFakeTimers();
+    const issueToken = vi.fn(async () => 'fresh-guest-token');
+    mockGuestRenewal(issueToken);
+    const wrapper = mountScanPage();
+    try {
+      await flushPromises();
+      const store = useScanStore();
+      const state = getScanPageSetupState(wrapper);
+      store.setText('Draft still here.');
+      vi.mocked(scanApi.preflightText).mockRejectedValue({ status: 401, code: 'GUEST_SESSION_INVALID' });
+      await state.retryLengthPreflight();
+      await state.retryLengthPreflight();
+      expect(state.preflightStatus).toBe('error');
+      expect(issueToken).toHaveBeenCalledTimes(1);
+      store.setText('Draft still here with another edit.');
+      await vi.advanceTimersByTimeAsync(1500);
+      expect(issueToken).toHaveBeenCalledTimes(1);
+      expect(scanApi.preflightText).toHaveBeenCalledTimes(2);
+      expect(store.inputText).toBe('Draft still here with another edit.');
+      expect(wrapper.get('.scan-readiness button').text()).toBe(globalT('scan.editor.preflightSessionRetry'));
+    } finally {
+      wrapper.unmount();
+      vi.useRealTimers();
+    }
+  });
+
+  it.each([401, 0])('恢复凭据失败%s不丢草稿，下一次显式重试可以成功', async (status) => {
+    route.query = { panel: 'document' };
+    const issueToken = vi.fn().mockRejectedValueOnce(Object.assign(new Error('renewal failed'), { status })).mockResolvedValueOnce('fresh-guest-token');
+    mockGuestRenewal(issueToken);
+    const wrapper = mountScanPage();
+    try {
+      await flushPromises();
+      const state = getScanPageSetupState(wrapper);
+      const store = useScanStore();
+      store.setEditorHtml('<p>Keep <em>this draft</em></p>');
+      await rejectGuestPreflight(state);
+      await state.retryLengthPreflight();
+      expect(store.inputText).toBe('Keep this draft');
+      expect(state.canStartScan).toBe(false);
+      await state.retryLengthPreflight();
+      expect(store.inputText).toBe('Keep this draft');
+      expect(store.editorHtml).toContain('<em>this draft</em>');
+      expect(state.canStartScan).toBe(true);
+      expect(authApi.clearGuestToken).toHaveBeenCalledTimes(1);
+      expect(issueToken).toHaveBeenCalledTimes(2);
+    } finally {
+      wrapper.unmount();
+    }
+  });
+
+  it.each(['new token', 'new actor'])('旧预检401晚于%s时不清新凭据、不回填旧正文', async (change) => {
+    route.query = { panel: 'document' };
+    const wrapper = mountScanPage();
+    try {
+      await flushPromises();
+      const store = useScanStore();
+      const state = getScanPageSetupState(wrapper);
+      store.setText('Old draft.');
+      const pending = createDeferred<scanApi.DetectionPreflight>();
+      vi.mocked(scanApi.preflightText).mockReturnValueOnce(pending.promise);
+      const checking = state.retryLengthPreflight();
+      await flushPromises();
+      window.localStorage.setItem('guest_token', 'new-guest-token');
+      if (change === 'new actor') {
+        dispatchGuestTokenStorage('guest-token', 'new-guest-token');
+        store.setText('New actor draft.');
+      }
+      pending.reject({ status: 401, code: 'GUEST_SESSION_INVALID' });
+      await checking;
+      await nextTick();
+      expect(authApi.clearGuestToken).not.toHaveBeenCalled();
+      expect(window.localStorage.getItem('guest_token')).toBe('new-guest-token');
+      expect(store.inputText).toBe(change === 'new actor' ? 'New actor draft.' : 'Old draft.');
+      expect(wrapper.text()).not.toContain(globalT('scan.editor.preflightSessionExpired'));
+    } finally {
+      wrapper.unmount();
+    }
+  });
+
+  it.each(['login', 'unmount'])('恢复等待期间%s使恢复作废，不发送或恢复旧游客草稿', async (change) => {
+    route.query = { panel: 'document' };
+    const issued = createDeferred<string>();
+    mockGuestRenewal(() => issued.promise);
+    const wrapper = mountScanPage();
+    let mounted = true;
+    try {
+      await flushPromises();
+      const store = useScanStore();
+      const state = getScanPageSetupState(wrapper);
+      store.setText('Old guest draft.');
+      await rejectGuestPreflight(state);
+      const recovery = state.retryLengthPreflight();
+      if (change === 'login') {
+        window.localStorage.setItem('auth_session', '1');
+        useAuthStore().token = '__cookie__';
+        useAuthStore().user = { id: 321 };
+        store.clearScanSessionData();
+        store.setText('New account draft.');
+      } else {
+        wrapper.unmount();
+        mounted = false;
+      }
+      const generation = store.sessionGeneration;
+      issued.resolve('fresh-guest-token');
+      await recovery;
+      expect(store.sessionGeneration).toBe(generation);
+      expect(store.inputText).toBe(change === 'login' ? 'New account draft.' : 'Old guest draft.');
+      expect(scanApi.preflightText).toHaveBeenCalledTimes(1);
+    } finally {
+      if (mounted) wrapper.unmount();
+    }
+  });
+
+  it('工作台停输500ms预检，以服务端ready启用按钮，改字/清空/导入立即作废旧结果', async () => {
+    route.query = { panel: 'document' };
+    vi.useFakeTimers();
+    const wrapper = mountScanPage();
+    try {
+      await flushPromises();
+      const store = useScanStore();
+      const state = getScanPageSetupState(wrapper);
+      const startButton = () => wrapper.findAll('button').find((button) => button.text().includes(globalT('scan.toolbar.start')))!;
+      vi.mocked(scanApi.preflightText).mockResolvedValueOnce({
+        characterCount: 6, tokenCount: 9, minimumTokens: 256, ready: false, estimatedAdditionalCharacters: 211,
+      });
+      store.setText('😀 hello');
+      expect(state.canStartScan).toBe(false);
+      await vi.advanceTimersByTimeAsync(499);
+      expect(scanApi.preflightText).not.toHaveBeenCalled();
+      await vi.advanceTimersByTimeAsync(1);
+      await nextTick();
+      expect(startButton().attributes('disabled')).toBeDefined();
+      expect(wrapper.get('.scan-readiness').text()).toContain(globalT('scan.editor.visibleCharacterCount', { count: 6 }));
+      expect(wrapper.get('.scan-readiness').text()).toContain('211');
+      expect(wrapper.get('.scan-readiness').text()).not.toMatch(/256|token/);
+      expect(vi.mocked(scanApi.preflightText).mock.calls[0].slice(0, 2)).toEqual(['😀 hello', 'guest-token']);
+
+      store.setImportedContent({ text: 'Imported document.', html: '<p>Imported document.</p>' });
+      expect(state.canStartScan).toBe(false);
+      await vi.advanceTimersByTimeAsync(500);
+      await nextTick();
+      expect(startButton().attributes('disabled')).toBeUndefined();
+      expect(scanApi.detectText).not.toHaveBeenCalled();
+      store.setText('');
+      expect(state.canStartScan).toBe(false);
+      await vi.advanceTimersByTimeAsync(500);
+      expect(scanApi.preflightText).toHaveBeenCalledTimes(2);
+      expect(wrapper.get('.scan-readiness').text()).toContain(globalT('scan.editor.preflightEmpty'));
+    } finally {
+      wrapper.unmount();
+      vi.useRealTimers();
+    }
+  });
+
+  it('长度预检网络失败显示重试，成功重试后恢复检测按钮', async () => {
+    route.query = { panel: 'document' };
+    const wrapper = mountScanPage();
+    try {
+      await flushPromises();
+      const state = getScanPageSetupState(wrapper);
+      useScanStore().setText('A document to check.');
+      vi.mocked(scanApi.preflightText).mockRejectedValueOnce(new Error('network unavailable'));
+      await state.retryLengthPreflight();
+      await nextTick();
+      expect(state.canStartScan).toBe(false);
+      expect(wrapper.get('.scan-readiness').text()).toContain(globalT('scan.editor.preflightError'));
+      await wrapper.get('.scan-readiness button').trigger('click');
+      await flushPromises();
+      expect(state.canStartScan).toBe(true);
+      expect(wrapper.find('.scan-readiness button').exists()).toBe(false);
+    } finally {
+      wrapper.unmount();
+    }
+  });
+
+  it('正式检测仍以服务端长度校验为准，错误与提示区只显示补充字符估算', async () => {
+    route.query = { panel: 'document' };
+    const wrapper = mountScanPage();
+    try {
+      await flushPromises();
+      const store = useScanStore();
+      const state = getScanPageSetupState(wrapper);
+      store.setText('A document whose server check rejects its length.');
+      await state.retryLengthPreflight();
+      vi.mocked(scanApi.detectText).mockRejectedValueOnce(Object.assign(new Error('At least 256 model tokens are required'), {
+        status: 422, code: 'TEXT_TOO_SHORT', details: {
+          code: 'TEXT_TOO_SHORT', detail: { characterCount: 40, tokenCount: 30, minimumTokens: 256, ready: false, estimatedAdditionalCharacters: 52 },
+        },
+      }));
+      await state.handleScan();
+      await nextTick();
+      expect(scanApi.detectText).toHaveBeenCalledTimes(1);
+      expect(state.canStartScan).toBe(false);
+      const message = globalT('scan.editor.minDetectRemaining', { remaining: 52 });
+      expect(store.analysisError?.message).toBe(message);
+      expect(wrapper.get('.scan-readiness').text()).toContain(message);
+      expect(wrapper.text()).not.toMatch(/256 model tokens/);
+    } finally {
+      wrapper.unmount();
+    }
+  });
+
+  it.each(['history', 'detection'])('%s结果的高亮预览不显示长度提示或发预检，切回编辑重新检查并可重试', async (source) => {
+    route.query = { panel: 'document' };
+    const text = 'A document with a completed detection.';
+    const analysis = { summary: { ai: 67, human: 33 }, sentences: [] };
+    vi.mocked(historyApi.getHistoryList).mockResolvedValue(makeHistoryResponse([{ id: 960, inputText: text, analysis }]));
+    vi.mocked(scanApi.detectText).mockResolvedValue({ historyId: 961, result: analysis });
+    vi.useFakeTimers();
+    const wrapper = mountScanPage();
+    try {
+      await flushPromises();
+      const state = getScanPageSetupState(wrapper);
+      if (source === 'history') {
+        await state.loadHistoryRecord(960);
+      } else {
+        useScanStore().setText(text);
+        await state.retryLengthPreflight();
+        await state.handleScan();
+      }
+      await flushPromises();
+      const requestsBeforePreview = vi.mocked(scanApi.preflightText).mock.calls.length;
+      expect(state.editorMode).toBe('preview');
+      expect(state.preflightStatus).toBe('paused');
+      expect(state.canStartScan).toBe(false);
+      expect(wrapper.find('.scan-readiness').exists()).toBe(false);
+      await vi.advanceTimersByTimeAsync(1000);
+      expect(scanApi.preflightText).toHaveBeenCalledTimes(requestsBeforePreview);
+
+      vi.mocked(scanApi.preflightText).mockRejectedValueOnce(new Error('offline'));
+      await wrapper.findAll('.mode-button')[0].trigger('click');
+      expect(state.canStartScan).toBe(false);
+      await vi.advanceTimersByTimeAsync(499);
+      expect(scanApi.preflightText).toHaveBeenCalledTimes(requestsBeforePreview);
+      await vi.advanceTimersByTimeAsync(1);
+      expect(wrapper.get('.scan-readiness').text()).toContain(globalT('scan.editor.preflightError'));
+      await wrapper.get('.scan-readiness button').trigger('click');
+      await flushPromises();
+      expect(state.canStartScan).toBe(true);
+      await wrapper.findAll('.mode-button')[1].trigger('click');
+      expect(state.canStartScan).toBe(false);
+      expect(wrapper.find('.scan-readiness').exists()).toBe(false);
+    } finally {
+      wrapper.unmount();
+      vi.useRealTimers();
+    }
+  });
+
+  it.each([
+    { source: 'history', locale: 'zh-CN' },
+    { source: 'detection', locale: 'en-US' },
+  ])('$source的metadata不着色/判定，$locale详情仅显示上下文，普通短段保持原判定', async ({ source, locale }) => {
+    route.query = { panel: 'document' };
+    const paragraphs = ['标题', '作者：张三', '好。', '“去吧。”'];
+    const text = paragraphs.join('\n\n');
+    const html = '<h1><strong>标题</strong></h1><p><em>作者：张三</em></p><p>好。</p><p>“去吧。”</p>';
+    const types = ['metadata', 'metadata', 'ai', 'human'] as const;
+    const analysis = {
+      summary: { ai: 73, human: 27 },
+      sentences: paragraphs.map((raw, index) => ({
+        id: `meta-test-${index}`, text: raw, raw, type: types[index],
+        score: index === 2 ? 90 : index === 3 ? 10 : 0,
+        probability: index === 2 ? 0.9 : index === 3 ? 0.1 : 0,
+        startParagraph: index + 1, endParagraph: index + 1,
+      })),
+    };
+    vi.mocked(historyApi.getHistoryList).mockResolvedValue(makeHistoryResponse([
+      { id: 980, inputText: text, editorHtml: html, analysis },
+    ]));
+    vi.mocked(scanApi.detectText).mockResolvedValue({ historyId: 981, inputText: text, result: analysis });
+    let restoreLocale = () => {};
+    const wrapper = mount(ScanPage, {
+      global: {
+        plugins: [createI18n()],
+        stubs: {
+          ...pageStubs,
+          AppHeader: {
+            setup() {
+              const i18n = useI18n();
+              const previous = i18n.locale.value;
+              restoreLocale = () => i18n.setLocale(previous);
+              i18n.setLocale(locale);
+            },
+            template: '<div />',
+          },
+        },
+      },
+    });
+    try {
+      await flushPromises();
+      const state = getScanPageSetupState(wrapper);
+      const store = useScanStore();
+      if (source === 'history') {
+        await state.loadHistoryRecord(980);
+      } else {
+        store.setImportedContent({ text, html });
+        await state.retryLengthPreflight();
+        await state.handleScan();
+      }
+      await flushPromises();
+      const preview = wrapper.get('.preview-surface');
+      expect(preview.get('h1 strong').text()).toBe('标题');
+      expect(preview.get('p em').text()).toBe('作者：张三');
+      expect(preview.find('[data-sentence-id="meta-test-0"], [data-sentence-id="meta-test-1"]').exists()).toBe(false);
+      expect(preview.findAll('.highlight-chip')).toHaveLength(2);
+      expect(preview.get('[data-sentence-id="meta-test-2"]').classes()).toContain('bg-rose-100');
+      expect(preview.get('[data-sentence-id="meta-test-3"]').classes()).toContain('bg-emerald-100');
+      expect(store.result.summary).toEqual({ ai: 73, human: 27 });
+      expect(store.result.aiLikelyCount).toBe(1);
+      expect(wrapper.find('.scan-readiness').exists()).toBe(false);
+      state.openResultDetail();
+      await flushPromises();
+      const metadataTextNodes = wrapper.findAll('.result-sentence-text').filter((node) => paragraphs.slice(0, 2).includes(node.text()));
+      expect(metadataTextNodes).toHaveLength(4);
+      for (const node of metadataTextNodes) {
+        const card = node.element.parentElement!;
+        expect(card.textContent).toContain(locale === 'zh-CN' ? '元信息 · 仅作上下文' : 'Metadata · Context only');
+        expect(card.textContent).not.toMatch(/\d+%/);
+        expect(card.className).not.toMatch(/orange|emerald|rose|amber|lime/);
+        expect(node.html()).not.toMatch(/text-(?:rose|orange|amber|lime|emerald)/);
+      }
+    } finally {
+      wrapper.unmount();
+      restoreLocale();
+    }
   });
 
   const mountExportPage = async (authenticated = true) => {
@@ -489,6 +891,7 @@ describe('ScanPage panel switching', () => {
       await wrapper.get('.home-primary').trigger('click');
       await flushPromises();
       useScanStore().setText('A'.repeat(216));
+      await state.retryLengthPreflight();
       await state.handleScan();
       await flushPromises();
       expect(scanApi.detectText).toHaveBeenCalledTimes(1);
@@ -654,6 +1057,7 @@ describe('ScanPage panel switching', () => {
       expect(previewSurface.isVisible()).toBe(false);
 
       await getScanPageSetupState(wrapper).loadHistoryRecord(960);
+      await getScanPageSetupState(wrapper).retryLengthPreflight();
       await flushPromises();
       expect(preview.attributes('disabled')).toBeUndefined();
       expect(preview.attributes('aria-pressed')).toBe('true');
@@ -983,6 +1387,7 @@ describe('ScanPage panel switching', () => {
       const deferred = createDeferred<{ deletedCount: number }>();
       vi.spyOn(scanStore, 'clearAllHistoryRecords').mockReturnValueOnce(deferred.promise);
       const clearing = state.clearAllHistoryRecords();
+      await state.retryLengthPreflight();
       await state.handleScan();
       deferred.resolve({ deletedCount: 1 });
       await clearing;
@@ -1310,6 +1715,8 @@ describe('ScanPage panel switching', () => {
           })),
         },
       });
+      state.editorMode = 'edit';
+      await state.retryLengthPreflight();
       await state.handleScan();
       await flushPromises();
       expect(scanApi.detectText).toHaveBeenCalledTimes(1);
@@ -1336,6 +1743,7 @@ describe('ScanPage panel switching', () => {
       const oldText = '已送检'.repeat(70);
       const missing = '字'.repeat(missingChars);
       scanStore.setImportedContent({ text: oldText, html: `<div>${missing}<div>${oldText}</div></div>` });
+      await state.retryLengthPreflight();
       await state.handleScan();
       expect(scanStore.inputText).toBe(`${missing}\n\n${oldText}`);
       expect(scanApi.detectText).not.toHaveBeenCalled();
@@ -1448,7 +1856,7 @@ describe('ScanPage panel switching', () => {
     wrapper.unmount();
   });
 
-  it('开始扫描前若 guest SID 已切换，会清空旧正文且不发送给新主体', async () => {
+  it('长度预检前若 guest SID 已切换，会清空旧正文且不发送给新主体', async () => {
     route.query = { panel: 'document' };
     route.fullPath = '/dashboard?panel=document';
     vi.mocked(authApi.ensureGuestToken)
@@ -1464,6 +1872,7 @@ describe('ScanPage panel switching', () => {
     await flushPromises();
     const scanStore = useScanStore();
     scanStore.setText('A'.repeat(200));
+    await getScanPageSetupState(wrapper).retryLengthPreflight();
     await nextTick();
 
     const startButton = wrapper
@@ -1655,6 +2064,7 @@ describe('ScanPage panel switching', () => {
     const deferred = createDeferred<typeof staleAnalysis>();
     const analyzeSpy = vi.spyOn(scanStore, 'analyzeText').mockReturnValue(deferred.promise);
     scanStore.setText('A'.repeat(200));
+    await state.retryLengthPreflight();
     await nextTick();
     vi.mocked(quotaApi.fetchQuota).mockClear();
 
@@ -1693,6 +2103,7 @@ describe('ScanPage panel switching', () => {
       const scanStore = useScanStore();
       const state = getScanPageSetupState(wrapper);
       scanStore.setText(oldText);
+      await state.retryLengthPreflight();
       const scanning = state.handleScan();
       await vi.waitFor(() => expect(scanApi.detectText).toHaveBeenCalledTimes(1));
 
@@ -1822,9 +2233,10 @@ describe('ScanPage panel switching', () => {
     await vi.waitFor(() => expect(quotaApi.fetchQuota).toHaveBeenCalledTimes(1));
     const state = getScanPageSetupState(wrapper);
 
+    // Match clearSessionState: clear persistent session before reactive token invalidation.
+    window.localStorage.removeItem('auth_session');
     authStore.token = '';
     authStore.user = null;
-    window.localStorage.removeItem('auth_session');
     await vi.waitFor(() => expect(quotaApi.fetchQuota).toHaveBeenCalledTimes(2));
     userRequest.resolve({ actorType: 'user', limit: 10000, remaining: 4321, usedToday: 5679 });
     await flushPromises();
@@ -1962,6 +2374,7 @@ describe('ScanPage panel switching', () => {
     vi.mocked(scanApi.detectText).mockClear();
 
     window.localStorage.setItem('guest_token', 'guest-b-token');
+    await state.retryLengthPreflight();
     await state.handleScan();
     await flushPromises();
 
@@ -1998,6 +2411,7 @@ describe('ScanPage panel switching', () => {
       const state = getScanPageSetupState(wrapper);
       const scanStore = useScanStore();
       scanStore.setText(text);
+      await state.retryLengthPreflight();
       await state.handleScan();
       await flushPromises();
       expect(scanStore.result?.evidence).toEqual(evidence);
@@ -2067,6 +2481,7 @@ describe('ScanPage panel switching', () => {
     const state = getScanPageSetupState(wrapper);
     scanStore.setText(text);
 
+    await state.retryLengthPreflight();
     await state.handleScan();
     await flushPromises();
     const legacyHistoryId = scanStore.currentResultHistoryId;
@@ -2079,6 +2494,8 @@ describe('ScanPage panel switching', () => {
     expect(legacyPreview).toContain('data-sentence-id="ev5-main-paragraph"');
     expect(scanStore.result?.summary).toEqual({ ai, human: 100 - ai });
 
+    state.editorMode = 'edit';
+    await state.retryLengthPreflight();
     await state.handleScan();
     await flushPromises();
     const evidenceHistoryId = scanStore.currentResultHistoryId;
@@ -2160,6 +2577,7 @@ describe('ScanPage panel switching', () => {
     const scanStore = useScanStore();
     const submittedText = '用于验证四维面板的中文文本。'.repeat(20);
     scanStore.setText(submittedText);
+    await getScanPageSetupState(wrapper).retryLengthPreflight();
     await getScanPageSetupState(wrapper).handleScan();
     await flushPromises();
     const historyId = scanStore.currentResultHistoryId;

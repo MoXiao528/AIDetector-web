@@ -16,7 +16,7 @@ cd AIDetector-web
 npm ci
 ```
 
-开发配置默认直连 `http://localhost:8020`。如果使用直连，将浏览器中打开的前端源（默认 `http://localhost:5300`）加入后端的 `BACKEND_CORS_ORIGINS`。也可以在仓库根目录创建 `.env.development.local`，通过 Vite 走同域代理。
+开发配置默认直连 `http://localhost:8020`。如果使用直连，将浏览器中打开的前端源（默认 `http://localhost:3000`）加入后端的 `BACKEND_CORS_ORIGINS`。也可以在仓库根目录创建 `.env.development.local`，通过 Vite 走同域代理。
 
 ```env
 VITE_API_BASE_URL=
@@ -27,10 +27,10 @@ VITE_DEV_PROXY_TARGET=http://localhost:8020
 npm run dev
 ```
 
-打开 `http://localhost:5300`，端口被占用时以终端输出为准。
+打开 `http://localhost:3000`，端口被占用时以终端输出为准。
 
 - **浏览示例**。首页点「查看示例」，可以在后端未启动时查看随前端打包的检测结果。
-- **检测自己的文本**。按各端 README 启动检测服务和后端，确认后端 `/api/v1/ready` 返回 `database: ok` 和 `detect_service: ok`。打开 `/dashboard`，选择「开始新检测」，粘贴至少 200 个非空白字符，或拖入含足量文字的文档，再点「开始检测」。可以用游客会话完成这一步。
+- **检测自己的文本**。按各端 README 启动检测服务和后端，确认后端 `/api/v1/ready` 返回 `database: ok` 和 `detect_service: ok`。打开 `/dashboard`，选择「开始新检测」，粘贴文本或拖入文档。编辑模式中输入停止 500ms 后自动检查长度，页面显示字符数及预计还需补充的字符数，达标后即可点「开始检测」。高亮预览暂停预检并隐藏长度检查框，切回编辑后重新检查。门槛由后端同款 tokenizer 按 256 token 判断；预检不消耗检测额度。可以用游客会话完成这一步。
 
 ## 环境变量
 

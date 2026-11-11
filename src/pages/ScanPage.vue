@@ -735,7 +735,7 @@
                     <p v-if="!hasResults" class="mt-2 text-xs text-slate-500">{{ t('scan.results.quotaHint') }}</p>
                   </div>
                   <div
-                    v-if="!hasResults"
+                    v-if="editorMode === 'edit' && (!hasResults || !canStartScan)"
                     class="scan-readiness mt-3 rounded-xl border px-4 py-3 text-xs"
                     :class="
                       canStartScan
@@ -751,9 +751,16 @@
                         {{ scanReadinessCounter }}
                       </span>
                     </div>
-                    <p class="mt-2 leading-5">
+                    <p class="mt-2 leading-5" aria-live="polite">
                       {{ scanReadinessMessage }}
                     </p>
+                    <button
+                      v-if="preflightStatus === 'error' || isRecoveringGuestPreflight"
+                      type="button"
+                      :disabled="isRecoveringGuestPreflight"
+                      class="mt-2 font-semibold underline underline-offset-2"
+                      @click="retryLengthPreflight"
+                    >{{ t(canRecoverGuestPreflight ? 'scan.editor.preflightSessionRetry' : 'scan.editor.preflightRetry') }}</button>
                   </div>
 
                   <div v-if="!hasResults" class="mt-8 space-y-8">
@@ -1247,6 +1254,7 @@ import { useI18n } from '../i18n';
 import { clearGuestToken, ensureGuestToken, getGuestSessionId, getStoredGuestToken } from '../api/modules/auth';
 import { extractApiErrorCode } from '../api/client';
 import { fetchQuota } from '../api/modules/quota';
+import { preflightText } from '../api/modules/scan';
 import { exportPdfReport as requestPdfReport } from '../api/modules/reports';
 import { useAuthStore } from '../store/auth';
 import { useScanStore } from '../store/scan';
@@ -1262,6 +1270,8 @@ import {
   sanitizeHtmlForEditor,
 } from '../utils/editorContent';
 import { showComingSoon, showToast } from '../utils/toast';
+import { countCharacters, countVisibleCharacters, formatShortTextMessage, getShortTextEstimate } from '../utils/detectionLength';
+import { useDetectionPreflight } from '../utils/useDetectionPreflight';
 
 const authStore = useAuthStore();
 const scanStore = useScanStore();
@@ -1725,8 +1735,6 @@ const fontSizeOptions = computed(() => [
   { value: '2xl', label: t('scan.toolbar.fontSizes.2xl') },
 ]);
 
-const minDetectChars = 200;
-const countVisibleCharacters = (value = '') => String(value || '').replace(/\s/g, '').length;
 const clampPercent = (value) => Math.max(0, Math.min(100, Math.round(Number(value) || 0)));
 const collapseSummaryForDisplay = (summary) => {
   const ai = clampPercent(summary?.ai);
@@ -1742,19 +1750,19 @@ const collapseSummaryForDisplay = (summary) => {
 
 const editorText = computed(() => scanStore.editorHtml ? extractTextFromHtml(scanStore.editorHtml) : scanStore.inputText);
 const characterUsage = computed(() =>
-  t('scan.editor.wordCount', { current: editorText.value.length, limit: scanStore.characterLimit })
+  t('scan.editor.wordCount', { current: countCharacters(editorText.value), limit: scanStore.characterLimit })
 );
 
-const characterCount = computed(() => editorText.value.length);
+const characterCount = computed(() => countCharacters(editorText.value));
 const isOverCharacterLimit = computed(() => characterCount.value > scanStore.characterLimit);
 const overflowCharacterCount = computed(() => Math.max(characterCount.value - scanStore.characterLimit, 0));
 const detectableCharacterCount = computed(() => countVisibleCharacters(editorText.value));
-const remainingToMinDetect = computed(() => Math.max(minDetectChars - detectableCharacterCount.value, 0));
-const canStartScan = computed(() => detectableCharacterCount.value >= minDetectChars && !isOverCharacterLimit.value);
+const preflightStatus = computed(() => lengthPreflight.status.value);
+const canStartScan = computed(() => lengthPreflight.ready.value && !isOverCharacterLimit.value);
 const scanReadinessCounter = computed(() =>
   isOverCharacterLimit.value
     ? `${characterCount.value} / ${scanStore.characterLimit}`
-    : `${detectableCharacterCount.value} / ${minDetectChars}`
+    : t('scan.editor.visibleCharacterCount', { count: detectableCharacterCount.value })
 );
 const scanReadinessMessage = computed(() => {
   if (isOverCharacterLimit.value) {
@@ -1764,9 +1772,13 @@ const scanReadinessMessage = computed(() => {
     });
   }
   if (canStartScan.value) {
-    return t('scan.editor.minDetectHint', { minimum: minDetectChars });
+    return t('scan.editor.minDetectHint');
   }
-  return t('scan.editor.minDetectRemaining', { remaining: remainingToMinDetect.value });
+  if (preflightStatus.value === 'empty') return t('scan.editor.preflightEmpty');
+  if (isRecoveringGuestPreflight.value || preflightStatus.value === 'waiting' || preflightStatus.value === 'checking') return t('scan.editor.preflightChecking');
+  if (preflightStatus.value === 'error' && canRecoverGuestPreflight.value) return t('scan.editor.preflightSessionExpired');
+  if (preflightStatus.value === 'error') return t('scan.editor.preflightError');
+  return formatShortTextMessage(lengthPreflight.estimate.value, t);
 });
 const resultHasMergedBlocks = computed(() =>
   Boolean(scanStore.result?.sentences?.some((item) => String(item.text || '').includes('\n')))
@@ -1864,13 +1876,97 @@ const isPageActorContextCurrent = (context) => {
   );
 };
 
+const failedGuestPreflight = ref(null);
+const isRecoveringGuestPreflight = ref(false);
+let guestPreflightRecovery = null;
+let preflightPageDisposed = false;
+const canRecoverGuestPreflight = computed(() => Boolean(
+  failedGuestPreflight.value && isPageActorContextCurrent(failedGuestPreflight.value.context)
+));
+
 const ensureActiveGuestToken = async () => {
+  if (guestPreflightRecovery) await guestPreflightRecovery;
   if (authStore.isAuthenticated) return '';
   const guestToken = await ensureGuestToken();
   if (!authStore.isAuthenticated) {
     activateGuestScanSession(guestToken);
   }
   return guestToken;
+};
+
+const lengthPreflight = useDetectionPreflight({
+  text: editorText,
+  actorKey: computed(() => JSON.stringify(capturePageActorContext())),
+  enabled: computed(() => editorMode.value === 'edit'),
+  limit: scanStore.characterLimit,
+  request: async (text, signal) => {
+    // A revoked token may still be locally unexpired. Wait for explicit recovery,
+    // rather than creating guest sessions repeatedly while the user types.
+    if (canRecoverGuestPreflight.value && !guestPreflightRecovery) {
+      const storedToken = getStoredGuestToken();
+      if (!storedToken || storedToken === failedGuestPreflight.value.token) throw new Error('Guest session expired');
+    }
+    const context = capturePageActorContext();
+    const guestToken = await ensureActiveGuestToken();
+    if (signal.aborted || !isPageActorContextCurrent(context)) throw new DOMException('Cancelled', 'AbortError');
+    if (!context.authenticated && !guestToken) throw new Error('Guest session token is required');
+    try {
+      const response = await preflightText(text, context.authenticated ? '' : guestToken, signal);
+      if (!signal.aborted && isPageActorContextCurrent(context)) failedGuestPreflight.value = null;
+      return response;
+    } catch (error) {
+      if (error?.status === 401 && !context.authenticated && !signal.aborted &&
+          isPageActorContextCurrent(context) && getStoredGuestToken() === guestToken) {
+        failedGuestPreflight.value = { context, token: guestToken };
+      }
+      throw error;
+    }
+  },
+});
+const retryLengthPreflight = async () => {
+  if (isRecoveringGuestPreflight.value || preflightPageDisposed) return;
+  const failed = failedGuestPreflight.value;
+  const storedToken = getStoredGuestToken();
+  if (!canRecoverGuestPreflight.value || (storedToken && storedToken !== failed.token)) {
+    return lengthPreflight.retry();
+  }
+  isRecoveringGuestPreflight.value = true;
+  let recovered = false;
+  guestPreflightRecovery = (async () => {
+    if (storedToken && !clearGuestToken(failed.token)) return;
+    const freshToken = await ensureGuestToken();
+    if (preflightPageDisposed || !isPageActorContextCurrent(failed.context) ||
+        !freshToken || getStoredGuestToken() !== freshToken) return;
+    // Keep only the current editor draft, including edits made during renewal.
+    // activateGuestSession still clears the old actor's history/results and requests.
+    const draft = { text: scanStore.inputText, html: scanStore.editorHtml };
+    const fileName = scanStore.lastUploadedFileName;
+    const exampleKey = scanStore.selectedExampleKey;
+    activateGuestScanSession(freshToken);
+    scanStore.setImportedContent(draft);
+    scanStore.lastUploadedFileName = fileName;
+    scanStore.selectedExampleKey = exampleKey;
+    localText.value = draft.text;
+    failedGuestPreflight.value = null;
+    const recoveredContext = capturePageActorContext();
+    await nextTick();
+    if (preflightPageDisposed || !isPageActorContextCurrent(recoveredContext)) return;
+    // Clearing and restoring the same HTML in one tick can skip the HTML watcher.
+    syncEditorFromStore();
+    recovered = true;
+  })();
+  try {
+    await guestPreflightRecovery;
+  } catch {
+    // Leave the draft and recovery action available if credential renewal fails.
+  } finally {
+    guestPreflightRecovery = null;
+    isRecoveringGuestPreflight.value = false;
+  }
+  if (recovered && !preflightPageDisposed) {
+    void refreshQuota({ retryOnGuestError: false });
+    await lengthPreflight.retry();
+  }
 };
 
 const clearGuestScanSession = async () => {
@@ -2056,7 +2152,9 @@ const isTooShortSentence = (sentence) => sentence?.type === 'too_short';
 const highlightBorderClass = (sentence) =>
   getProbabilityCardClasses(clampProbability(sentence?.probability), sentence?.type);
 const formatSentenceProbabilityLabel = (sentence) =>
-  isTooShortSentence(sentence)
+  sentence?.type === 'metadata'
+    ? t('scan.results.metadata')
+    : isTooShortSentence(sentence)
     ? t('scan.results.tooShort')
     : t('scan.results.probability', { value: Math.round((sentence?.probability || 0) * 100) });
 const setActiveSentence = (sentenceId = '') => {
@@ -2481,6 +2579,7 @@ onMounted(async () => {
 });
 
 onBeforeUnmount(() => {
+  preflightPageDisposed = true;
   quotaAnimationVersion += 1;
   document.removeEventListener('click', onGlobalClick);
   document.removeEventListener('keydown', featureModalKeyHandler);
@@ -2856,7 +2955,7 @@ const handleScan = async () => {
   if (!canStartScan.value) {
     showToast({
       title: '\u63D0\u793A',
-      message: t('scan.editor.minDetectRemaining', { remaining: remainingToMinDetect.value }),
+      message: scanReadinessMessage.value,
     });
     return;
   }
@@ -2893,7 +2992,10 @@ const handleScan = async () => {
   } catch (error) {
     if (!isPageActorContextCurrent(scanContext)) return;
     const errorCode = extractApiErrorCode(error);
-    if (errorCode === 'TEXT_TOO_LONG') {
+    if (errorCode === 'TEXT_TOO_SHORT') {
+      lengthPreflight.rejectSubmission(submittedText, getShortTextEstimate(error));
+      showScanFailureToast(error);
+    } else if (errorCode === 'TEXT_TOO_LONG') {
       showToast({
         title: '\u63D0\u793A',
         message:

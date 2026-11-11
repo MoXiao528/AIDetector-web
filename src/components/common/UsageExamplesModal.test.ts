@@ -47,6 +47,27 @@ const openReport = async (examples = detectionExamples) => {
 };
 
 describe('UsageExamplesModal', () => {
+  it('示例报告metadata只作上下文，原文无高亮且段落详情不显示占位概率', async () => {
+    const examples = structuredClone(detectionExamples);
+    Object.assign(examples[0].analysis.sentences[0], { type: 'metadata', probability: 0, score: 0 });
+    const { wrapper } = await openReport(examples);
+    try {
+      const first = examples[0].analysis.sentences[0];
+      const original = document.querySelector('[data-testid="example-original"]')!;
+      expect(original.querySelector(`[data-sentence-id="${first.id}"]`)).toBeNull();
+      expect(original.textContent).toContain(first.raw);
+      findButton('段落详情').click();
+      await flushPromises();
+      const firstDetail = document.querySelector('[data-testid="example-paragraphs"] article')!;
+      expect(firstDetail.textContent).toContain('元信息 · 仅作上下文');
+      expect(firstDetail.textContent).not.toContain('AI 概率');
+      expect(document.querySelector('[data-testid="example-ai-score"]')?.textContent).toBe(`${examples[0].analysis.summary.ai}%`);
+    } finally {
+      wrapper.unmount();
+      await flushPromises();
+    }
+  });
+
   it('固定报告始终对应首页送检示例和完整检测段落', () => {
     expect(detectionExamples.map((report) => report.key)).toEqual(['chatgpt', 'human']);
     for (const locale of ['zh-CN', 'en-US']) {

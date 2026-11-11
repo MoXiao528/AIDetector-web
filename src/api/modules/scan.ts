@@ -116,7 +116,8 @@ export interface AnalysisSentence {
   end_paragraph?: number;
   score?: number;
   probability?: number;
-  type?: 'ai' | 'human' | 'too_short';
+  // Metadata scores are placeholders, not independent AI/Human judgments.
+  type?: 'ai' | 'human' | 'too_short' | 'metadata';
   label?: 'Human' | 'AI';
   reason?: string;
   suggestion?: string;
@@ -160,6 +161,20 @@ export interface DetectionResponse {
   cost?: number;
   currentCredits?: number;
 }
+
+export interface DetectionPreflight {
+  characterCount: number;
+  tokenCount: number;
+  minimumTokens: number;
+  ready: boolean;
+  estimatedAdditionalCharacters: number | null;
+}
+
+export const preflightText = (text: string, guestToken = '', signal?: AbortSignal) =>
+  apiClient.post<DetectionPreflight>('/api/v1/detect/preflight', { text }, {
+    signal,
+    ...(guestToken ? { auth: false, headers: { Authorization: `Bearer ${guestToken}` } } : {}),
+  });
 
 export const detectText = async (
   payload: { text: string; functions: string[]; editorHtml?: string },

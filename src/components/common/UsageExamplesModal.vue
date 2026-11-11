@@ -44,7 +44,7 @@
                     <article v-for="(paragraph, index) in report.analysis.sentences" :key="paragraph.id || index" class="py-4">
                       <div class="mb-2 flex flex-wrap items-center justify-between gap-2 text-xs font-semibold">
                         <span class="text-slate-500">{{ t('usageExamples.paragraph', { value: index + 1 }) }}</span>
-                        <span class="text-primary-800">{{ paragraph.type === 'too_short' ? t('scan.results.tooShort') : t('usageExamples.paragraphProbability', { value: Math.round(paragraph.probability * 100) }) }}</span>
+                        <span :class="paragraph.type === 'metadata' ? 'text-slate-500' : 'text-primary-800'">{{ formatParagraphLabel(paragraph) }}</span>
                       </div>
                       <p class="whitespace-pre-line break-words text-sm leading-7 text-slate-700">{{ paragraph.raw || paragraph.text }}</p>
                     </article>
@@ -106,6 +106,11 @@ const props = defineProps({
 });
 const emit = defineEmits(['close', 'try-own']);
 const { t } = useI18n();
+const formatParagraphLabel = (paragraph) => {
+  if (paragraph.type === 'metadata') return t('scan.results.metadata');
+  if (paragraph.type === 'too_short') return t('scan.results.tooShort');
+  return t('usageExamples.paragraphProbability', { value: Math.round(paragraph.probability * 100) });
+};
 const evidenceEnabled = import.meta.env.VITE_EVIDENCE_ENABLED !== 'false';
 const selectedKey = ref('');
 const view = ref('original');

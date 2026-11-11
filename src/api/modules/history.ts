@@ -12,7 +12,7 @@ export interface Sentence {
     id: string;
     text: string;
     raw: string;
-    type: 'ai' | 'human' | 'too_short';
+    type: 'ai' | 'human' | 'too_short' | 'metadata';
     probability: number;
     score: number;
     reason: string;

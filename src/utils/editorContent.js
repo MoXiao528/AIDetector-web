@@ -509,7 +509,7 @@ const buildPlainHighlightedHtml = (text = '', sentences = []) => {
       }
       visibleParagraphIndex += 1;
       const item = resolveSentenceForParagraph(visibleParagraphIndex, sentences) || sentences[visibleParagraphIndex - 1];
-      if (!item) {
+      if (!item || item.type === 'metadata') {
         return `<p>${escapeHtml(paragraph.raw)}</p>`;
       }
       const classes = getProbabilityChipClasses(item.probability, item.type);
@@ -562,6 +562,7 @@ const createStructuredHighlightWrapper = (doc, sentenceId, classes, blockId = ''
 };
 
 const applyStructuredHighlight = (block, sentence, index) => {
+  if (sentence?.type === 'metadata') return;
   const doc = block?.ownerDocument;
   if (!doc || !block) return;
 
@@ -606,17 +607,31 @@ export const buildHighlightedPreviewHtml = ({
   fallbackHighlightedHtml = '',
 } = {}) => {
   const normalizedSentences = Array.isArray(sentences) ? sentences : [];
+  const hasMetadata = normalizedSentences.some((sentence) => sentence?.type === 'metadata');
+  // Updated server metadata must override saved highlights in older records.
+  const sourceHtml = editorHtml || (hasMetadata ? fallbackHighlightedHtml : '');
 
-  if (!editorHtml) {
+  if (!sourceHtml) {
     return sanitizeHtmlForEditor(fallbackHighlightedHtml || buildPlainHighlightedHtml(fallbackText, normalizedSentences), fallbackText);
   }
 
-  const doc = createDocumentFromHtml(editorHtml);
+  const doc = createDocumentFromHtml(sourceHtml);
   if (!doc) {
-    return sanitizeHtmlForEditor(fallbackHighlightedHtml || buildPlainHighlightedHtml(fallbackText, normalizedSentences), fallbackText);
+    return sanitizeHtmlForEditor(
+      (!hasMetadata && fallbackHighlightedHtml) || buildPlainHighlightedHtml(fallbackText, normalizedSentences),
+      fallbackText
+    );
   }
 
-  if (fallbackText && hasTextContentMismatch(extractTextFromHtml(editorHtml), fallbackText)) {
+  if (hasMetadata) {
+    doc.querySelectorAll('.highlight-chip, [data-sentence-id], [data-sentence-block-id]').forEach((node) => {
+      node.removeAttribute('class');
+      node.removeAttribute('data-sentence-id');
+      node.removeAttribute('data-sentence-block-id');
+    });
+  }
+
+  if (fallbackText && hasTextContentMismatch(extractTextFromHtml(sourceHtml), fallbackText)) {
     // Saved paragraph ranges belong to the submitted text, not recovered HTML content.
     doc.querySelectorAll('.highlight-chip, [data-sentence-id], [data-sentence-block-id]').forEach((node) => {
       node.removeAttribute('class');
@@ -629,7 +644,7 @@ export const buildHighlightedPreviewHtml = ({
   const blocks = collectRenderableBlocks(doc.body);
   if (!blocks.length) {
     return sanitizeHtmlForEditor(
-      fallbackHighlightedHtml || buildPlainHighlightedHtml(fallbackText || extractTextFromHtml(editorHtml), normalizedSentences),
+      (!hasMetadata && fallbackHighlightedHtml) || buildPlainHighlightedHtml(fallbackText || extractTextFromHtml(sourceHtml), normalizedSentences),
       fallbackText
     );
   }
@@ -637,7 +652,7 @@ export const buildHighlightedPreviewHtml = ({
   const maxSentenceParagraphIndex = getMaxSentenceParagraphIndex(normalizedSentences);
   let plainHighlightText = pickMostSegmentedText(fallbackText, buildPlainTextFromSentences(normalizedSentences));
   if (countPlainTextParagraphs(plainHighlightText) < maxSentenceParagraphIndex) {
-    plainHighlightText = pickMostSegmentedText(plainHighlightText, extractTextFromHtml(editorHtml));
+    plainHighlightText = pickMostSegmentedText(plainHighlightText, extractTextFromHtml(sourceHtml));
   }
   const expectedParagraphCount = Math.max(countPlainTextParagraphs(plainHighlightText), maxSentenceParagraphIndex);
   if (expectedParagraphCount > blocks.length) {

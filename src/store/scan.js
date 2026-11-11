@@ -6,6 +6,7 @@ import { extractApiErrorCode } from '../api/client';
 import { detectText } from '../api/modules/scan';
 import { combineImportedFileContents, readTextFromFile } from '../utils/fileReaders';
 import { clampProbability } from '../utils/detectionStyles';
+import { countCharacters, formatShortTextMessage, getShortTextEstimate } from '../utils/detectionLength';
 import {
   buildHighlightedPreviewHtml,
   extractTextFromHtml,
@@ -80,6 +81,7 @@ const normalizeLabelType = (value) => {
   if (['human', 'real'].includes(normalized)) return 'human';
   if (['mixed', 'borderline'].includes(normalized)) return 'human';
   if (['too_short', 'too-short', 'too short', 'undetectable'].includes(normalized)) return 'too_short';
+  if (normalized === 'metadata') return 'metadata';
   return '';
 };
 
@@ -111,15 +113,13 @@ const normalizeSummary = ({ summary, sentences, score }) => {
   }
 
   if (sentences.length) {
-    const detectableSentences = sentences.filter((sentence) => sentence.type !== 'too_short');
+    const detectableSentences = sentences.filter((sentence) => sentence.type === 'ai' || sentence.type === 'human');
     if (!detectableSentences.length) {
       return { ai: 0, human: 0 };
     }
-    const counts = sentences.reduce(
+    const counts = detectableSentences.reduce(
       (acc, sentence) => {
-        if (sentence.type !== 'too_short') {
-          acc[sentence.type] += 1;
-        }
+        acc[sentence.type] += 1;
         return acc;
       },
       { ai: 0, human: 0 }
@@ -470,7 +470,7 @@ export const useScanStore = defineStore('scan', () => {
     }
   };
 
-  const characterCount = computed(() => inputText.value.length);
+  const characterCount = computed(() => countCharacters(inputText.value));
   const isOverCharacterLimit = computed(() => characterCount.value > CHARACTER_LIMIT);
 
   const isGenericHistoryTitle = (value = '') => {
@@ -516,8 +516,8 @@ export const useScanStore = defineStore('scan', () => {
   };
 
   const syncUploadErrorForCurrentText = () => {
-    if (inputText.value.length > CHARACTER_LIMIT) {
-      uploadError.value = buildTextTooLongMessage({ current: inputText.value.length });
+    if (characterCount.value > CHARACTER_LIMIT) {
+      uploadError.value = buildTextTooLongMessage({ current: characterCount.value });
       return;
     }
     uploadError.value = '';
@@ -1064,8 +1064,8 @@ export const useScanStore = defineStore('scan', () => {
     );
     const editorHtmlValue = options.html || plainTextToHtml(text);
     try {
-      if (text.length > CHARACTER_LIMIT) {
-        throw createTextTooLongError(text.length);
+      if (countCharacters(text) > CHARACTER_LIMIT) {
+        throw createTextTooLongError(countCharacters(text));
       }
       if (
         !sessionContext.authenticated &&
@@ -1158,6 +1158,9 @@ export const useScanStore = defineStore('scan', () => {
     } catch (error) {
       if (!isScanSessionContextCurrent(sessionContext)) return null;
       const errorCode = extractApiErrorCode(error);
+      if (errorCode === 'TEXT_TOO_SHORT') {
+        error.message = formatShortTextMessage(getShortTextEstimate(error), globalT);
+      }
       if (RESET_IDEMPOTENCY_CODES.has(errorCode)) {
         clearDetectionAttempt(idempotencyKey);
       }

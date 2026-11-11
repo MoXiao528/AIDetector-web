@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { apiClient } from './client';
 import {
   getHistoryList, getHistoryRecord, updateHistoryRecord, deleteHistoryRecord,
@@ -13,8 +13,47 @@ const createJsonResponse = (payload: unknown, init: ResponseInit = {}) =>
   });
 
 describe('apiClient guest auth routing', () => {
+  afterEach(() => vi.useRealTimers());
   beforeEach(() => {
     window.localStorage.clear();
+  });
+
+  it.each([
+    { code: 'TEXT_TOO_SHORT', message: 'Readable error', detail: { minimumTokens: 256 } },
+    { detail: { code: 'TEXT_TOO_SHORT', message: 'Readable error', detail: { minimumTokens: 256 } } },
+  ])('结构化长度detail保留错误码和可读message %#', async (payload) => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(createJsonResponse(payload, { status: 422 })));
+    await expect(apiClient.post('/api/v1/detect', {}, { auth: false })).rejects.toMatchObject({
+      status: 422, code: 'TEXT_TOO_SHORT', message: 'Readable error', details: payload,
+    });
+  });
+
+  it('调用者取消会终止fetch并保留AbortError，已取消的signal也被传递', async () => {
+    const fetchMock = vi.fn((_url, { signal }) => new Promise((_resolve, reject) => {
+      if (signal.aborted) reject(new DOMException('Cancelled', 'AbortError'));
+      signal.addEventListener('abort', () => reject(new DOMException('Cancelled', 'AbortError')));
+    }));
+    vi.stubGlobal('fetch', fetchMock);
+    const controller = new AbortController();
+    const request = apiClient.post('/api/v1/detect/preflight', { text: 'old' }, { signal: controller.signal });
+    const rejection = expect(request).rejects.toMatchObject({ name: 'AbortError' });
+    controller.abort();
+    await rejection;
+    expect(fetchMock.mock.calls[0][1].signal.aborted).toBe(true);
+    await expect(apiClient.get('/test', { signal: controller.signal })).rejects.toMatchObject({ name: 'AbortError' });
+  });
+
+  it('超时仍返回408，未取消的调用者signal不受影响', async () => {
+    vi.useFakeTimers();
+    vi.stubGlobal('fetch', vi.fn((_url, { signal }) => new Promise((_resolve, reject) => {
+      signal.addEventListener('abort', () => reject(new DOMException('Timeout', 'AbortError')));
+    })));
+    const controller = new AbortController();
+    const request = apiClient.get('/test', { signal: controller.signal, timeout: 50 });
+    const rejection = expect(request).rejects.toMatchObject({ status: 408, message: '请求超时，请稍后重试。' });
+    await vi.advanceTimersByTimeAsync(50);
+    await rejection;
+    expect(controller.signal.aborted).toBe(false);
   });
 
   it('游客历史各入口固定使用调用者凭证，401 不清除随后登录的用户会话', async () => {

@@ -3,6 +3,60 @@ import { describe, expect, it } from 'vitest';
 import { buildHighlightedPreviewHtml, buildSentenceParagraphLinkId, extractTextFromHtml, sanitizeHtmlForEditor } from './editorContent';
 
 describe('editorContent utils', () => {
+  it('仅服务端metadata跳过高亮，保留标题格式和普通短段/对话的原分类', () => {
+    const html = '<h2 style="text-align: center"><strong>标题</strong></h2><p><em>作者：张三</em></p><p>好。</p><p>“去吧。”</p>';
+    const sentences = [
+      { id: 'title', type: 'metadata', probability: 0, startParagraph: 1, endParagraph: 1 },
+      { id: 'byline', type: 'metadata', probability: 0, startParagraph: 2, endParagraph: 2 },
+      { id: 'short-body', type: 'ai', probability: 0.9, startParagraph: 3, endParagraph: 3 },
+      { id: 'dialogue', type: 'human', probability: 0.1, startParagraph: 4, endParagraph: 4 },
+    ];
+    const output = buildHighlightedPreviewHtml({ editorHtml: html, fallbackText: '标题\n作者：张三\n好。\n“去吧。”', sentences });
+    const doc = new DOMParser().parseFromString(output, 'text/html');
+    expect(doc.querySelector('h2')?.getAttribute('style')).toContain('text-align: center');
+    expect(doc.querySelector('h2 strong')?.textContent).toBe('标题');
+    expect(doc.querySelector('p em')?.textContent).toBe('作者：张三');
+    expect(doc.querySelector('[data-sentence-id="title"], [data-sentence-id="byline"]')).toBeNull();
+    expect(doc.querySelector('[data-sentence-id="short-body"]')?.classList.contains('bg-rose-100')).toBe(true);
+    expect(doc.querySelector('[data-sentence-id="dialogue"]')?.classList.contains('bg-emerald-100')).toBe(true);
+    expect(doc.querySelectorAll('.highlight-chip')).toHaveLength(2);
+
+    // Heading-like text without the server flag is still judged normally.
+    const ordinaryHeading = buildHighlightedPreviewHtml({
+      editorHtml: '<h2>标题</h2>', fallbackText: '标题',
+      sentences: [{ ...sentences[0], type: 'ai', probability: 0.9 }],
+    });
+    expect(ordinaryHeading).toContain('data-sentence-id="title"');
+  });
+
+  it.each([false, true])('新metadata投影覆盖旧高亮缓存（有编辑HTML=%s），不会把零占位画成人工绿色', (withEditorHtml) => {
+    const oldHtml = '<h1><span class="highlight-chip bg-emerald-100 text-emerald-900" data-sentence-id="old-title"><strong>旧标题</strong></span></h1><p><span class="highlight-chip bg-orange-100" data-sentence-id="old-body">正文</span></p>';
+    const output = buildHighlightedPreviewHtml({
+      ...(withEditorHtml ? { editorHtml: oldHtml } : {}),
+      fallbackText: '旧标题\n正文', fallbackHighlightedHtml: oldHtml,
+      sentences: [
+        { id: 'title', type: 'metadata', probability: 0, startParagraph: 1, endParagraph: 1 },
+        { id: 'body', type: 'ai', probability: 0.9, startParagraph: 2, endParagraph: 2 },
+      ],
+    });
+    const doc = new DOMParser().parseFromString(output, 'text/html');
+    expect(doc.querySelector('h1 strong')?.textContent).toBe('旧标题');
+    expect(doc.querySelector('h1 .highlight-chip, h1 [data-sentence-id], h1 [class]')).toBeNull();
+    expect(doc.querySelectorAll('.highlight-chip')).toHaveLength(1);
+    expect(doc.querySelector('[data-sentence-id="body"]')?.classList.contains('bg-rose-100')).toBe(true);
+  });
+
+  it('纯文本metadata原样显示，不产生任何高亮交互标记', () => {
+    const output = buildHighlightedPreviewHtml({
+      fallbackText: '标题\n作者：张三',
+      sentences: [
+        { id: 'title', type: 'metadata', score: 0, probability: 0, startParagraph: 1, endParagraph: 1 },
+        { id: 'byline', type: 'metadata', score: 0, probability: 0, startParagraph: 2, endParagraph: 2 },
+      ],
+    });
+    expect(output).toBe('<p>标题</p><p>作者：张三</p>');
+  });
+
   it('extractTextFromHtml 保留块级结构顺序', () => {
     const html = `
       <h2>Title</h2>

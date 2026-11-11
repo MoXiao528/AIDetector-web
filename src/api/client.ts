@@ -106,7 +106,8 @@ const getPayloadErrorCode = (payload: any): string => {
 const buildErrorMessage = (status: number, payload: any) => {
   const normalizedPayload = getErrorPayload(payload);
   if (normalizedPayload?.message) return normalizedPayload.message;
-  if (normalizedPayload?.error) return normalizedPayload.error;
+  if (typeof normalizedPayload?.error === 'string') return normalizedPayload.error;
+  if (typeof payload?.message === 'string') return payload.message;
   if (typeof payload?.detail === 'string') return payload.detail;
   if (status === 401) return '未授权访问，请重新登录。';
   if (status === 403) return '当前账号没有权限执行该操作。';
@@ -160,9 +161,12 @@ const normalizeBody = (body: unknown, headers: Headers) => {
 const requestInternal = async <T>(
   path: string,
   parseSuccess: (response: Response) => Promise<T>,
-  { timeout = DEFAULT_TIMEOUT, auth = true, guestAuth = false, body, ...options }: ApiRequestOptions = {}
+  { timeout = DEFAULT_TIMEOUT, auth = true, guestAuth = false, body, signal, ...options }: ApiRequestOptions = {}
 ) => {
   const controller = new AbortController();
+  const abortFromCaller = () => controller.abort();
+  if (signal?.aborted) controller.abort();
+  else signal?.addEventListener('abort', abortFromCaller, { once: true });
   const timeoutId = setTimeout(() => controller.abort(), timeout);
   const headers = buildHeaders(options.headers, body, auth, guestAuth);
 
@@ -206,6 +210,7 @@ const requestInternal = async <T>(
     return payload as T;
   } catch (error: any) {
     if (error?.name === 'AbortError') {
+      if (signal?.aborted) throw error;
       throw new ApiError({ status: 408, code: 'UNKNOWN_ERROR', message: '请求超时，请稍后重试。' });
     }
     if (error instanceof ApiError) {
@@ -214,6 +219,7 @@ const requestInternal = async <T>(
     throw new ApiError({ status: 0, code: 'NETWORK_ERROR', message: '网络异常，请检查连接后重试。', details: error });
   } finally {
     clearTimeout(timeoutId);
+    signal?.removeEventListener('abort', abortFromCaller);
   }
 };
 
