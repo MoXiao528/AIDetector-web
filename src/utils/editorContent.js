@@ -695,3 +695,83 @@ export const buildHighlightedPreviewHtml = ({
 
   return sanitizeHtmlForEditor(doc.body.innerHTML || fallbackHighlightedHtml || buildPlainHighlightedHtml(fallbackText, normalizedSentences), fallbackText);
 };
+
+// Retain the original DOM formatting while mapping verified source offsets to
+// text nodes. A match can cross inline elements (e.g. <strong>), never a line.
+export const buildCorpusPreviewHtml = ({ editorHtml = '', text = '', matches = [], activeMatch = null } = {}) => {
+  const doc = createDocumentFromHtml(sanitizeHtmlForEditor(editorHtml || plainTextToHtml(text), text));
+  if (!doc) return plainTextToHtml(text);
+  doc.querySelectorAll('.highlight-chip, [data-sentence-id], [data-sentence-block-id]').forEach((node) => {
+    node.removeAttribute('class');
+    node.removeAttribute('data-sentence-id');
+    node.removeAttribute('data-sentence-block-id');
+  });
+  const sourceLines = Array.from(text.matchAll(/[^\r\n]+/g)).filter(([line]) => line.trim());
+  const collectUnits = (node) => {
+    if (isTextNode(node)) return (node.textContent || '').split('').map((char, offset) => ({ char: char === '\u00a0' ? ' ' : char, node, offset }));
+    if (node.nodeName === 'BR') return [{ char: '\n' }];
+    return Array.from(node.childNodes || []).flatMap(collectUnits);
+  };
+  const mapLines = () => collectRenderableBlocks(doc.body).flatMap((block) => {
+    const units = collectUnits(block);
+    const raw = units.map(({ char }) => char).join('');
+    return Array.from(raw.matchAll(/[^\r\n]+/g)).filter(([line]) => line.trim()).map((match) => {
+      let mapped = units.slice(match.index, match.index + match[0].length);
+      // extractTextFromHtml trims lines around <br> and collapses repeated spaces.
+      while (mapped.length && /\s/.test(mapped[0].char)) mapped.shift();
+      while (mapped.length && /\s/.test(mapped.at(-1).char)) mapped.pop();
+      mapped = mapped.filter((unit, index, all) => !(/[ \t]/.test(unit.char) && index > 0 && /[ \t]/.test(all[index - 1].char)));
+      return mapped;
+    });
+  });
+  let lines = mapLines();
+  if (lines.length !== sourceLines.length || lines.some((line, index) => line.map(({ char }) => char).join('') !== sourceLines[index][0])) {
+    // Recovered HTML may belong to a different revision. Show the saved source
+    // instead of applying source offsets to unrelated text.
+    doc.body.replaceChildren();
+    lines = [];
+    text.split(/\r\n|\r|\n/).forEach((line) => {
+      const paragraph = doc.createElement('p');
+      paragraph.className = 'corpus-source-paragraph';
+      // Do not expand tabs/NBSP: source offsets belong to these exact text nodes.
+      paragraph.appendChild(line ? doc.createTextNode(line) : doc.createElement('br'));
+      doc.body.appendChild(paragraph);
+      if (line.trim()) lines.push(collectUnits(paragraph));
+    });
+  }
+  const positions = new Map();
+  sourceLines.forEach((source, index) => lines[index]?.forEach((unit, offset) => positions.set(source.index + offset, unit)));
+  const selectedByNode = new Map();
+  matches.forEach((group, groupIndex) => group.occurrences.forEach((occurrence, occurrenceIndex) => {
+    for (let offset = occurrence.sourceStart; offset < occurrence.sourceEnd; offset += 1) {
+      const position = positions.get(offset);
+      if (!position?.node) continue;
+      let selected = selectedByNode.get(position.node);
+      if (!selected) { selected = new Map(); selectedByNode.set(position.node, selected); }
+      const active = activeMatch?.expression === group.expression && activeMatch?.index === occurrenceIndex;
+      // Overlapping dictionary expressions share a mark; the selected one wins.
+      if (!selected.has(position.offset) || active) selected.set(position.offset, { id: `${groupIndex}-${occurrenceIndex}`, active });
+    }
+  }));
+  selectedByNode.forEach((selected, node) => {
+    const fragment = doc.createDocumentFragment();
+    const value = node.textContent || '';
+    for (let start = 0; start < value.length;) {
+      const selection = selected.get(start);
+      let end = start + 1;
+      while (end < value.length && selected.get(end)?.id === selection?.id) end += 1;
+      if (!selection) fragment.appendChild(doc.createTextNode(value.slice(start, end)));
+      else {
+        const mark = doc.createElement('mark');
+        mark.className = `corpus-preview-hit${selection.active ? ' is-active' : ''}`;
+        mark.setAttribute('data-corpus-occurrence', selection.id);
+        if (selection.active) { mark.setAttribute('data-testid', 'corpus-preview-active-hit'); mark.tabIndex = -1; }
+        mark.textContent = value.slice(start, end);
+        fragment.appendChild(mark);
+      }
+      start = end;
+    }
+    node.replaceWith(fragment);
+  });
+  return doc.body.innerHTML;
+};

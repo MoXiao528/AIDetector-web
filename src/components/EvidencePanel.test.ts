@@ -947,12 +947,12 @@ describe('EvidencePanel', () => {
 
   it('切换中英文同步更新标题、指标、单位和基本态，无未翻译键', async () => {
     const wrapper = mountPanel();
-    expect(wrapper.get('h3').text()).toBe('写作特点');
+    expect(wrapper.get('h3').text()).toBe('全文写作特点');
     expect(wrapper.get('[data-metric="transition_diversity"] h4').text()).toContain('过渡表达词表覆盖率');
     expect(wrapper.get('[data-metric="intro_conclusion_jaccard"] h4').text()).toContain('首尾段');
     wrapper.vm.setLocale('en-US');
     await nextTick();
-    expect(wrapper.get('h3').text()).toBe('Writing characteristics');
+    expect(wrapper.get('h3').text()).toBe('Document writing characteristics');
     expect(wrapper.findAll('[data-testid="evidence-dimension"]')).toHaveLength(4);
     expect(wrapper.get('[data-metric="sentence_length_median"] td').text()).toBe('0tokens');
     expect(wrapper.text()).toContain('not probabilities of AI generation');
@@ -982,7 +982,7 @@ describe('EvidencePanel', () => {
     await wrapper.setProps({ evidence });
     await toggleAll(wrapper);
     await nextTick();
-    expect(wrapper.get('h3').text()).toBe('写作特点');
+    expect(wrapper.get('h3').text()).toBe('全文写作特点');
     expect(wrapper.get('[data-metric="mattr"] [data-testid="evidence-notice"]').text()).toContain('不表示主模型判错');
     expect(wrapper.get('[data-metric="token_entropy"] [data-testid="evidence-notice"]').text()).toContain('两侧参考范围之外');
   });

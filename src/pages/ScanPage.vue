@@ -379,7 +379,7 @@
             </div>
           </transition>
 
-        <div v-if="isPanelActive('document')" class="relative z-0 flex min-h-[calc(100vh-4rem)] flex-col">
+        <div v-if="isPanelActive('document')" class="workbench-document-view relative z-0 flex min-h-[calc(100vh-4rem)] flex-col" :class="{ 'has-results': hasResults, 'is-results-collapsed': hasResults && resultPanelCollapsed, 'is-results-entering': resultPanelEntering }">
           <div class="workbench-document-header sticky top-16 z-10 border-b border-neutral-100 bg-white/80 px-6 py-4 backdrop-blur-md transition-all">
             <div class="workbench-header-grid">
               <div class="workbench-mode-controls flex flex-wrap items-center gap-3">
@@ -412,16 +412,6 @@
                   {{ t('scan.editor.reset') }}
                 </button>
               </div>
-              <div class="workbench-detail flex justify-end">
-                <button
-                  v-if="hasResults"
-                  type="button"
-                  class="liquid-glass inline-flex items-center rounded-full px-4 py-2 text-xs font-semibold"
-                  @click="openResultDetail"
-                >
-                  {{ t('scan.results.openDetail') }}
-                </button>
-              </div>
               <div class="workbench-document-meta flex flex-wrap items-center gap-4 text-xs font-medium text-neutral-400 lg:justify-end">
                 <span :class="{ 'text-primary-600': characterCount > 0 && !isOverCharacterLimit, 'text-rose-600': isOverCharacterLimit }">{{ characterUsage }}</span>
                 <span class="h-4 w-px bg-neutral-200"></span>
@@ -442,7 +432,7 @@
             </div>
           </div>
 
-          <div class="flex flex-1 flex-col lg:min-h-[calc(100vh-10rem)] lg:flex-row">
+          <div class="workbench-body flex flex-1 flex-col lg:min-h-[calc(100vh-10rem)] lg:flex-row">
             <aside class="workbench-history flex w-full flex-col border-b border-neutral-100 bg-white/75 px-4 py-5 lg:w-72 lg:shrink-0 lg:border-b-0 lg:border-r xl:w-80">
               <div class="flex items-start justify-between gap-3">
                 <div>
@@ -670,7 +660,7 @@
                       >
                         {{ mergedDetectionNotice }}
                       </p>
-                      <div ref="previewContentRef" v-html="highlightedPreviewHtml"></div>
+                      <div ref="previewContentRef" v-html="resultPreviewHtml"></div>
                     </div>
                     <div v-else class="flex h-full items-center justify-center">
                       <div class="text-center space-y-2">
@@ -700,13 +690,23 @@
             </section>
 
             <aside class="workbench-results flex w-full min-h-[24rem] flex-col border-t border-neutral-100 bg-white lg:min-h-[calc(100vh-14rem)] lg:w-[24rem] lg:shrink-0 lg:border-t-0 lg:border-l xl:w-[28rem]">
-              <div class="flex h-full flex-col">
+              <button
+                v-if="hasResults" ref="resultToggleRef" type="button" data-testid="result-panel-toggle"
+                class="result-panel-toggle" :aria-expanded="!resultPanelCollapsed" aria-controls="result-panel-content"
+                :aria-label="t(resultPanelCollapsed ? 'scan.results.expandPanel' : 'scan.results.collapsePanel')"
+                :title="t(resultPanelCollapsed ? 'scan.results.expandPanel' : 'scan.results.collapsePanel')"
+                @click="toggleResultPanel"
+              ><ChevronDoubleLeftIcon v-if="resultPanelCollapsed" class="h-5 w-5" aria-hidden="true" /><ChevronDoubleRightIcon v-else class="h-5 w-5" aria-hidden="true" /></button>
+              <div class="result-panel-viewport">
+              <div id="result-panel-content" ref="resultPanelRef" class="result-panel-frame flex h-full flex-col" :inert="hasResults && resultPanelCollapsed ? '' : undefined" :aria-hidden="hasResults && resultPanelCollapsed ? 'true' : undefined">
                 <div class="flex flex-1 flex-col px-6 py-5">
                   <div class="mb-3 flex items-center justify-between gap-3">
                     <div>
                       <h2 class="text-base font-bold tracking-tight text-neutral-900">{{ t(hasResults ? 'scan.results.title' : 'scan.results.menuTitle') }}</h2>
                       <p v-if="!hasResults" class="text-xs text-slate-500">{{ t('scan.results.menuSubtitle') }}</p>
                     </div>
+                    <div v-if="hasResults" class="flex shrink-0 flex-wrap items-center justify-end gap-2">
+                    <button type="button" data-testid="result-evidence" class="liquid-glass rounded-full px-3 py-2 text-xs font-semibold focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary-500" @click="openResultDetail">{{ t('scan.results.evidenceTitle') }}</button>
                     <button
                       v-if="hasResults"
                       type="button"
@@ -721,6 +721,7 @@
                       <DocumentArrowDownIcon v-else class="h-4 w-4" aria-hidden="true" />
                       {{ t(isExportingReport ? 'scan.results.exporting' : 'scan.results.export') }}
                     </button>
+                    </div>
                   </div>
                   <div class="quota-summary text-xs" :class="hasResults ? 'order-last mt-4 border-t border-neutral-100 pt-3' : 'mt-4 rounded-xl border border-neutral-100 bg-neutral-50/50 p-4'">
                     <div class="flex items-center justify-between mb-2">
@@ -858,93 +859,70 @@
                        </div>
                     </div>
 
-                    <EvidencePanel :evidence="scanStore.result?.evidence" :corpus-matches="corpusMatches" :initial-show-all="evidenceShowAll" @update:show-all="evidenceShowAll = $event" @view-details="openEvidenceDetail" />
-
-                    <div data-testid="result-segments" class="rounded-2xl border border-neutral-100 bg-white p-1">
-                      <div class="grid grid-cols-2 gap-1 p-1 bg-neutral-50/50 rounded-xl">
+                    <div data-testid="result-segments" class="result-inspector pt-3">
+                      <div role="tablist" :aria-label="t('scan.results.title')" class="result-view-switch liquid-glass relative grid grid-cols-2 gap-1 rounded-full p-1">
+                        <span aria-hidden="true" class="workbench-mode-selection liquid-glass liquid-glass-selected" :class="{ 'is-preview': resultView === 'corpus' }" />
                         <button
-                          v-for="tab in availableResultTabs"
-                          :key="tab.key"
-                          type="button"
-                          :class="[
-                            'rounded-lg py-2 text-xs font-semibold transition-all duration-200',
-                            activeResultTab === tab.key
-                              ? 'bg-white text-neutral-900 shadow-sm ring-1 ring-black/5'
-                              : 'text-neutral-500 hover:text-neutral-900 hover:bg-white/50',
-                          ]"
-                          @click="activeResultTab = tab.key"
-                        >
-                          {{ tab.label }}
-                        </button>
+                          v-for="(tab, index) in resultViewTabs" :id="`result-view-${tab.key}`" :key="tab.key"
+                          type="button" role="tab" :aria-selected="resultView === tab.key" :aria-controls="`result-panel-${tab.key}`"
+                          :tabindex="resultView === tab.key ? 0 : -1"
+                          class="relative z-10 rounded-full px-3 py-3 text-sm font-semibold transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-500"
+                          :class="resultView === tab.key ? 'text-primary-700' : 'text-slate-600 hover:text-slate-900'"
+                          @click="selectResultView(tab.key)" @keydown="onResultTabKeydown($event, index)"
+                        >{{ tab.label }}</button>
                       </div>
-                      
-                      <div class="custom-scrollbar max-h-[400px] overflow-y-auto break-words p-4">
-                        <div v-if="activeResultTab === 'scan'" class="space-y-4">
-                          <p v-if="resultHasMergedBlocks" class="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
-                            {{ t('scan.results.mergeNotice') }}
-                          </p>
-                          <div
-                            v-for="(sentence, index) in scanStore.result.sentences"
-                            :key="sentence.id"
-                            :class="[
-                              'rounded-2xl border p-4 text-sm transition-all duration-150',
-                              highlightBorderClass(sentence),
-                              isSentenceResultActive(sentence) ? 'ring-2 ring-slate-300/80 shadow-sm' : '',
-                            ]"
-                            @mouseenter="setActiveSentence(getSentenceDefaultActiveId(sentence))"
-                            @mouseleave="clearActiveSentence"
-                          >
-                            <div class="mb-3 flex items-center justify-between gap-3">
-                              <span class="inline-flex items-center rounded-full bg-white/80 px-2.5 py-1 text-[11px] font-semibold text-slate-600 ring-1 ring-slate-200">
-                                {{ sentenceDisplayLabels[index] }}
-                              </span>
-                              <span v-if="sentence.type !== 'metadata'" class="text-xs font-semibold text-slate-500">
-                                {{ formatSentenceProbabilityLabel(sentence) }}
-                              </span>
-                            </div>
-                            <div
-                              class="result-sentence-text min-w-0 space-y-3"
-                              @mouseover="setActiveSentenceFromResultParagraph($event, sentence)"
-                              @mouseleave="setActiveSentence(getSentenceDefaultActiveId(sentence))"
-                              v-html="formatHighlightedSentence(sentence)"
-                            ></div>
-                          </div>
-                        </div>
-                        <div v-else-if="activeResultTab === 'translate'" class="space-y-3">
-                          <p class="text-xs font-semibold text-slate-500">{{ t('scan.results.translation') }}</p>
-                          <div class="rounded-2xl bg-slate-50 p-4 text-sm leading-relaxed text-slate-700 whitespace-pre-line break-words">
-                            {{ scanStore.result.translation }}
-                          </div>
-                        </div>
-                        <div v-else-if="activeResultTab === 'polish'" class="space-y-4">
-                          <p class="text-xs font-semibold text-slate-500">{{ t('scan.results.polish') }}</p>
-                          <div class="rounded-2xl border border-slate-200 bg-white p-4 text-sm whitespace-pre-line break-words text-slate-700">
-                            {{ scanStore.result.polish }}
-                          </div>
+                      <div v-if="resultView === 'scan'" id="result-panel-scan" role="tabpanel" aria-labelledby="result-view-scan" class="space-y-3 pt-5">
+                        <p v-if="resultHasMergedBlocks" class="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">{{ t('scan.results.mergeNotice') }}</p>
+                        <article
+                          v-for="(sentence, index) in scanStore.result.sentences" :key="sentence.id"
+                          class="result-paragraph overflow-hidden rounded-2xl border text-sm"
+                          :class="[highlightBorderClass(sentence), isSentenceResultActive(sentence) ? 'ring-2 ring-slate-300/80' : '']"
+                          @mouseenter="setActiveSentence(getSentenceDefaultActiveId(sentence))" @mouseleave="clearActiveSentence"
+                        >
                           <button
-                            type="button"
-                            class="inline-flex items-center rounded-full bg-primary-600 px-3 py-1 text-xs font-semibold text-white hover:bg-primary-500"
-                            @click="applyPolishSuggestion(scanStore.result.polish)"
-                          >
-                            {{ t('scan.results.apply') }}
+                            type="button" class="w-full p-4 text-left focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-primary-500"
+                            :aria-expanded="expandedSentenceIds.includes(sentence.id)" :aria-controls="`result-paragraph-${index}`"
+                            @click="toggleResultSentence(sentence)">
+                            <span class="flex items-center justify-between gap-3">
+                              <span class="font-semibold text-slate-700">{{ sentenceDisplayLabels[index] }}</span>
+                              <span class="flex items-center gap-2">
+                                <span v-if="sentence.type !== 'metadata'" class="text-xs font-medium text-slate-600">{{ formatSentenceProbabilityLabel(sentence) }}</span>
+                                <ChevronDownIcon class="h-4 w-4 shrink-0 text-slate-600 transition-transform motion-reduce:transition-none" :class="{ 'rotate-180': expandedSentenceIds.includes(sentence.id) }" />
+                              </span>
+                            </span>
+                            <span v-if="!expandedSentenceIds.includes(sentence.id)" class="mt-2 line-clamp-2 leading-relaxed text-slate-800">{{ sentence.text }}</span>
                           </button>
-                        </div>
-                        <div v-else-if="activeResultTab === 'citation'" class="space-y-4">
-                          <p class="text-xs font-semibold text-slate-500">{{ t('scan.results.citation') }}</p>
-                          <div
-                            v-for="item in scanStore.result.citations"
-                            :key="item.id"
-                            class="rounded-2xl border border-slate-200 bg-white p-4 text-sm break-words"
-                          >
-                            <p class="text-slate-700">{{ item.text }}</p>
-                            <p v-if="item.source" class="mt-2 text-xs text-slate-500">{{ item.source }}</p>
+                          <div v-if="expandedSentenceIds.includes(sentence.id)" :id="`result-paragraph-${index}`" class="px-4 pb-4">
+                            <div class="result-sentence-text min-w-0 space-y-3" @mouseover="setActiveSentenceFromResultParagraph($event, sentence)" v-html="formatHighlightedSentence(sentence)" />
+                            <div v-if="sentence.type !== 'metadata'" class="mt-4 border-t border-current/10 pt-3" data-testid="paragraph-features-placeholder">
+                              <h3 class="font-semibold text-slate-700">{{ t('scan.results.paragraphFeatures') }}</h3>
+                              <p class="mt-1 text-xs leading-5 text-slate-500">{{ t('scan.results.paragraphFeaturesEmpty') }}</p>
+                            </div>
                           </div>
-                          <p class="text-[11px] text-slate-400">{{ t('scan.results.citationHint') }}</p>
+                        </article>
+                        <button v-if="availableResultTabs.length > 1" type="button" class="text-sm font-semibold text-primary-700 underline underline-offset-4" @click="openResultDetail">{{ t('scan.results.legacyResults') }}</button>
+                      </div>
+                      <div v-else id="result-panel-corpus" role="tabpanel" aria-labelledby="result-view-corpus" class="pt-5">
+                        <p class="text-sm leading-6 text-slate-500">{{ t('scan.results.corpusHint') }}</p>
+                        <div v-if="corpusMatches.length" data-testid="corpus-preview-expressions" class="mt-4 divide-y divide-slate-100">
+                          <div v-for="group in corpusMatches" :key="group.expression" class="py-3 first:pt-0">
+                            <button
+                              type="button" class="corpus-expression-button max-w-full rounded-lg px-3 py-2 text-left text-sm font-medium leading-6 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-500"
+                              :class="{ 'is-active': activeCorpusMatch?.expression === group.expression }" :aria-pressed="activeCorpusMatch?.expression === group.expression"
+                              data-testid="corpus-preview-expression" @click="focusPreviewCorpusOccurrence(group.expression, 0, true)">{{ group.expression }}</button>
+                            <div v-if="activeCorpusMatch?.expression === group.expression && group.occurrences.length > 1" class="mt-3 flex items-center gap-3 text-xs text-slate-600">
+                              <button type="button" data-testid="corpus-preview-previous" :disabled="activeCorpusMatch.index === 0" class="rounded px-2 py-1 font-semibold disabled:opacity-40 focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary-500" @click="focusPreviewCorpusOccurrence(group.expression, activeCorpusMatch.index - 1)">{{ t('scan.evidence.corpusExpressions.previous') }}</button>
+                              <span role="status" data-testid="corpus-preview-position">{{ t('scan.evidence.corpusExpressions.position', { current: activeCorpusMatch.index + 1, total: group.occurrences.length }) }}</span>
+                              <button type="button" data-testid="corpus-preview-next" :disabled="activeCorpusMatch.index === group.occurrences.length - 1" class="rounded px-2 py-1 font-semibold disabled:opacity-40 focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary-500" @click="focusPreviewCorpusOccurrence(group.expression, activeCorpusMatch.index + 1)">{{ t('scan.evidence.corpusExpressions.next') }}</button>
+                            </div>
+                          </div>
                         </div>
+                        <p v-else role="status" data-testid="corpus-preview-empty" class="mt-6 text-sm leading-6 text-slate-600">{{ t('scan.results.corpusEmpty') }}</p>
                       </div>
                     </div>
                   </div>
                 </div>
+              </div>
               </div>
             </aside>
 
@@ -1016,183 +994,24 @@
 
       </main>
     </div>
-    <transition
-      enter-active-class="transition duration-200 ease-out"
-      enter-from-class="opacity-0"
-      enter-to-class="opacity-100"
-      leave-active-class="transition duration-150 ease-in"
-      leave-from-class="opacity-100"
-      leave-to-class="opacity-0"
-    >
-      <div
-        v-if="isResultDetailOpen && hasResults"
-        class="fixed inset-0 z-50 bg-slate-950/35 backdrop-blur-sm"
-        @click.self="closeResultDetail"
-      >
-        <section class="ml-auto flex h-full w-full max-w-6xl flex-col overflow-hidden bg-white shadow-2xl ring-1 ring-black/10 lg:w-[72vw]">
-          <header class="flex flex-wrap items-start justify-between gap-4 border-b border-neutral-100 px-6 py-5">
-            <div>
-              <p class="text-xs font-semibold uppercase tracking-[0.24em] text-primary-600">{{ t('scan.results.detailEyebrow') }}</p>
-              <h2 class="mt-1 text-2xl font-semibold tracking-tight text-neutral-950">{{ resultDetailTitle }}</h2>
-              <div class="mt-2 flex flex-wrap gap-3 text-xs text-neutral-500">
-                <span v-if="activeHistoryRecord">{{ formatHistoryTimestamp(activeHistoryRecord.createdAt) }}</span>
-                <span>{{ characterUsage }}</span>
-                <span v-if="availableResultTabs.length > 1">{{ t('scan.editor.selectedFunctions', { value: selectedFunctionSummary }) }}</span>
-              </div>
-            </div>
-            <div class="flex flex-wrap items-center gap-2">
-              <button
-                type="button"
-                data-testid="detail-export"
-                class="inline-flex items-center gap-2 rounded-full border border-neutral-200 bg-white px-4 py-2 text-xs font-semibold text-neutral-700 transition hover:border-primary-200 hover:text-primary-700"
-                :disabled="isExportingReport"
-                :aria-busy="isExportingReport"
-                @click="exportReport"
-              >
-                <ArrowPathIcon v-if="isExportingReport" class="h-4 w-4 animate-spin" aria-hidden="true" />
-                <DocumentArrowDownIcon v-else class="h-4 w-4" aria-hidden="true" />
-                {{ t(isExportingReport ? 'scan.results.exporting' : 'scan.results.export') }}
-              </button>
-              <button
-                type="button"
-                class="rounded-full bg-neutral-900 px-4 py-2 text-xs font-semibold text-white transition hover:bg-neutral-700"
-                @click="closeResultDetail"
-              >
-                {{ t('scan.results.closeDetail') }}
-              </button>
-            </div>
-          </header>
-
-          <div
-            v-if="activeCorpusGroup && activeCorpusGroup.occurrences.length > 1"
-            ref="corpusNavigationRef"
-            tabindex="-1"
-            class="flex shrink-0 flex-wrap items-center gap-x-3 gap-y-1 border-b border-neutral-200 bg-white px-6 py-2 text-xs text-neutral-700"
-          >
-            <span class="min-w-0 break-words font-medium">{{ activeCorpusGroup.expression }}</span>
-            <span role="status" class="tabular-nums" data-testid="corpus-expression-position">
-              {{ t('scan.evidence.corpusExpressions.position', { current: activeCorpusMatch.index + 1, total: activeCorpusGroup.occurrences.length }) }}
-            </span>
-            <button
-              type="button"
-              class="min-h-10 rounded px-2 font-semibold text-blue-800 hover:bg-blue-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-600 disabled:opacity-50"
-              data-testid="corpus-expression-previous"
-              :disabled="activeCorpusMatch.index === 0"
-              @click="focusCorpusOccurrence(activeCorpusMatch.expression, activeCorpusMatch.index - 1)"
-            >
-              {{ t('scan.evidence.corpusExpressions.previous') }}
-            </button>
-            <button
-              type="button"
-              class="min-h-10 rounded px-2 font-semibold text-blue-800 hover:bg-blue-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-600 disabled:opacity-50"
-              data-testid="corpus-expression-next"
-              :disabled="activeCorpusMatch.index === activeCorpusGroup.occurrences.length - 1"
-              @click="focusCorpusOccurrence(activeCorpusMatch.expression, activeCorpusMatch.index + 1)"
-            >
-              {{ t('scan.evidence.corpusExpressions.next') }}
-            </button>
-          </div>
-
-          <div class="grid min-h-0 flex-1 grid-cols-1 overflow-y-auto lg:grid-cols-[18rem,1fr]">
-            <aside class="border-b border-neutral-100 bg-neutral-50/70 px-6 py-6 lg:border-b-0 lg:border-r">
-              <div class="rounded-3xl border border-neutral-100 bg-white p-5 shadow-sm">
-                <p class="text-xs font-bold uppercase tracking-widest text-neutral-400">{{ t('scan.results.summary.title') }}</p>
-                <div class="mt-6 flex items-end gap-2">
-                  <span class="text-5xl font-bold tracking-tight text-neutral-950">{{ resultDisplaySummary.ai }}%</span>
-                  <span class="pb-1 text-sm font-semibold text-neutral-500">{{ t('scan.results.summary.label') }}</span>
-                </div>
-                <div class="mt-6 space-y-4">
-                  <div>
-                    <div class="mb-1 flex justify-between text-xs font-semibold text-neutral-600">
-                      <span>{{ t('scan.results.summary.ai') }}</span>
-                      <span>{{ resultDisplaySummary.ai }}%</span>
-                    </div>
-                    <div class="analysis-track h-2 overflow-hidden rounded-full">
-                      <div class="analysis-bar-ai h-full" :style="{ width: resultDisplaySummary.ai + '%' }"></div>
-                    </div>
-                  </div>
-                  <div>
-                    <div class="mb-1 flex justify-between text-xs font-semibold text-neutral-600">
-                      <span>{{ t('scan.results.summary.human') }}</span>
-                      <span>{{ resultDisplaySummary.human }}%</span>
-                    </div>
-                    <div class="analysis-track h-2 overflow-hidden rounded-full">
-                      <div class="analysis-bar-human h-full" :style="{ width: resultDisplaySummary.human + '%' }"></div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              <div v-if="availableResultTabs.length > 1" class="mt-4 rounded-3xl border border-neutral-100 bg-white p-2 shadow-sm">
-                <button
-                  v-for="tab in availableResultTabs"
-                  :key="tab.key"
-                  type="button"
-                  :class="[
-                    'flex w-full items-center justify-between rounded-2xl px-4 py-3 text-sm font-semibold transition',
-                    activeResultTab === tab.key
-                      ? 'bg-primary-50 text-primary-800 ring-1 ring-primary-100'
-                      : 'text-neutral-500 hover:bg-neutral-50 hover:text-neutral-900',
-                  ]"
-                  @click="activeResultTab = tab.key"
-                >
-                  <span>{{ tab.label }}</span>
-                  <ArrowRightIcon v-if="activeResultTab === tab.key" class="h-4 w-4" />
-                </button>
-              </div>
-            </aside>
-
-            <main ref="resultDetailBodyRef" class="min-h-0 min-w-0 px-6 py-6">
-              <p
-                v-if="resultTextMismatch"
-                role="status"
-                data-testid="incomplete-text-notice"
-                class="mb-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm leading-6 text-amber-800"
-              >{{ t('scan.results.incompleteTextNotice') }} {{ t('scan.results.exportSnapshotNotice') }}</p>
-              <EvidencePanel
-                :evidence="scanStore.result?.evidence"
-                :submitted-text="scanStore.resultInputText"
-                :corpus-matches="corpusMatches"
-                :active-corpus-match="activeCorpusMatch"
-                :initial-dimension="evidenceDimension"
-                :initial-show-all="evidenceShowAll"
-                @select-corpus-expression="focusCorpusOccurrence($event, 0, true)"
-                @update:show-all="evidenceShowAll = $event"
-                detailed
-                class="mb-6"
-              />
-              <div v-if="activeResultTab === 'scan'" class="space-y-4">
-                <p v-if="resultHasMergedBlocks" class="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
-                  {{ t('scan.results.mergeNotice') }}
-                </p>
-                <div
-                  v-for="(sentence, index) in scanStore.result.sentences"
-                  :key="sentence.id"
-                  :class="[
-                    'rounded-3xl border p-5 text-sm transition-all duration-150',
-                    highlightBorderClass(sentence),
-                    isSentenceResultActive(sentence) ? 'ring-2 ring-slate-300/80 shadow-sm' : '',
-                  ]"
-                  @mouseenter="setActiveSentence(getSentenceDefaultActiveId(sentence))"
-                  @mouseleave="clearActiveSentence"
-                >
-                  <div class="mb-4 flex items-center justify-between gap-3">
-                    <span class="inline-flex items-center rounded-full bg-white/80 px-3 py-1 text-xs font-semibold text-slate-600 ring-1 ring-slate-200">
-                      {{ sentenceDisplayLabels[index] }}
-                    </span>
-                    <span v-if="sentence.type !== 'metadata'" class="text-xs font-semibold text-slate-500">
-                      {{ formatSentenceProbabilityLabel(sentence) }}
-                    </span>
-                  </div>
-                  <div
-                    class="result-sentence-text min-w-0 space-y-3 text-base"
-                    @mouseover="setActiveSentenceFromResultParagraph($event, sentence)"
-                    @mouseleave="setActiveSentence(getSentenceDefaultActiveId(sentence))"
-                    v-html="formatHighlightedSentence(sentence, activeCorpusOccurrence?.sentenceIndex === index ? activeCorpusOccurrence : null)"
-                  ></div>
-                </div>
-              </div>
-
+    <TransitionRoot as="template" :show="isResultDetailOpen && hasResults" @after-leave="restoreEvidenceTriggerFocus">
+      <Dialog class="relative z-50" @close="closeResultDetail">
+        <TransitionChild as="template" enter="transition-opacity duration-200 motion-reduce:transition-none" enter-from="opacity-0" enter-to="opacity-100" leave="transition-opacity duration-150 motion-reduce:transition-none" leave-from="opacity-100" leave-to="opacity-0">
+          <div class="fixed inset-0 bg-slate-950/25 backdrop-blur-sm" aria-hidden="true" />
+        </TransitionChild>
+        <div class="fixed inset-0 overflow-y-auto">
+          <div class="flex min-h-full items-center justify-center p-4">
+            <TransitionChild as="template" enter="transition duration-200 ease-out motion-reduce:transition-none" enter-from="opacity-0 translate-y-3" enter-to="opacity-100 translate-y-0" leave="transition duration-150 motion-reduce:transition-none" leave-from="opacity-100 translate-y-0" leave-to="opacity-0 translate-y-3">
+              <DialogPanel class="flex max-h-[85dvh] w-full max-w-xl flex-col overflow-hidden rounded-2xl bg-white font-sans shadow-2xl" data-testid="evidence-dialog">
+                <header class="flex items-center justify-between gap-4 border-b border-neutral-100 px-6 py-5">
+                  <DialogTitle class="text-lg font-semibold text-neutral-950">{{ t('scan.results.evidenceTitle') }}</DialogTitle>
+                  <button type="button" data-testid="evidence-close" class="rounded-full px-3 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary-500" @click="closeResultDetail">{{ t('scan.results.closeDetail') }}</button>
+                </header>
+                <div class="overflow-y-auto px-6 py-5">
+                  <nav v-if="availableResultTabs.length > 1" class="mb-5 flex flex-wrap gap-2" :aria-label="t('scan.results.legacyResults')">
+                    <button v-for="tab in availableResultTabs" :key="tab.key" type="button" :aria-pressed="activeResultTab === tab.key" class="rounded-full px-3 py-2 text-sm" :class="activeResultTab === tab.key ? 'bg-primary-50 text-primary-700' : 'text-slate-600'" @click="activeResultTab = tab.key">{{ tab.key === 'scan' ? t('scan.results.evidenceTitle') : tab.label }}</button>
+                  </nav>
+                  <p v-if="activeResultTab === 'scan'" data-testid="paragraph-evidence-empty" class="text-sm leading-7 text-slate-600">{{ t('scan.results.evidenceEmpty') }}</p>
               <div v-else-if="activeResultTab === 'translate'" class="space-y-3">
                 <p class="text-xs font-semibold text-slate-500">{{ t('scan.results.translation') }}</p>
                 <div class="rounded-3xl bg-slate-50 p-5 text-sm leading-relaxed text-slate-700 whitespace-pre-line break-words">
@@ -1226,11 +1045,13 @@
                 </div>
                 <p class="text-[11px] text-slate-400">{{ t('scan.results.citationHint') }}</p>
               </div>
-            </main>
+                </div>
+              </DialogPanel>
+            </TransitionChild>
           </div>
-        </section>
-      </div>
-    </transition>
+        </div>
+      </Dialog>
+    </TransitionRoot>
     <LoginPromptModal
       :open="showLoginModal"
       :message="loginMessage"
@@ -1243,6 +1064,7 @@
 
 <script setup>
 import { computed, h, markRaw, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
+import { Dialog, DialogPanel, DialogTitle, TransitionChild, TransitionRoot } from '@headlessui/vue';
 import { executeTransition, usePreferredReducedMotion } from '@vueuse/core';
 import { useRoute, useRouter } from 'vue-router';
 import {
@@ -1275,6 +1097,9 @@ import {
   UserGroupIcon,
   ArrowRightIcon,
   PlayIcon,
+  ChevronDownIcon,
+  ChevronDoubleLeftIcon,
+  ChevronDoubleRightIcon,
 } from '@heroicons/vue/24/outline';
 import AppHeader from '../sections/AppHeader.vue';
 import LoginPromptModal from '../components/common/LoginPromptModal.vue';
@@ -1282,7 +1107,6 @@ import BaseListbox from '../components/common/BaseListbox.vue';
 import ProfilePanel from '../components/dashboard/ProfilePanel.vue';
 import QAPanel from '../components/dashboard/QAPanel.vue';
 import OnboardingStepsBar from '../components/dashboard/OnboardingStepsBar.vue';
-import EvidencePanel from '../components/EvidencePanel.vue';
 import { useI18n } from '../i18n';
 import { clearGuestToken, ensureGuestToken, getGuestSessionId, getStoredGuestToken } from '../api/modules/auth';
 import { extractApiErrorCode } from '../api/client';
@@ -1295,6 +1119,7 @@ import { clampProbability, getProbabilityCardClasses, getProbabilityTextClasses 
 import { getCorpusExpressionMatches } from '../utils/corpusExpressionMatches';
 import {
   buildHighlightedPreviewHtml,
+  buildCorpusPreviewHtml,
   buildSentenceDisplayLabels,
   buildSentenceParagraphLinkId,
   escapeHtml,
@@ -1319,8 +1144,21 @@ const { t, locale } = useI18n();
 
 const editorRef = ref(null);
 const previewContentRef = ref(null);
-const resultDetailBodyRef = ref(null);
-const corpusNavigationRef = ref(null);
+const resultToggleRef = ref(null);
+const resultPanelRef = ref(null);
+const resultPanelCollapsed = ref(false);
+const resultPanelEntering = ref(false);
+let resultEnterFrame = 0;
+const cancelResultEnter = () => {
+  cancelAnimationFrame(resultEnterFrame);
+  resultEnterFrame = 0;
+};
+const toggleResultPanel = () => {
+  cancelResultEnter();
+  resultPanelEntering.value = false;
+  if (!resultPanelCollapsed.value) resultToggleRef.value?.focus({ preventScroll: true });
+  resultPanelCollapsed.value = !resultPanelCollapsed.value;
+};
 const fileInput = ref(null);
 const newMenuRef = ref(null);
 const newMenuButtonRef = ref(null);
@@ -1341,6 +1179,25 @@ const highlightedPreviewHtml = ref('');
 const showLoginModal = ref(false);
 const loginMessage = ref(t('scan.loginPrompt.default'));
 const activeResultTab = ref('scan');
+const resultView = ref('scan');
+const expandedSentenceIds = ref([]);
+const resultViewTabs = computed(() => [
+  { key: 'scan', label: t('scan.results.detectionTab') },
+  { key: 'corpus', label: t('scan.results.corpusTab') },
+]);
+const selectResultView = (key) => {
+  resultView.value = key;
+  editorMode.value = 'preview';
+  activeSentenceId.value = '';
+};
+const onResultTabKeydown = (event, index) => {
+  const next = event.key === 'Home' ? 0 : event.key === 'End' ? 1
+    : ['ArrowLeft', 'ArrowRight'].includes(event.key) ? 1 - index : -1;
+  if (next < 0) return;
+  event.preventDefault();
+  selectResultView(resultViewTabs.value[next].key);
+  event.currentTarget.parentElement.querySelectorAll('[role="tab"]')[next]?.focus();
+};
 const newMenuOpen = ref(false);
 const activePanel = ref('home');
 const activeHistoryId = ref('');
@@ -1353,9 +1210,7 @@ const isHistoryActionPending = ref(false);
 const activeSentenceId = ref('');
 const activeCorpusMatch = ref(null);
 const isResultDetailOpen = ref(false);
-const evidenceDimension = ref('lexical');
-const evidenceShowAll = ref(false);
-watch(() => scanStore.result?.evidence, () => { evidenceShowAll.value = false; });
+let evidenceTrigger = null;
 const isWorkbenchPanel = computed(() => activePanel.value === 'home' || activePanel.value === 'document');
 const headerVariant = computed(() => (activePanel.value === 'document' ? 'scan' : activePanel.value));
 const quotaInfo = ref({ actor_type: '', limit: 0, used_today: 0, remaining: 0 });
@@ -1829,22 +1684,58 @@ const corpusMatches = computed(() => {
 });
 const activeCorpusGroup = computed(() => corpusMatches.value.find((group) => group.expression === activeCorpusMatch.value?.expression));
 const activeCorpusOccurrence = computed(() => activeCorpusGroup.value?.occurrences[activeCorpusMatch.value?.index]);
+const resultPreviewHtml = computed(() => resultView.value === 'corpus'
+  ? buildCorpusPreviewHtml({
+    editorHtml: scanStore.resultInputHtml || '',
+    text: scanStore.resultInputText || '',
+    matches: corpusMatches.value,
+    activeMatch: activeCorpusMatch.value,
+  })
+  : highlightedPreviewHtml.value);
+watch([() => scanStore.result, () => scanStore.currentResultHistoryId], ([result, id], [previousResult, previousId]) => {
+  // History synchronization may refresh the same result after detection completes.
+  if (result && previousResult && id != null && String(id) === String(previousId)) return;
+  cancelResultEnter();
+  resultView.value = 'scan';
+  expandedSentenceIds.value = [];
+  resultPanelCollapsed.value = false;
+  resultPanelEntering.value = Boolean(result) && reducedMotion.value !== 'reduce';
+  if (!resultPanelEntering.value) return;
+  // Two frames render the new result at its closed position before opening.
+  resultEnterFrame = requestAnimationFrame(() => {
+    resultEnterFrame = requestAnimationFrame(() => {
+      resultPanelEntering.value = false;
+      resultEnterFrame = 0;
+    });
+  });
+});
 watch(
   [() => scanStore.result, () => scanStore.currentResultHistoryId, () => scanStore.resultInputText, editorText, isResultDetailOpen, isScanning],
   () => { activeCorpusMatch.value = null; }
 );
-const focusCorpusOccurrence = async (expression, index, moveFocus = false) => {
-  const group = corpusMatches.value.find((item) => item.expression === expression);
-  const occurrence = group?.occurrences[index];
-  if (!isResultDetailOpen.value || !occurrence) return;
-
+const focusPreviewCorpusOccurrence = async (expression, index, moveFocus = false) => {
+  const occurrence = corpusMatches.value.find((item) => item.expression === expression)?.occurrences[index];
+  if (!occurrence) return;
+  selectResultView('corpus');
   activeCorpusMatch.value = { expression, index };
-  activeResultTab.value = 'scan';
   await nextTick();
   if (activeCorpusOccurrence.value !== occurrence) return;
-
-  const mark = resultDetailBodyRef.value?.querySelector('[data-testid="corpus-expression-hit"]');
-  if (moveFocus) (corpusNavigationRef.value ?? mark)?.focus({ preventScroll: true });
+  const mark = previewContentRef.value?.querySelector('[data-testid="corpus-preview-active-hit"]');
+  if (moveFocus) mark?.focus({ preventScroll: true });
+  mark?.scrollIntoView?.({ block: 'center', behavior: reducedMotion.value === 'reduce' ? 'auto' : 'smooth' });
+};
+const toggleResultSentence = async (sentence) => {
+  const id = sentence.id;
+  if (expandedSentenceIds.value.includes(id)) {
+    expandedSentenceIds.value = expandedSentenceIds.value.filter((item) => item !== id);
+    return;
+  }
+  expandedSentenceIds.value = [...expandedSentenceIds.value, id];
+  editorMode.value = 'preview';
+  setActiveSentence(getSentenceDefaultActiveId(sentence));
+  await nextTick();
+  const mark = Array.from(previewContentRef.value?.querySelectorAll('[data-sentence-id]') || [])
+    .find((item) => item.getAttribute('data-sentence-id') === getSentenceDefaultActiveId(sentence));
   mark?.scrollIntoView?.({ block: 'center', behavior: reducedMotion.value === 'reduce' ? 'auto' : 'smooth' });
 };
 const normalizeModelVersionLabel = (modelName) => {
@@ -2200,17 +2091,6 @@ const availableResultTabs = computed(() => {
 
 const historyRecords = computed(() => scanStore.historyRecords);
 
-const activeHistoryRecord = computed(() =>
-  historyRecords.value.find((item) => String(item.id) === String(activeHistoryId.value))
-);
-
-const resultDetailTitle = computed(() => {
-  if (activeHistoryRecord.value) {
-    return resolveHistoryTitle(activeHistoryRecord.value);
-  }
-  return buildHistoryTitle() || t('scan.results.detailTitle');
-});
-
 const isTooShortSentence = (sentence) => sentence?.type === 'too_short';
 const highlightBorderClass = (sentence) =>
   getProbabilityCardClasses(clampProbability(sentence?.probability), sentence?.type);
@@ -2494,23 +2374,27 @@ const syncDetailRoute = (detailId = '') => {
   router.replace({ name: 'dashboard', query });
 };
 
-const openResultDetail = () => {
+const openResultDetail = (event) => {
   if (!hasResults.value) return;
+  evidenceTrigger = event?.currentTarget instanceof HTMLElement ? event.currentTarget : null;
+  activeResultTab.value = 'scan';
   isResultDetailOpen.value = true;
   const detailId = scanStore.currentResultHistoryId || activeHistoryId.value || 'current';
   syncDetailRoute(detailId);
+};
+
+const restoreEvidenceTriggerFocus = async () => {
+  const trigger = evidenceTrigger;
+  await nextTick();
+  if (isResultDetailOpen.value || !trigger?.isConnected || trigger.closest('[inert]')) return;
+  trigger.focus({ preventScroll: true });
+  evidenceTrigger = null;
 };
 
 const closeResultDetail = () => {
   historySelectionSequence += 1;
   isResultDetailOpen.value = false;
   syncDetailRoute('');
-};
-
-const openEvidenceDetail = (dimension, showAll = false) => {
-  evidenceDimension.value = dimension;
-  evidenceShowAll.value = showAll;
-  openResultDetail();
 };
 
 const syncResultDetailFromRoute = async (value) => {
@@ -2636,16 +2520,15 @@ onMounted(async () => {
   await searchHistoryRecords();
   showQuotaNoticeOnce();
   document.addEventListener('click', onGlobalClick);
-  document.addEventListener('keydown', onDetailKeydown);
   await syncResultDetailFromRoute(route.query.detail);
 });
 
 onBeforeUnmount(() => {
   preflightPageDisposed = true;
   quotaAnimationVersion += 1;
+  cancelResultEnter();
   document.removeEventListener('click', onGlobalClick);
   document.removeEventListener('keydown', featureModalKeyHandler);
-  document.removeEventListener('keydown', onDetailKeydown);
   if (historySearchTimer) {
     clearTimeout(historySearchTimer);
   }
@@ -2795,7 +2678,7 @@ watch(
 );
 
 watch(
-  [activeSentenceId, highlightedPreviewHtml, activePanel, activeHistoryId, editorMode],
+  [activeSentenceId, resultPreviewHtml, activePanel, activeHistoryId, editorMode],
   () => {
     syncPreviewHoverState();
   },
@@ -2866,12 +2749,6 @@ const closeFeatureModal = () => {
 const featureModalKeyHandler = (event) => {
   if (event.key === 'Escape') {
     closeFeatureModal();
-  }
-};
-
-const onDetailKeydown = (event) => {
-  if (event.key === 'Escape' && isResultDetailOpen.value) {
-    closeResultDetail();
   }
 };
 
@@ -3372,6 +3249,63 @@ const onGlobalClick = (event) => {
   border-radius: inherit;
 }
 
+.result-panel-toggle {
+  display: grid;
+  width: 44px;
+  height: 44px;
+  place-items: center;
+  border: 1px solid #e4e9f0;
+  border-radius: 50%;
+  color: #526078;
+  background: #fff;
+  box-shadow: 0 2px 8px rgb(24 34 48 / .12);
+}
+.result-panel-toggle:hover { background: #f4f7fc; }
+.result-panel-toggle:focus-visible { outline: 2px solid #3478f6; outline-offset: 3px; }
+.has-results .result-panel-viewport {
+  min-width: 0;
+  overflow: hidden;
+  border-radius: 16px;
+  background: #fff;
+  box-shadow: 0 2px 4px rgb(24 34 48 / .04), 0 8px 24px rgb(24 34 48 / .05);
+  transition: opacity 250ms ease, transform 320ms cubic-bezier(.22, 1, .36, 1);
+}
+.is-results-collapsed .result-panel-viewport,
+.is-results-entering .result-panel-viewport { opacity: 0; transform: translateX(24px); }
+.is-results-entering .workbench-body,
+.is-results-entering .result-panel-viewport { transition: none; }
+@media (max-width: 1023px) {
+  .has-results .workbench-results { min-height: 0; border: 0; background: transparent; padding: 0 16px calc(128px + env(safe-area-inset-bottom)); }
+  .result-panel-toggle { align-self: flex-end; margin: 0 0 12px; }
+  .has-results .result-panel-viewport { max-height: 70vh; overflow-y: auto; transition: max-height 320ms ease, opacity 250ms ease, transform 320ms ease; }
+  .is-results-collapsed .result-panel-viewport,
+  .is-results-entering .result-panel-viewport { max-height: 0; }
+}
+
+.result-paragraph { overflow-wrap: anywhere; }
+.corpus-expression-button {
+  background: #fff0bc;
+  color: #6b5014;
+  overflow-wrap: anywhere;
+  transition: background-color 150ms ease;
+}
+.corpus-expression-button:hover,
+.corpus-expression-button.is-active { background: #f5d978; }
+.preview-surface :deep(.corpus-preview-hit) {
+  border-radius: 3px;
+  padding-block: 2px;
+  background: #fff0bc;
+  color: inherit;
+  box-decoration-break: clone;
+  -webkit-box-decoration-break: clone;
+}
+.preview-surface :deep(.corpus-source-paragraph) { white-space: pre-wrap; }
+.preview-surface :deep(.corpus-preview-hit.is-active) {
+  background: #f5d978;
+  outline: 2px solid #b58928;
+  outline-offset: 2px;
+}
+
 .toolbar-glass {
   background: linear-gradient(170deg, rgb(255 255 255 / 0.6), rgb(255 255 255 / 0.24) 48%, rgb(233 239 249 / 0.4));
   box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.75), 0 6px 20px rgb(35 55 85 / 0.1);
@@ -3404,6 +3338,47 @@ const onGlobalClick = (event) => {
 }
 
 @media (min-width: 1024px) {
+  .workbench-document-view.has-results {
+    --workbench-history-width: clamp(168px, 14vw, 224px);
+  }
+  .has-results .workbench-body {
+    display: grid;
+    grid-template-columns: var(--workbench-history-width) minmax(0, 1.22fr) minmax(0, 1fr);
+    transition: grid-template-columns 320ms cubic-bezier(.22, 1, .36, 1);
+  }
+  .has-results.is-results-collapsed .workbench-body,
+  .has-results.is-results-entering .workbench-body {
+    grid-template-columns: var(--workbench-history-width) minmax(0, 2.22fr) minmax(0, 0fr);
+  }
+  .has-results .workbench-history,
+  .has-results .workbench-results { width: auto; min-width: 0; }
+  .has-results .workbench-results {
+    position: sticky;
+    top: 10rem;
+    align-self: start;
+    height: calc(100dvh - 10rem - 64px);
+    margin-block: 32px;
+    min-height: 0;
+    border: 0;
+    background: transparent;
+  }
+  .has-results .result-panel-viewport {
+    height: 100%;
+    margin-right: 24px;
+  }
+  .has-results .result-panel-frame {
+    min-width: 320px;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
+  .result-panel-toggle {
+    position: absolute;
+    z-index: 5;
+    top: 50%;
+    left: -44px;
+    transform: translateY(-50%);
+  }
+  .has-results .workbench-document-meta { flex-wrap: wrap; }
   .workbench-navigation {
     position: sticky;
     top: calc(4rem + 1px);
@@ -3421,11 +3396,6 @@ const onGlobalClick = (event) => {
     padding-left: 16px;
     padding-right: 120px;
   }
-  .workbench-detail {
-    grid-area: 1 / 2;
-    justify-self: end;
-    margin-right: var(--workbench-document-gutter);
-  }
   .workbench-document-meta {
     grid-area: 1 / 3;
     padding-inline: 24px;
@@ -3436,6 +3406,14 @@ const onGlobalClick = (event) => {
   .workbench-results {
     width: var(--workbench-results-width);
   }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .has-results .workbench-body,
+  .has-results .result-panel-viewport,
+  .result-view-switch .workbench-mode-selection,
+  .result-view-switch button,
+  .corpus-expression-button { transition: none; }
 }
 
 @media (min-width: 1280px) {

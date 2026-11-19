@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { AnalysisSentence, EvidenceCorpusExpressions } from '../api/modules/scan';
 import { getCorpusExpressionMatches } from './corpusExpressionMatches';
+import { buildCorpusPreviewHtml } from './editorContent';
 
 // Mirrors the backend's shared corpus-expression-visibility contract fixture.
 const submittedText = '  值得关注的是  \r\n作者：仅作示例\r\n \t\r\n这不仅仅是一个试验。\r\n  😀青山依旧，神情平静。  \r\n这不仅仅是一个试验。\r这不仅仅是一个试验。\n很高兴。\r\n  值得商榷的是时间。  ';
@@ -32,6 +33,15 @@ const corpus: EvidenceCorpusExpressions = {
 };
 
 describe('getCorpusExpressionMatches', () => {
+  it('共享可见性样本在左侧原文按 CR/CRLF、空白和 emoji 正确高亮，保留 NFKC 原字形', () => {
+    const output = buildCorpusPreviewHtml({ text: submittedText, matches: getCorpusExpressionMatches(submittedText, sentences, corpus) });
+    const doc = new DOMParser().parseFromString(output, 'text/html');
+    expect(Array.from(doc.querySelectorAll('mark'), (mark) => mark.textContent)).toEqual(['不仅仅是', '青山依旧', '神情', '不仅仅是']);
+    expect(doc.querySelector('mark')?.previousSibling?.textContent).toBe('这');
+    expect(doc.body.textContent).toContain('仅作示例');
+    expect(Array.from(doc.querySelectorAll('mark'), (mark) => mark.textContent).join('')).not.toContain('仅作示例');
+  });
+
   it('保留服务端组顺序，只定位 AI 合并段并按渲染文本换算 UTF-16 坐标', () => {
     const merged = { ...sentences[2], text: sentences[2].text.replace('\n', '\r\n').replace('  \n', '  \r') };
     const rendered = sentences.map((sentence, index) => index === 2 ? merged : sentence);
@@ -39,9 +49,9 @@ describe('getCorpusExpressionMatches', () => {
     const result = getCorpusExpressionMatches(submittedText, rendered, corpus);
 
     expect(result).toEqual([
-      { expression: '不仅仅是', occurrences: [{ sentenceIndex: 2, start: 1, end: 5 }, { sentenceIndex: 2, start: 30, end: 34 }] },
-      { expression: '青山依旧', occurrences: [{ sentenceIndex: 2, start: 16, end: 20 }] },
-      { expression: '神情', occurrences: [{ sentenceIndex: 2, start: 21, end: 23 }] },
+      { expression: '不仅仅是', occurrences: [{ sentenceIndex: 2, start: 1, end: 5, sourceStart: 26, sourceEnd: 30 }, { sentenceIndex: 2, start: 30, end: 34, sourceStart: 56, sourceEnd: 60 }] },
+      { expression: '青山依旧', occurrences: [{ sentenceIndex: 2, start: 16, end: 20, sourceStart: 41, sourceEnd: 45 }] },
+      { expression: '神情', occurrences: [{ sentenceIndex: 2, start: 21, end: 23, sourceStart: 46, sourceEnd: 48 }] },
     ]);
     expect(merged.text.slice(21, 23)).toBe('神情');
   });
@@ -55,7 +65,7 @@ describe('getCorpusExpressionMatches', () => {
     const text = '\u0085\r\n\u001c\r  套话';
     expect(getCorpusExpressionMatches(text, [block('  套话', 1, 1, 'ai')], {
       ...corpus, expressions: ['套话'], matches: [{ expression: '套话', offsets: [{ start: 7, end: 9 }] }],
-    })).toEqual([{ expression: '套话', occurrences: [{ sentenceIndex: 0, start: 2, end: 4 }] }]);
+    })).toEqual([{ expression: '套话', occurrences: [{ sentenceIndex: 0, start: 2, end: 4, sourceStart: 7, sourceEnd: 9 }] }]);
   });
 
   it.each([

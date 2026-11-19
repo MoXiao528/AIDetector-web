@@ -5,6 +5,8 @@ export interface CorpusExpressionOccurrence {
   sentenceIndex: number;
   start: number;
   end: number;
+  sourceStart: number;
+  sourceEnd: number;
 }
 
 export interface CorpusExpressionMatch {
@@ -92,6 +94,8 @@ export function getCorpusExpressionMatches(
         sentenceIndex: placement.sentenceIndex,
         start: placement.targetStart + start - placement.sourceStart,
         end: placement.targetStart + end - placement.sourceStart,
+        sourceStart: start,
+        sourceEnd: end,
       });
     }
     if (occurrences.length) groups.push({ expression: match.expression, occurrences });

@@ -1,12 +1,12 @@
 <template>
   <section
     v-if="evidence"
-    :aria-label="t('scan.evidence.presentation.title')"
+    :aria-label="t(detailed ? 'scan.results.fullDocumentFeatures' : 'scan.evidence.presentation.title')"
     :class="['min-w-0 break-words', detailed ? 'space-y-4' : 'space-y-3 rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm']"
     data-testid="evidence-panel"
   >
     <header>
-      <h3 :class="[detailed ? 'text-lg' : 'text-sm', 'font-bold text-neutral-900']">{{ t('scan.evidence.presentation.title') }}</h3>
+      <h3 :class="[detailed ? 'text-lg' : 'text-sm', 'font-bold text-neutral-900']">{{ t(detailed ? 'scan.results.fullDocumentFeatures' : 'scan.evidence.presentation.title') }}</h3>
       <p v-if="statusMessage" class="mt-1 text-xs leading-5 text-neutral-600" data-testid="evidence-status">
         {{ statusMessage }}
       </p>

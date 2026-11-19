@@ -91,6 +91,11 @@ vi.mock('../utils/toast', () => ({
 }));
 
 const pageStubs = {
+  TransitionRoot: { props: ['show'], template: '<div v-if="show"><slot /></div>' },
+  TransitionChild: { template: '<div><slot /></div>' },
+  Dialog: { template: '<div><slot /></div>' },
+  DialogPanel: { template: '<section><slot /></section>' },
+  DialogTitle: { template: '<h2><slot /></h2>' },
   AppHeader: { template: '<div />' },
   LoginPromptModal: { template: '<div />' },
   BaseListbox: { template: '<div />' },
@@ -598,27 +603,26 @@ describe('ScanPage panel switching', () => {
       expect(store.result.summary).toEqual({ ai: 73, human: 27 });
       expect(store.result.aiLikelyCount).toBe(1);
       expect(wrapper.find('.scan-readiness').exists()).toBe(false);
-      state.openResultDetail();
-      await flushPromises();
+      for (const button of wrapper.findAll('.result-paragraph > button')) await button.trigger('click');
       const metadataTextNodes = wrapper.findAll('.result-sentence-text').filter((node) => paragraphs.slice(0, 2).includes(node.text()));
-      expect(metadataTextNodes).toHaveLength(4);
+      expect(metadataTextNodes).toHaveLength(2);
       for (const node of metadataTextNodes) {
-        const card = node.element.parentElement!;
-        const header = node.element.previousElementSibling!;
+        const card = node.element.closest('.result-paragraph')!;
+        const header = card.querySelector('button > span')!;
         const expectedLabel = node.text() === byline
           ? locale === 'zh-CN' ? '作者' : 'Author'
           : locale === 'zh-CN' ? '标题' : 'Title';
         expect(header.textContent?.trim()).toBe(expectedLabel);
-        expect(header.querySelectorAll('span')).toHaveLength(1);
+        expect(header.textContent).not.toMatch(/%/);
         expect(card.textContent).not.toMatch(/\d+%/);
         expect(card.className).not.toMatch(/orange|emerald|rose|amber|lime/);
         expect(node.html()).not.toMatch(/text-(?:rose|orange|amber|lime|emerald)/);
       }
       const bodyTextNodes = wrapper.findAll('.result-sentence-text').filter((node) => paragraphs.slice(2).includes(node.text()));
-      expect(bodyTextNodes).toHaveLength(4);
+      expect(bodyTextNodes).toHaveLength(2);
       for (const node of bodyTextNodes) {
         const bodyIndex = node.text() === paragraphs[2] ? 1 : 2;
-        const header = node.element.previousElementSibling!;
+        const header = node.element.closest('.result-paragraph')!.querySelector('button > span')!;
         expect(header.firstElementChild?.textContent?.trim()).toBe(`${locale === 'zh-CN' ? '段落' : 'Paragraph'} ${bodyIndex}`);
         expect(header.textContent).toContain(bodyIndex === 1 ? '90%' : '10%');
         expect(node.get('p').attributes('data-sentence-id')).toBe(`meta-test-${bodyIndex + 1}`);
@@ -653,7 +657,7 @@ describe('ScanPage panel switching', () => {
   it.each([
     { serverName: 'repreguard-42.pdf', expectedName: 'repreguard-42.pdf' },
     { serverName: null, expectedName: 'repreguard-report.pdf' },
-  ])('PDF 使用带写作特点的历史快照，两入口防重并下载 $expectedName', async ({ serverName, expectedName }) => {
+  ])('PDF 使用带写作特点的历史快照，导出防重并下载 $expectedName', async ({ serverName, expectedName }) => {
     vi.stubEnv('VITE_EVIDENCE_ENABLED', 'false');
     const request = createDeferred<{ blob: Blob; fileName: string | null; contentType: string }>();
     vi.mocked(reportsApi.exportPdfReport).mockReturnValueOnce(request.promise);
@@ -668,8 +672,8 @@ describe('ScanPage panel switching', () => {
       state.openResultDetail();
       await nextTick();
       const exportButtons = wrapper.findAll('[data-testid="result-export"], [data-testid="detail-export"]');
-      expect(exportButtons).toHaveLength(2);
-      expect(wrapper.get('[data-testid="incomplete-text-notice"]').text()).toContain(globalT('scan.results.exportSnapshotNotice'));
+      expect(exportButtons).toHaveLength(1);
+      expect(wrapper.get('[data-testid="paragraph-evidence-empty"]').text()).toContain('暂无段落级检测依据');
       await exportButtons[0].trigger('click');
       await state.exportReport();
       expect(reportsApi.exportPdfReport).toHaveBeenCalledExactlyOnceWith({
@@ -1066,6 +1070,8 @@ describe('ScanPage panel switching', () => {
       expect(preview.attributes('disabled')).toBeDefined();
       expect(wrapper.find('.scan-readiness').exists()).toBe(true);
       expect(wrapper.find('[data-testid="result-export"]').exists()).toBe(false);
+      expect(wrapper.get('.workbench-document-view').classes()).not.toContain('has-results');
+      expect(wrapper.find('[role="tablist"]').exists()).toBe(false);
       await preview.trigger('click');
       expect(edit.attributes('aria-pressed')).toBe('true');
       expect(preview.attributes('aria-pressed')).toBe('false');
@@ -1616,7 +1622,8 @@ describe('ScanPage panel switching', () => {
       expect(scanStore.result?.evidence).toEqual(evidence);
       expect(scanStore.result?.summary).toEqual({ ai: 77, human: 23 });
       expect(getScanPageSetupState(wrapper).isResultDetailOpen).toBe(true);
-      expect(wrapper.findAllComponents(EvidencePanel).find((component) => component.props('detailed'))?.props('submittedText')).toBe('Persisted guest document');
+      expect(wrapper.findComponent(EvidencePanel).exists()).toBe(false);
+      expect(scanStore.resultInputText).toBe('Persisted guest document');
       expect(scanApi.detectText).not.toHaveBeenCalled();
     } finally {
       wrapper.unmount();
@@ -1719,7 +1726,7 @@ describe('ScanPage panel switching', () => {
       expect(scanApi.detectText).not.toHaveBeenCalled();
       state.isResultDetailOpen = true;
       await nextTick();
-      expect(wrapper.findAll('[data-testid="incomplete-text-notice"]')).toHaveLength(2);
+      expect(wrapper.findAll('[data-testid="incomplete-text-notice"]')).toHaveLength(1);
       state.isResultDetailOpen = false;
 
       vi.mocked(scanApi.detectText).mockResolvedValueOnce({
@@ -2459,42 +2466,42 @@ describe('ScanPage panel switching', () => {
       expect(wrapper.get('.preview-surface').text()).toContain(aiParagraph);
       expect(wrapper.get('.preview-surface').text()).toContain(humanParagraph);
       expect(scanStore.result?.sentences[0].type).toBe('ai');
-      const compact = wrapper.getComponent(EvidencePanel);
-      expect(compact.find('[data-testid="evidence-summary"], [data-testid="corpus-expressions"]').exists()).toBe(false);
-      const detailsButton = compact.findAll('button').find((button) => button.text() === globalT('scan.evidence.presentation.viewDetails'));
-      expect(detailsButton).toBeDefined();
+      expect(wrapper.findComponent(EvidencePanel).exists()).toBe(false);
+      expect(wrapper.get('.workbench-document-view').classes()).toContain('has-results');
+      const tabs = wrapper.findAll('[role="tab"]');
+      expect(tabs.map((tab) => tab.text())).toEqual(['AI 检测', 'AI 常见表达']);
+      await tabs[1].trigger('click');
+      expect(tabs[1].attributes('aria-selected')).toBe('true');
+      expect(wrapper.findAll('.preview-surface mark')).toHaveLength(2);
+      expect(wrapper.findAll('[data-testid="corpus-preview-expression"]')).toHaveLength(1);
+      expect(wrapper.get('[data-testid="corpus-preview-expression"]').text()).toBe(expression);
+      await wrapper.get('[data-testid="corpus-preview-expression"]').trigger('click');
+      expect(wrapper.get('[data-testid="corpus-preview-active-hit"]').element.previousSibling?.textContent).toBe('😀');
+      expect(wrapper.get('[data-testid="corpus-preview-position"]').text()).toBe('1/2');
+      expect(wrapper.get('[data-testid="corpus-preview-previous"]').attributes('disabled')).toBeDefined();
+      await wrapper.get('[data-testid="corpus-preview-next"]').trigger('click');
+      expect(wrapper.get('[data-testid="corpus-preview-active-hit"]').element.nextSibling?.textContent).toBe('尾');
+      expect(wrapper.get('[data-testid="corpus-preview-next"]').attributes('disabled')).toBeDefined();
+      expect(tabs[1].attributes('aria-selected')).toBe('true');
+      expect(wrapper.find('.preview-surface img').exists()).toBe(false);
+      await tabs[1].trigger('keydown', { key: 'ArrowLeft' });
+      expect(tabs[0].attributes('aria-selected')).toBe('true');
+      expect(wrapper.find('.preview-surface mark').exists()).toBe(false);
+      expect(wrapper.findAll('.preview-surface .highlight-chip')).toHaveLength(2);
+      expect(wrapper.find('[data-testid="paragraph-features-placeholder"]').exists()).toBe(false);
+      await wrapper.get('.result-paragraph button').trigger('click');
+      expect(wrapper.get('.result-paragraph button').attributes('aria-expanded')).toBe('true');
+      expect(wrapper.get('[data-testid="paragraph-features-placeholder"]').text()).toContain('暂无段落级检测依据');
+      expect(wrapper.get('.result-paragraph .result-sentence-text').text()).toBe(aiParagraph);
+      const detailsButton = wrapper.get('[data-testid="result-evidence"]');
       await detailsButton!.trigger('click');
-      expect(wrapper.get('.text-5xl').text()).toBe('77%');
-      expect(wrapper.findAll('button').filter((button) => button.text().includes(globalT('scan.results.export')))).toHaveLength(2);
-      const hits = '[data-testid="corpus-expression-hit"]';
-      const expressionButton = () => wrapper.get('[data-testid="corpus-expression"]');
-      const position = () => wrapper.get('[data-testid="corpus-expression-position"]').text();
-      const previous = () => wrapper.get<HTMLButtonElement>('[data-testid="corpus-expression-previous"]');
-      const next = () => wrapper.get<HTMLButtonElement>('[data-testid="corpus-expression-next"]');
-      expect(wrapper.findAll('[data-testid="corpus-expression"]')).toHaveLength(1);
-      expect(expressionButton().text()).toBe(expression);
-      expect(wrapper.find(hits).exists()).toBe(false);
-      await expressionButton().trigger('click');
-      expect(position()).toMatch(/1\s*\/\s*2/);
-      expect(previous().element.disabled).toBe(true);
-      expect(next().element.disabled).toBe(false);
-      expect(wrapper.findAll(hits)).toHaveLength(1);
-      expect(wrapper.get(hits).text()).toBe(expression);
-      expect(wrapper.get(hits).element.previousSibling?.textContent).toBe('😀');
-      expect(wrapper.get(hits).element.parentElement?.textContent).toBe(aiParagraph);
-      expect(wrapper.get('[data-testid="corpus-expressions"]').find('img').exists()).toBe(false);
-      expect(wrapper.get(hits).find('img').exists()).toBe(false);
-      await next().trigger('click');
-      expect(position()).toMatch(/2\s*\/\s*2/);
-      expect(previous().element.disabled).toBe(false);
-      expect(next().element.disabled).toBe(true);
-      expect(wrapper.get(hits).element.nextSibling?.textContent).toBe('尾');
-      await previous().trigger('click');
-      expect(wrapper.get(hits).element.previousSibling?.textContent).toBe('😀');
-
+      expect(wrapper.get('[data-testid="paragraph-evidence-empty"]').text()).toContain('暂无段落级检测依据');
+      expect(wrapper.findAll('button').filter((button) => button.text().includes(globalT('scan.results.export')))).toHaveLength(1);
       state.closeResultDetail();
       await flushPromises();
-      await detailsButton!.trigger('click');
+      await wrapper.get('#result-view-corpus').trigger('click');
+      const hits = '[data-testid="corpus-preview-active-hit"]';
+      const expressionButton = () => wrapper.get('[data-testid="corpus-preview-expression"]');
       expect(wrapper.find(hits).exists()).toBe(false);
       await expressionButton().trigger('click');
       scanStore.setText('变更后的草稿。'.repeat(30));
@@ -2508,13 +2515,99 @@ describe('ScanPage panel switching', () => {
       expect(wrapper.find(hits).exists()).toBe(false);
       expect(scanStore.result?.evidence).toEqual(oldEvidence);
       expect(wrapper.get('.text-6xl').text()).toBe('23%');
-      expect(wrapper.get('.text-5xl').text()).toBe('23%');
       expect(wrapper.get('.preview-surface').text()).toContain(oldText);
       expect(scanStore.result?.sentences[0].type).toBe('human');
-      expect(wrapper.findAll('[data-testid="evidence-panel"]')).toHaveLength(2);
+      expect(wrapper.findAll('[data-testid="evidence-panel"]')).toHaveLength(0);
+      expect(wrapper.find('[data-testid="paragraph-features-placeholder"]').exists()).toBe(false);
+      await wrapper.get('#result-view-corpus').trigger('click');
+      expect(wrapper.find('[data-testid="corpus-preview-expression"]').exists()).toBe(false);
+      expect(wrapper.find('[data-testid="corpus-preview-empty"]').exists()).toBe(true);
       expect(wrapper.find('[data-testid="corpus-expressions"]').exists()).toBe(false);
     } finally {
       wrapper.unmount();
+    }
+  });
+
+  it('检测依据使用真实弹层，Escape关闭后还焦到入口', async () => {
+    route.query = { panel: 'document' };
+    const wrapper = mount(ScanPage, {
+      attachTo: document.body,
+      global: {
+        plugins: [createI18n()],
+        stubs: { ...pageStubs, TransitionRoot: false, TransitionChild: false, Dialog: false, DialogPanel: false, DialogTitle: false },
+      },
+    });
+    try {
+      await flushPromises();
+      useScanStore().result = { summary: { ai: 75, human: 25 }, sentences: [] };
+      await nextTick();
+      const trigger = wrapper.get<HTMLButtonElement>('[data-testid="result-evidence"]');
+      trigger.element.focus();
+      await trigger.trigger('click');
+      await vi.waitFor(() => expect(document.querySelector('[role="dialog"]')?.contains(document.activeElement)).toBe(true));
+      document.activeElement?.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+      await vi.waitFor(() => expect(document.querySelector('[role="dialog"]')).toBeNull());
+      await vi.waitFor(() => expect(document.activeElement).toBe(trigger.element));
+      expect(route.query.detail).toBeUndefined();
+    } finally {
+      wrapper.unmount();
+    }
+  });
+
+  it('收放保留页签和段落状态，新记录自动展开，卸载取消入场帧', async () => {
+    route.query = { panel: 'document' };
+    let frameId = 0;
+    const frames = new Map<number, FrameRequestCallback>();
+    const raf = vi.spyOn(window, 'requestAnimationFrame').mockImplementation((callback) => {
+      frames.set(++frameId, callback);
+      return frameId;
+    });
+    const caf = vi.spyOn(window, 'cancelAnimationFrame').mockImplementation((id) => { frames.delete(id); });
+    const wrapper = mountScanPage();
+    try {
+      await flushPromises();
+      expect(wrapper.find('[data-testid="result-panel-toggle"]').exists()).toBe(false);
+      const store = useScanStore();
+      store.currentResultHistoryId = 998;
+      store.result = { summary: { ai: 75, human: 25 }, sentences: [{ id: 'one', text: '测试段落', raw: '测试段落', type: 'ai', probability: .75 }] };
+      await nextTick();
+      expect(wrapper.get('.workbench-document-view').classes()).toContain('is-results-entering');
+      const advanceFrame = async () => {
+        const callbacks = [...frames.values()]; frames.clear();
+        callbacks.forEach((callback) => callback(16));
+        await nextTick();
+      };
+      await advanceFrame();
+      expect(wrapper.get('.workbench-document-view').classes()).toContain('is-results-entering');
+      await advanceFrame();
+      expect(wrapper.get('.workbench-document-view').classes()).not.toContain('is-results-entering');
+      await wrapper.get('.result-paragraph button').trigger('click');
+      const toggle = wrapper.get('[data-testid="result-panel-toggle"]');
+      await toggle.trigger('click');
+      expect(toggle.attributes('aria-expanded')).toBe('false');
+      expect(wrapper.get('#result-panel-content').attributes('inert')).toBeDefined();
+      await toggle.trigger('click');
+      expect(wrapper.get('.result-paragraph button').attributes('aria-expanded')).toBe('true');
+      await wrapper.get('#result-view-corpus').trigger('click');
+      await toggle.trigger('click');
+      await toggle.trigger('click');
+      expect(wrapper.get('#result-view-corpus').attributes('aria-selected')).toBe('true');
+      expect(wrapper.get('#result-panel-content').attributes('inert')).toBeUndefined();
+      await toggle.trigger('click');
+      store.result = { ...store.result };
+      await nextTick();
+      expect(toggle.attributes('aria-expanded')).toBe('false');
+      expect(wrapper.get('#result-view-corpus').attributes('aria-selected')).toBe('true');
+      expect(frames.size).toBe(0);
+      store.currentResultHistoryId = 999;
+      await nextTick();
+      expect(toggle.attributes('aria-expanded')).toBe('true');
+      expect(wrapper.get('#result-view-scan').attributes('aria-selected')).toBe('true');
+      expect(frames.size).toBeGreaterThan(0);
+      wrapper.unmount();
+      expect(frames.size).toBe(0);
+    } finally {
+      wrapper.unmount(); raf.mockRestore(); caf.mockRestore();
     }
   });
 
@@ -2580,7 +2673,12 @@ describe('ScanPage panel switching', () => {
     const evidenceHistoryId = scanStore.currentResultHistoryId;
     expect(scanStore.result?.evidence).toEqual(evidence);
     expect(wrapper.get('.text-6xl').element.closest('.shadow-premium')!.outerHTML).toBe(legacySummary);
-    expect(wrapper.get('[data-testid="evidence-status"]').text()).toBe(globalT('scan.evidence.presentation.status.unsupported'));
+    state.openResultDetail();
+    await flushPromises();
+    expect(wrapper.get('[data-testid="paragraph-evidence-empty"]').text()).toContain('暂无段落级检测依据');
+    expect(wrapper.findComponent(EvidencePanel).exists()).toBe(false);
+    state.closeResultDetail();
+    await flushPromises();
     expect(wrapper.get('.preview-surface').html()).toBe(legacyPreview);
 
     await state.loadHistoryRecord(legacyHistoryId);
@@ -2595,7 +2693,12 @@ describe('ScanPage panel switching', () => {
     expect(scanStore.result?.evidence).toEqual(evidence);
     expect(scanStore.result?.summary).toEqual({ ai, human: 100 - ai });
     expect(wrapper.get('.text-6xl').element.closest('.shadow-premium')!.outerHTML).toBe(legacySummary);
-    expect(wrapper.get('[data-testid="evidence-status"]').text()).toBe(globalT('scan.evidence.presentation.status.unsupported'));
+    state.openResultDetail();
+    await flushPromises();
+    expect(wrapper.get('[data-testid="paragraph-evidence-empty"]').text()).toContain('暂无段落级检测依据');
+    expect(wrapper.findComponent(EvidencePanel).exists()).toBe(false);
+    state.closeResultDetail();
+    await flushPromises();
     expect(wrapper.get('.preview-surface').html()).toBe(legacyPreview);
     wrapper.unmount();
   });
@@ -2674,89 +2777,27 @@ describe('ScanPage panel switching', () => {
     const historyId = scanStore.currentResultHistoryId;
     const savedRecord = scanStore.historyRecords[0];
     vi.mocked(historyApi.getHistoryList).mockImplementation(async (params) => makeHistoryResponse(params?.q ? [] : [savedRecord]));
-    expect(wrapper.findAll('[data-testid="evidence-panel"]')).toHaveLength(1);
-    const compact = wrapper.getComponent(EvidencePanel);
-    expect(compact.props('detailed')).toBe(false);
-    expect(compact.find('[data-testid="corpus-expressions"]').exists()).toBe(false);
-    expect(compact.findAll('[data-testid="evidence-summary"]')).toHaveLength(0);
-    expect(compact.get('[data-testid="evidence-empty-selection"]').text()).toContain(globalT('scan.evidence.presentation.noRecommended'));
-    expect(compact.get('[data-testid="evidence-empty-selection"]').text()).toContain('暂不能为来源判断提供补充依据');
-    await compact.get('[data-testid="evidence-show-all"]').trigger('click');
-    expect(compact.findAll('[data-testid="evidence-summary"]')).toHaveLength(4);
-    expect(compact.find('[data-metric], [data-testid="evidence-route"], [data-testid="evidence-quality"]').exists()).toBe(false);
+    expect(wrapper.findAll('[data-testid="evidence-panel"]')).toHaveLength(0);
+    await wrapper.get('#result-view-corpus').trigger('click');
+    expect(wrapper.find('[data-testid="corpus-preview-expression"]').exists()).toBe(canShowCorpus);
+    expect(wrapper.find('[data-testid="corpus-preview-empty"]').exists()).toBe(!canShowCorpus);
+    if (canShowCorpus) expect(wrapper.get('[data-testid="corpus-preview-expression"]').text()).toBe('用于验证');
     getScanPageSetupState(wrapper).openResultDetail();
     await flushPromises();
-    const generalDetails = wrapper.findAllComponents(EvidencePanel).find((panel) => panel.props('detailed'))!;
-    expect(generalDetails.props('initialShowAll')).toBe(true);
-    expect(generalDetails.findAll('[data-testid="evidence-dimension"]')).toHaveLength(4);
-    expect(generalDetails.get('[data-testid="evidence-professional"]').attributes('open')).toBeUndefined();
-    getScanPageSetupState(wrapper).closeResultDetail();
-    await flushPromises();
-    await compact.get('[data-dimension="rhythm"]').trigger('click');
-    await flushPromises();
-    const panels = wrapper.findAllComponents(EvidencePanel);
-    expect(panels).toHaveLength(2);
-    for (const panel of panels) {
-      expect(panel.props('evidence')).toEqual(evidence);
-    }
-    const detailed = panels.find((panel) => panel.props('detailed'))!;
-    const corpusSection = '[data-testid="corpus-expressions"]';
-    const expressions = detailed.find(corpusSection);
-    expect(expressions.exists()).toBe(canShowCorpus);
-    if (canShowCorpus) expect(expressions.text()).toContain('用于验证');
-    expect(detailed.props('initialShowAll')).toBe(true);
-    expect(detailed.get('[data-testid="evidence-show-all"]').attributes('aria-pressed')).toBe('true');
-    expect(getScanPageSetupState(wrapper).isResultDetailOpen).toBe(true);
-    const detailHeader = wrapper.get('section.h-full > header');
-    expect(detailHeader.text()).toContain(`字符数：${submittedText.length}/${scanStore.characterLimit}`);
-    expect(detailHeader.text()).not.toContain('已选：');
-    expect(wrapper.findAll('section.h-full > div > aside button')).toHaveLength(0);
-    expect(detailed.get('[data-dimension="rhythm"]').attributes('aria-pressed')).toBe('true');
-    expect(detailed.props('submittedText')).toBe(submittedText);
-    expect(detailed.get('[data-summary-metric="sentence_length_median"] [data-testid="observed-marker"]').attributes('style')).toContain('left: 0%');
-    expect(detailed.find('[data-testid="reference-ticks"]').exists()).toBe(false);
-    const professional = detailed.get('details[data-testid="evidence-professional"]');
-    expect(professional.attributes('open')).toBeUndefined();
-    expect(professional.findAll('[data-metric]')).toHaveLength(22);
-    expect(professional.find('[data-value="coverage"], [data-confidence]').exists()).toBe(false);
-    expect(professional.get('[data-testid="reference-group"]').text()).toContain(globalT('scan.evidence.route.values.fallbackLevel.language_length'));
-    expect(scanStore.result?.evidence?.quality).toEqual(evidence.quality);
-    expect(scanStore.result?.evidence?.route).toEqual(evidence.route);
-    expect(professional.find('[data-value="sample-count"]').exists()).toBe(false);
-    expect(evidence.signals.find((signal) => signal.metric === 'mattr')!.sampleCount).toBe(10);
-    expect(professional.findAll('[data-testid="evidence-notice"]')).toHaveLength(2);
-    await detailed.get('[data-testid="evidence-show-recommended"]').trigger('click');
-    await flushPromises();
-    expect(compact.get('[data-testid="evidence-show-all"]').attributes('aria-pressed')).toBe('false');
-    expect(compact.findAll('[data-testid="evidence-summary"]')).toHaveLength(0);
-    expect(detailed.findAll('[data-testid="evidence-dimension"]')).toHaveLength(0);
-    expect(detailed.find(corpusSection).exists()).toBe(canShowCorpus);
-    (professional.element as HTMLDetailsElement).open = true;
-    await professional.trigger('toggle');
-    expect(detailed.findAll('[data-testid="evidence-dimension"]')).toHaveLength(0);
-    expect(detailed.get('[data-testid="evidence-show-all"]').attributes('aria-pressed')).toBe('false');
-    (professional.element as HTMLDetailsElement).open = false;
-    await professional.trigger('toggle');
-    await detailed.get('[data-testid="evidence-show-all"]').trigger('click');
-    await flushPromises();
-    expect(compact.get('[data-testid="evidence-show-all"]').attributes('aria-pressed')).toBe('true');
-    expect(compact.findAll('[data-testid="evidence-summary"]')).toHaveLength(4);
-    expect(professional.attributes('open')).toBeUndefined();
-    await detailed.get('[data-dimension="phrase_template"]').trigger('click');
-    const excerpt = detailed.get('[data-testid="evidence-examples"]').text();
-    expect(excerpt).toContain('用于');
+    expect(wrapper.get('[data-testid="paragraph-evidence-empty"]').text()).toContain('暂无段落级检测依据');
+    expect(wrapper.findComponent(EvidencePanel).exists()).toBe(false);
+    expect(wrapper.find('[data-metric]').exists()).toBe(false);
+    expect(scanStore.result?.evidence).toEqual(evidence);
     scanStore.setText('编辑中的新草稿不应被用来提取旧检测的词语。'.repeat(20));
     await flushPromises();
-    expect(detailed.props('submittedText')).toBe(submittedText);
-    expect(detailed.get('[data-testid="evidence-examples"]').text()).toBe(excerpt);
+    expect(scanStore.resultInputText).toBe(submittedText);
+    expect(scanStore.result?.evidence).toEqual(evidence);
     await wrapper.get('input[type="search"]').setValue('no-history-matches-this-search');
     await vi.waitFor(() => expect(scanStore.historyRecords).toHaveLength(0));
-    expect(detailed.props('submittedText')).toBe(submittedText);
-    expect(detailed.get('[data-testid="evidence-examples"]').text()).toBe(excerpt);
+    expect(scanStore.resultInputText).toBe(submittedText);
     await wrapper.get('input[type="search"]').setValue('');
     await vi.waitFor(() => expect(scanStore.historyRecords.some((record) => record.id === historyId)).toBe(true));
     expect(wrapper.get('.text-6xl').text()).toBe(`${ai}%`);
-    expect(wrapper.get('.text-5xl').text()).toBe(`${ai}%`);
     expect(scanStore.result?.summary).toEqual({ ai, human: 100 - ai });
     expect(scanStore.result?.sentences[0].type).toBe(label);
     const legacyRecord = await scanStore.addHistoryRecord({
@@ -2772,26 +2813,18 @@ describe('ScanPage panel switching', () => {
     expect(wrapper.find('[data-testid="evidence-quality"]').exists()).toBe(false);
     expect(wrapper.find('[data-testid="evidence-notice"]').exists()).toBe(false);
     expect(wrapper.get('.text-6xl').text()).toBe(`${ai}%`);
-    expect(wrapper.get('.text-5xl').text()).toBe(`${ai}%`);
     await getScanPageSetupState(wrapper).loadHistoryRecord(historyId);
     await flushPromises();
-    expect(wrapper.findAll('[data-testid="evidence-panel"]')).toHaveLength(2);
+    expect(wrapper.findAll('[data-testid="evidence-panel"]')).toHaveLength(0);
     expect(wrapper.find('[data-testid="evidence-route"]').exists()).toBe(false);
-    const restoredDetails = wrapper.findAllComponents(EvidencePanel).find((panel) => panel.props('detailed'))!;
-    expect(restoredDetails.find(corpusSection).exists()).toBe(canShowCorpus);
-    if (canShowCorpus) expect(restoredDetails.get(corpusSection).text()).toBe(expressions.text());
-    expect(restoredDetails.get('[data-testid="evidence-show-all"]').attributes('aria-pressed')).toBe('false');
-    expect(wrapper.findAllComponents(EvidencePanel).find((panel) => !panel.props('detailed'))!.get('[data-testid="evidence-show-all"]').attributes('aria-pressed')).toBe('false');
-    expect(restoredDetails.get('details[data-testid="evidence-professional"]').attributes('open')).toBeUndefined();
-    expect(restoredDetails.findAll('[data-metric]')).toHaveLength(22);
-    expect(wrapper.findAll('[data-testid="evidence-notice"]')).toHaveLength(2);
-    expect(wrapper.findAllComponents(EvidencePanel).find((panel) => panel.props('detailed'))!.props('submittedText')).toBe(submittedText);
+    expect(wrapper.findComponent(EvidencePanel).exists()).toBe(false);
+    expect(wrapper.find('[data-metric]').exists()).toBe(false);
+    expect(scanStore.resultInputText).toBe(submittedText);
     expect(scanStore.result?.evidence).toEqual(evidence);
     expect(scanStore.result?.evidence?.signals[0].referenceExtent).toEqual([0, 1]);
     expect(scanStore.result?.summary).toEqual({ ai, human: 100 - ai });
     expect(scanStore.result?.sentences[0].type).toBe(label);
     expect(wrapper.get('.text-6xl').text()).toBe(`${ai}%`);
-    expect(wrapper.get('.text-5xl').text()).toBe(`${ai}%`);
     wrapper.unmount();
   });
 });

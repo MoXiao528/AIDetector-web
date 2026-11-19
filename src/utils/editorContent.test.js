@@ -1,10 +1,52 @@
 import { describe, expect, it } from 'vitest';
 
-import { buildHighlightedPreviewHtml, buildSentenceDisplayLabels, buildSentenceParagraphLinkId, extractTextFromHtml, sanitizeHtmlForEditor } from './editorContent';
+import { buildCorpusPreviewHtml, buildHighlightedPreviewHtml, buildSentenceDisplayLabels, buildSentenceParagraphLinkId, extractTextFromHtml, sanitizeHtmlForEditor } from './editorContent';
 import zhCN from '../i18n/zh-CN';
 import enUS from '../i18n/en-US';
 
 describe('editorContent utils', () => {
+  it('语料模式保留跨内联节点、软换行、列表、Unicode 字形与原文内容，移除整段颜色', () => {
+    const editorHtml = '<h2>标题</h2><p><span class="highlight-chip bg-rose-100" data-sentence-id="old">😀<strong>神</strong><em>情</em>平静。<br>另一行。</span></p><ul><li>原来的列表</li></ul>';
+    const text = extractTextFromHtml(editorHtml);
+    const start = text.indexOf('神情');
+    const output = buildCorpusPreviewHtml({ editorHtml, text,
+      matches: [{ expression: '神情', occurrences: [{ sourceStart: start, sourceEnd: start + 2 }] }],
+      activeMatch: { expression: '神情', index: 0 },
+    });
+    const doc = new DOMParser().parseFromString(output, 'text/html');
+    expect(doc.querySelector('strong mark').textContent).toBe('神');
+    expect(doc.querySelector('em mark').textContent).toBe('情');
+    expect(doc.querySelector('br')).not.toBeNull();
+    expect(doc.querySelector('ul li').textContent).toBe('原来的列表');
+    expect(doc.querySelector('.highlight-chip, [data-sentence-id]')).toBeNull();
+    expect(extractTextFromHtml(output)).toBe(text);
+  });
+
+  it.each(['', '<p>另一份恢复的正文</p>'])('纯文本语料回退保留制表符和 UTF-16 位置（原HTML=%s）', (editorHtml) => {
+    const text = '标题\r\n\n前\t重要后\r另😀重要段\n  尾段  ';
+    const start = text.indexOf('重要');
+    const last = text.lastIndexOf('重要');
+    const output = buildCorpusPreviewHtml({ editorHtml, text,
+      matches: [{ expression: '重要', occurrences: [{ sourceStart: start, sourceEnd: start + 2 }, { sourceStart: last, sourceEnd: last + 2 }] }],
+      activeMatch: { expression: '重要', index: 1 },
+    });
+    const doc = new DOMParser().parseFromString(output, 'text/html');
+    expect(Array.from(doc.querySelectorAll('mark'), (mark) => mark.textContent)).toEqual(['重要', '重要']);
+    expect(doc.querySelector('mark').previousSibling.textContent).toBe('前\t');
+    expect(doc.querySelector('.is-active').previousSibling.textContent).toBe('另😀');
+    expect(doc.querySelector('p:last-child').textContent).toBe('  尾段  ');
+  });
+
+  it('语料预览仍转义用户标签并丢弃编辑器危险HTML', () => {
+    const text = '<img src=x onerror=alert(1)>尾';
+    const output = buildCorpusPreviewHtml({ editorHtml: '<script>alert(1)</script><p>不相关</p>', text,
+      matches: [{ expression: text.slice(0, -1), occurrences: [{ sourceStart: 0, sourceEnd: text.length - 1 }] }],
+    });
+    const doc = new DOMParser().parseFromString(output, 'text/html');
+    expect(doc.querySelector('script, img')).toBeNull();
+    expect(doc.querySelector('mark').textContent).toBe(text.slice(0, -1));
+  });
+
   it.each([
     { copy: zhCN, author: ' 作者：张三 ', expected: ['标题', '作者', '段落 1-2 · 合并检测', '标题', '段落 3', '段落 4'] },
     { copy: enUS, author: 'AUTHOR: Jane Doe', expected: ['Title', 'Author', 'Paragraphs 1-2 · Merged', 'Title', 'Paragraph 3', 'Paragraph 4'] },
