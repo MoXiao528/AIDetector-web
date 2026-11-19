@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { defineComponent, h, ref } from 'vue';
 import { flushPromises, mount } from '@vue/test-utils';
 import { createI18n, useI18n } from '../../i18n';
@@ -6,7 +6,6 @@ import detectionExamples from '../../data/detectionExamples.json';
 import { getFallbackHeroExamples } from '../../utils/usageExamples';
 import UsageExamplesModal from './UsageExamplesModal.vue';
 
-beforeEach(() => vi.stubEnv('VITE_EVIDENCE_ENABLED', 'true'));
 afterEach(() => vi.unstubAllEnvs());
 
 const findButton = (text: string, root: ParentNode = document) => {
@@ -129,7 +128,8 @@ describe('UsageExamplesModal', () => {
     }
   });
 
-  it('无可展示差异时可查看全部和维度详情，切换示例恢复默认视图', async () => {
+  it('遗留环境值为 false 且无可展示差异时仍可查看全部和维度详情，切换示例恢复默认视图', async () => {
+    vi.stubEnv('VITE_EVIDENCE_ENABLED', 'false');
     const examples = structuredClone(detectionExamples);
     examples[1].evidence.signals.forEach((signal) => { signal.relation = null; });
     const { wrapper } = await openReport(examples);

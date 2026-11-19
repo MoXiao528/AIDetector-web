@@ -6,7 +6,7 @@ import { extractApiErrorCode } from '../api/client';
 import { detectText } from '../api/modules/scan';
 import { combineImportedFileContents, readTextFromFile } from '../utils/fileReaders';
 import { clampProbability } from '../utils/detectionStyles';
-import { countCharacters, formatShortTextMessage, getShortTextEstimate } from '../utils/detectionLength';
+import { countCharacters, countVisibleCharacters, formatShortTextMessage, getShortTextEstimate } from '../utils/detectionLength';
 import {
   buildHighlightedPreviewHtml,
   extractTextFromHtml,
@@ -179,9 +179,8 @@ const toPositiveInteger = (value) => {
 const countSentenceParagraphs = (sentence) => {
   const source = pickFirst(sentence?.raw, sentence?.text, '');
   const count = String(source || '')
-    .replace(/\r\n/g, '\n')
-    .split('\n')
-    .filter((line) => line.trim())
+    .split(/\r\n|\r|\n/)
+    .filter((line) => countVisibleCharacters(line) > 0)
     .length;
   return Math.max(count, 1);
 };
@@ -190,21 +189,27 @@ const normalizeSentenceParagraphRanges = (sentences = []) => {
   let previousEnd = 0;
   return sentences.map((sentence) => {
     const paragraphCount = countSentenceParagraphs(sentence);
-    let start = toPositiveInteger(pickFirst(sentence?.startParagraph, sentence?.start_paragraph));
-    let end = toPositiveInteger(pickFirst(sentence?.endParagraph, sentence?.end_paragraph));
+    const givenStart = pickFirst(sentence?.startParagraph, sentence?.start_paragraph);
+    const givenEnd = pickFirst(sentence?.endParagraph, sentence?.end_paragraph);
+    let start = toPositiveInteger(givenStart);
+    let end = toPositiveInteger(givenEnd);
+    let isFallback = sentence.isFallback || start !== Number(givenStart) || end !== Number(givenEnd);
     const hasValidRange = start !== null && end !== null && end >= start;
     const overlapsPreviousRange = hasValidRange && start <= previousEnd;
 
     if (!hasValidRange || overlapsPreviousRange) {
+      isFallback = true;
       start = previousEnd + 1;
       end = start + paragraphCount - 1;
     } else if (paragraphCount > 1 && end === start) {
+      isFallback = true;
       end = start + paragraphCount - 1;
     }
 
     previousEnd = Math.max(previousEnd, end);
     return {
       ...sentence,
+      ...(isFallback ? { isFallback: true } : {}),
       startParagraph: start,
       endParagraph: end,
       start_paragraph: start,
@@ -234,6 +239,7 @@ const buildFallbackSentences = ({ text = '', score = null, label = '', idPrefix 
       startParagraph: index + 1,
       endParagraph: index + 1,
       type: fallbackType,
+      isFallback: true,
       probability,
       score: scorePercent,
       reason: '',
@@ -253,13 +259,15 @@ const normalizeAnalysisPayload = (
         typeof sentence?.probability === 'number' ? sentence.probability : null,
         score / 100
       );
+      const type = resolveSentenceType(sentence);
       return {
         id: sentence?.id || `${idPrefix}-paragraph-${index}`,
         text: sentence?.text || '',
         raw: pickFirst(sentence?.raw, sentence?.text, ''),
         startParagraph: pickFirst(sentence?.startParagraph, sentence?.start_paragraph, null),
         endParagraph: pickFirst(sentence?.endParagraph, sentence?.end_paragraph, null),
-        type: resolveSentenceType(sentence),
+        type,
+        ...(sentence?.isFallback || (type === 'ai' && normalizeLabelType(sentence?.type) !== 'ai') ? { isFallback: true } : {}),
         probability: clampProbability(probabilityValue || 0),
         score,
         reason: pickFirst(sentence?.reason, sentence?.suggestion, ''),

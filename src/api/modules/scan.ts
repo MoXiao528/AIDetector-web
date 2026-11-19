@@ -96,6 +96,14 @@ export interface EvidenceQuality {
   reasons: EvidenceReason[];
 }
 
+export interface EvidenceCorpusExpressions {
+  status: 'matched' | 'no_match' | 'unavailable';
+  lexiconVersion: string | null;
+  lexiconSha256: string | null;
+  expressions: string[];
+  matches?: Array<{ expression: string; offsets: EvidenceOffset[] }>;
+}
+
 export interface EvidenceResult {
   status: 'ready' | 'partial' | 'insufficient' | 'unsupported' | 'failed';
   artifactVersion: string | null;
@@ -104,6 +112,7 @@ export interface EvidenceResult {
   quality: EvidenceQuality;
   signals: EvidenceSignal[];
   patterns: EvidencePatterns | null;
+  corpusExpressions?: EvidenceCorpusExpressions;
 }
 
 export interface AnalysisSentence {

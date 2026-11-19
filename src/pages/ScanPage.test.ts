@@ -187,7 +187,6 @@ describe('ScanPage panel switching', () => {
   let pinia: ReturnType<typeof createPinia>;
 
   beforeEach(() => {
-    vi.stubEnv('VITE_EVIDENCE_ENABLED', 'true');
     pinia = createPinia();
     setActivePinia(pinia);
     vi.clearAllMocks();
@@ -652,10 +651,10 @@ describe('ScanPage panel switching', () => {
   };
 
   it.each([
-    { evidenceEnabled: 'true', serverName: 'repreguard-42.pdf', expectedName: 'repreguard-42.pdf' },
-    { evidenceEnabled: 'false', serverName: null, expectedName: 'repreguard-report.pdf' },
-  ])('PDF 复用历史快照、Evidence=$evidenceEnabled，两入口防重并下载 $expectedName', async ({ evidenceEnabled, serverName, expectedName }) => {
-    vi.stubEnv('VITE_EVIDENCE_ENABLED', evidenceEnabled);
+    { serverName: 'repreguard-42.pdf', expectedName: 'repreguard-42.pdf' },
+    { serverName: null, expectedName: 'repreguard-report.pdf' },
+  ])('PDF 使用带写作特点的历史快照，两入口防重并下载 $expectedName', async ({ serverName, expectedName }) => {
+    vi.stubEnv('VITE_EVIDENCE_ENABLED', 'false');
     const request = createDeferred<{ blob: Blob; fileName: string | null; contentType: string }>();
     vi.mocked(reportsApi.exportPdfReport).mockReturnValueOnce(request.promise);
     const createUrl = vi.spyOn(window.URL, 'createObjectURL').mockReturnValue('blob:report-test');
@@ -675,7 +674,7 @@ describe('ScanPage panel switching', () => {
       await state.exportReport();
       expect(reportsApi.exportPdfReport).toHaveBeenCalledExactlyOnceWith({
         reportType: 'scan', locale: expect.any(String), historyId: 42,
-        includeEvidence: evidenceEnabled === 'true',
+        includeEvidence: true,
         timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC',
       });
       for (const button of exportButtons) {
@@ -2400,16 +2399,36 @@ describe('ScanPage panel switching', () => {
     wrapper.unmount();
   });
 
-  it('关闭 Evidence 时新检测和旧历史均隐藏相关入口，主结果、普通详情和 PDF 入口保留', async () => {
+  it('遗留环境开关关闭时仍能定位真实 AI 片段，切换详情、输入或历史会清除标记', async () => {
     vi.stubEnv('VITE_EVIDENCE_ENABLED', 'false');
     route.query = { panel: 'document' };
     route.fullPath = '/dashboard?panel=document';
-    const text = 'The main detection paragraph remains available while Evidence is paused. '.repeat(4).trim();
+    const expression = '<img src=x onerror=alert(1)>';
+    const humanOnly = '仅人工段落有的表达';
+    const aiParagraph = `😀${expression}甲${expression}尾`;
+    const humanParagraph = `${expression}。${humanOnly}。${'人工内容独立保留。'.repeat(24)}`;
+    const text = `${aiParagraph}\n\n${humanParagraph}`;
+    const humanStart = Array.from(`${aiParagraph}\n\n`).length;
+    const secondHit = expression.length + 2;
     const oldText = 'Cached history still retains its original paragraph. '.repeat(4).trim();
-    const evidence: scanApi.EvidenceResult = {
+    const oldEvidence: scanApi.EvidenceResult = {
       status: 'unsupported', artifactVersion: null, featureSchemaVersion: 1, route: null,
       quality: { level: 'unavailable', coverage: 0, reasons: ['unsupported_language'] },
       signals: [], patterns: null,
+    };
+    const evidence: scanApi.EvidenceResult = {
+      ...oldEvidence,
+      status: 'insufficient',
+      route: { language: 'zh', domain: 'news', confidence: { language: 1, domain: 1 }, lengthBucket: 'short', fallbackLevel: 'unavailable' },
+      quality: { level: 'insufficient', coverage: 0, reasons: ['reference_metrics_unavailable'] },
+      corpusExpressions: {
+        status: 'matched', lexiconVersion: '1.0.0', lexiconSha256: 'a'.repeat(64),
+        expressions: [expression, humanOnly],
+        matches: [
+          { expression, offsets: [1, secondHit, humanStart].map((start) => ({ start, end: start + expression.length })) },
+          { expression: humanOnly, offsets: [{ start: humanStart + expression.length + 1, end: humanStart + expression.length + 1 + humanOnly.length }] },
+        ],
+      },
     };
     const analysis = (ai: number, paragraph: string) => ({
       summary: { ai, human: 100 - ai },
@@ -2417,10 +2436,14 @@ describe('ScanPage panel switching', () => {
         type: ai > 50 ? 'ai' : 'human', probability: ai / 100, score: ai }],
     });
     vi.mocked(historyApi.getHistoryList).mockResolvedValue(makeHistoryResponse([
-      { id: 93, inputText: oldText, evidence, analysis: analysis(23, oldText) },
+      { id: 93, inputText: oldText, evidence: oldEvidence, analysis: analysis(23, oldText) },
     ]));
     vi.mocked(scanApi.detectText).mockResolvedValue({
-      historyId: 94, inputText: text, score: 0.77, label: 'ai', evidence, result: analysis(77, text),
+      historyId: 94, inputText: text, score: 0.77, label: 'ai', evidence,
+      result: { summary: { ai: 77, human: 23 }, sentences: [
+        analysis(77, aiParagraph).sentences[0],
+        { ...analysis(23, humanParagraph).sentences[0], startParagraph: 2, endParagraph: 2 },
+      ] },
     } as scanApi.DetectionResponse);
     const wrapper = mountScanPage();
     try {
@@ -2433,24 +2456,63 @@ describe('ScanPage panel switching', () => {
       await flushPromises();
       expect(scanStore.result?.evidence).toEqual(evidence);
       expect(wrapper.get('.text-6xl').text()).toBe('77%');
-      expect(wrapper.get('.preview-surface').text()).toContain(text);
+      expect(wrapper.get('.preview-surface').text()).toContain(aiParagraph);
+      expect(wrapper.get('.preview-surface').text()).toContain(humanParagraph);
       expect(scanStore.result?.sentences[0].type).toBe('ai');
-      expect(wrapper.find('[data-testid="evidence-panel"]').exists()).toBe(false);
-      const detailsButton = wrapper.findAll('button').find((button) => button.text() === globalT('scan.results.openDetail'));
+      const compact = wrapper.getComponent(EvidencePanel);
+      expect(compact.find('[data-testid="evidence-summary"], [data-testid="corpus-expressions"]').exists()).toBe(false);
+      const detailsButton = compact.findAll('button').find((button) => button.text() === globalT('scan.evidence.presentation.viewDetails'));
       expect(detailsButton).toBeDefined();
       await detailsButton!.trigger('click');
       expect(wrapper.get('.text-5xl').text()).toBe('77%');
       expect(wrapper.findAll('button').filter((button) => button.text().includes(globalT('scan.results.export')))).toHaveLength(2);
-      expect(wrapper.find('[data-testid="evidence-panel"]').exists()).toBe(false);
+      const hits = '[data-testid="corpus-expression-hit"]';
+      const expressionButton = () => wrapper.get('[data-testid="corpus-expression"]');
+      const position = () => wrapper.get('[data-testid="corpus-expression-position"]').text();
+      const previous = () => wrapper.get<HTMLButtonElement>('[data-testid="corpus-expression-previous"]');
+      const next = () => wrapper.get<HTMLButtonElement>('[data-testid="corpus-expression-next"]');
+      expect(wrapper.findAll('[data-testid="corpus-expression"]')).toHaveLength(1);
+      expect(expressionButton().text()).toBe(expression);
+      expect(wrapper.find(hits).exists()).toBe(false);
+      await expressionButton().trigger('click');
+      expect(position()).toMatch(/1\s*\/\s*2/);
+      expect(previous().element.disabled).toBe(true);
+      expect(next().element.disabled).toBe(false);
+      expect(wrapper.findAll(hits)).toHaveLength(1);
+      expect(wrapper.get(hits).text()).toBe(expression);
+      expect(wrapper.get(hits).element.previousSibling?.textContent).toBe('😀');
+      expect(wrapper.get(hits).element.parentElement?.textContent).toBe(aiParagraph);
+      expect(wrapper.get('[data-testid="corpus-expressions"]').find('img').exists()).toBe(false);
+      expect(wrapper.get(hits).find('img').exists()).toBe(false);
+      await next().trigger('click');
+      expect(position()).toMatch(/2\s*\/\s*2/);
+      expect(previous().element.disabled).toBe(false);
+      expect(next().element.disabled).toBe(true);
+      expect(wrapper.get(hits).element.nextSibling?.textContent).toBe('尾');
+      await previous().trigger('click');
+      expect(wrapper.get(hits).element.previousSibling?.textContent).toBe('😀');
+
+      state.closeResultDetail();
+      await flushPromises();
+      await detailsButton!.trigger('click');
+      expect(wrapper.find(hits).exists()).toBe(false);
+      await expressionButton().trigger('click');
+      scanStore.setText('变更后的草稿。'.repeat(30));
+      await flushPromises();
+      expect(wrapper.find(hits).exists()).toBe(false);
+      expect(scanStore.resultInputText).toBe(text);
+      await expressionButton().trigger('click');
+      expect(wrapper.get(hits).text()).toBe(expression);
       await state.loadHistoryRecord(93);
       await flushPromises();
-      expect(scanStore.result?.evidence).toEqual(evidence);
+      expect(wrapper.find(hits).exists()).toBe(false);
+      expect(scanStore.result?.evidence).toEqual(oldEvidence);
       expect(wrapper.get('.text-6xl').text()).toBe('23%');
       expect(wrapper.get('.text-5xl').text()).toBe('23%');
       expect(wrapper.get('.preview-surface').text()).toContain(oldText);
       expect(scanStore.result?.sentences[0].type).toBe('human');
-      expect(wrapper.find('[data-testid="evidence-panel"], [data-testid="evidence-summary"], [data-testid="evidence-professional"]').exists()).toBe(false);
-      expect(wrapper.text()).not.toContain(globalT('scan.evidence.presentation.title'));
+      expect(wrapper.findAll('[data-testid="evidence-panel"]')).toHaveLength(2);
+      expect(wrapper.find('[data-testid="corpus-expressions"]').exists()).toBe(false);
     } finally {
       wrapper.unmount();
     }
@@ -2538,10 +2600,16 @@ describe('ScanPage panel switching', () => {
     wrapper.unmount();
   });
 
-  it.each([23, 77])('侧栏摘要导航到精简详情，原始快照随历史回放且主结果 AI=%i 不受提示影响', async (ai) => {
+  it.each([
+    { ai: 23, label: 'human', explicitRanges: true },
+    { ai: 77, label: 'ai', explicitRanges: true },
+    { ai: 0, label: 'ai', explicitRanges: true },
+    { ai: 77, label: 'ai', explicitRanges: false },
+  ] as const)('概要和历史保留写作特点，词库限制有效 AI 片段（AI=$ai，label=$label，有段落范围=$explicitRanges）', async ({ ai, label, explicitRanges }) => {
     route.query = { panel: 'document' };
     route.fullPath = '/dashboard?panel=document';
-    const label = ai === 77 ? 'ai' : 'human';
+    const canShowCorpus = ai > 0 && label === 'ai' && explicitRanges;
+    const submittedText = '用于验证四维面板的中文文本。'.repeat(20);
     const metrics: Record<scanApi.EvidenceSignal['dimension'], string[]> = {
       lexical: ['mattr', 'token_entropy', 'entropy_per_log_vocab', 'hapax_type_ratio', 'top_token_concentration'],
       phrase_template: ['repeat_ngram_coverage', 'sentence_start_repeat'],
@@ -2573,6 +2641,10 @@ describe('ScanPage panel switching', () => {
         descriptive_top_tokens: [],
         repeated_phrases: [{ count: 20, offsets: [{ start: 0, end: 2 }] }], sentence_start_templates: [],
       },
+      corpusExpressions: {
+        status: 'matched', lexiconVersion: '1.0.0', lexiconSha256: 'a'.repeat(64), expressions: ['用于验证'],
+        matches: [{ expression: '用于验证', offsets: [{ start: 0, end: 4 }] }],
+      },
     };
     Object.assign(evidence.signals[0], {
       humanPercentile: label === 'human' ? 0 : 2.5, aiPercentile: label === 'ai' ? 0 : 2.5,
@@ -2587,12 +2659,14 @@ describe('ScanPage panel switching', () => {
     });
     vi.mocked(scanApi.detectText).mockResolvedValue({
       historyId: 92, score: ai / 100, label, evidence,
-      result: { summary: { ai, human: 100 - ai }, sentences: [] },
+      result: { summary: { ai, human: 100 - ai }, sentences: [{
+        id: 'scope-1', raw: submittedText, text: submittedText, score: ai, type: label,
+        ...(explicitRanges ? { startParagraph: 1, endParagraph: 1 } : {}),
+      }] },
     });
     const wrapper = mountScanPage();
     await flushPromises();
     const scanStore = useScanStore();
-    const submittedText = '用于验证四维面板的中文文本。'.repeat(20);
     scanStore.setText(submittedText);
     await getScanPageSetupState(wrapper).retryLengthPreflight();
     await getScanPageSetupState(wrapper).handleScan();
@@ -2603,6 +2677,7 @@ describe('ScanPage panel switching', () => {
     expect(wrapper.findAll('[data-testid="evidence-panel"]')).toHaveLength(1);
     const compact = wrapper.getComponent(EvidencePanel);
     expect(compact.props('detailed')).toBe(false);
+    expect(compact.find('[data-testid="corpus-expressions"]').exists()).toBe(false);
     expect(compact.findAll('[data-testid="evidence-summary"]')).toHaveLength(0);
     expect(compact.get('[data-testid="evidence-empty-selection"]').text()).toContain(globalT('scan.evidence.presentation.noRecommended'));
     expect(compact.get('[data-testid="evidence-empty-selection"]').text()).toContain('暂不能为来源判断提供补充依据');
@@ -2625,6 +2700,10 @@ describe('ScanPage panel switching', () => {
       expect(panel.props('evidence')).toEqual(evidence);
     }
     const detailed = panels.find((panel) => panel.props('detailed'))!;
+    const corpusSection = '[data-testid="corpus-expressions"]';
+    const expressions = detailed.find(corpusSection);
+    expect(expressions.exists()).toBe(canShowCorpus);
+    if (canShowCorpus) expect(expressions.text()).toContain('用于验证');
     expect(detailed.props('initialShowAll')).toBe(true);
     expect(detailed.get('[data-testid="evidence-show-all"]').attributes('aria-pressed')).toBe('true');
     expect(getScanPageSetupState(wrapper).isResultDetailOpen).toBe(true);
@@ -2651,6 +2730,7 @@ describe('ScanPage panel switching', () => {
     expect(compact.get('[data-testid="evidence-show-all"]').attributes('aria-pressed')).toBe('false');
     expect(compact.findAll('[data-testid="evidence-summary"]')).toHaveLength(0);
     expect(detailed.findAll('[data-testid="evidence-dimension"]')).toHaveLength(0);
+    expect(detailed.find(corpusSection).exists()).toBe(canShowCorpus);
     (professional.element as HTMLDetailsElement).open = true;
     await professional.trigger('toggle');
     expect(detailed.findAll('[data-testid="evidence-dimension"]')).toHaveLength(0);
@@ -2698,6 +2778,8 @@ describe('ScanPage panel switching', () => {
     expect(wrapper.findAll('[data-testid="evidence-panel"]')).toHaveLength(2);
     expect(wrapper.find('[data-testid="evidence-route"]').exists()).toBe(false);
     const restoredDetails = wrapper.findAllComponents(EvidencePanel).find((panel) => panel.props('detailed'))!;
+    expect(restoredDetails.find(corpusSection).exists()).toBe(canShowCorpus);
+    if (canShowCorpus) expect(restoredDetails.get(corpusSection).text()).toBe(expressions.text());
     expect(restoredDetails.get('[data-testid="evidence-show-all"]').attributes('aria-pressed')).toBe('false');
     expect(wrapper.findAllComponents(EvidencePanel).find((panel) => !panel.props('detailed'))!.get('[data-testid="evidence-show-all"]').attributes('aria-pressed')).toBe('false');
     expect(restoredDetails.get('details[data-testid="evidence-professional"]').attributes('open')).toBeUndefined();

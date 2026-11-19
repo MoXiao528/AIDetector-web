@@ -772,6 +772,15 @@ export default {
       },
     },
     evidence: {
+      corpusExpressions: {
+        title: '疑似 AI 片段中的常见表达',
+        hint: '仅作为用词参考，不参与检测评分',
+        showAll: '展开全部',
+        showLess: '收起',
+        previous: '上一处',
+        next: '下一处',
+        position: '{current}/{total}',
+      },
       presentation: {
         title: '写作特点',
         viewDetails: '查看依据',

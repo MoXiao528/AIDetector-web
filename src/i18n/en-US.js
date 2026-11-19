@@ -780,6 +780,15 @@ export default {
       },
     },
     evidence: {
+      corpusExpressions: {
+        title: 'Common expressions in passages flagged as AI',
+        hint: 'For wording reference only. These matches do not affect the detection score.',
+        showAll: 'Show all',
+        showLess: 'Show less',
+        previous: 'Previous match',
+        next: 'Next match',
+        position: '{current}/{total}',
+      },
       presentation: {
         title: 'Writing characteristics',
         viewDetails: 'View supporting details',
