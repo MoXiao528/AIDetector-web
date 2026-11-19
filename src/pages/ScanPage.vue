@@ -858,7 +858,7 @@
                        </div>
                     </div>
 
-                    <EvidencePanel :evidence="scanStore.result?.evidence" :initial-show-all="evidenceShowAll" @update:show-all="evidenceShowAll = $event" @view-details="openEvidenceDetail" />
+                    <EvidencePanel :evidence="scanStore.result?.evidence" :corpus-matches="corpusMatches" :initial-show-all="evidenceShowAll" @update:show-all="evidenceShowAll = $event" @view-details="openEvidenceDetail" />
 
                     <div data-testid="result-segments" class="rounded-2xl border border-neutral-100 bg-white p-1">
                       <div class="grid grid-cols-2 gap-1 p-1 bg-neutral-50/50 rounded-xl">
@@ -1063,6 +1063,36 @@
             </div>
           </header>
 
+          <div
+            v-if="activeCorpusGroup && activeCorpusGroup.occurrences.length > 1"
+            ref="corpusNavigationRef"
+            tabindex="-1"
+            class="flex shrink-0 flex-wrap items-center gap-x-3 gap-y-1 border-b border-neutral-200 bg-white px-6 py-2 text-xs text-neutral-700"
+          >
+            <span class="min-w-0 break-words font-medium">{{ activeCorpusGroup.expression }}</span>
+            <span role="status" class="tabular-nums" data-testid="corpus-expression-position">
+              {{ t('scan.evidence.corpusExpressions.position', { current: activeCorpusMatch.index + 1, total: activeCorpusGroup.occurrences.length }) }}
+            </span>
+            <button
+              type="button"
+              class="min-h-10 rounded px-2 font-semibold text-blue-800 hover:bg-blue-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-600 disabled:opacity-50"
+              data-testid="corpus-expression-previous"
+              :disabled="activeCorpusMatch.index === 0"
+              @click="focusCorpusOccurrence(activeCorpusMatch.expression, activeCorpusMatch.index - 1)"
+            >
+              {{ t('scan.evidence.corpusExpressions.previous') }}
+            </button>
+            <button
+              type="button"
+              class="min-h-10 rounded px-2 font-semibold text-blue-800 hover:bg-blue-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-600 disabled:opacity-50"
+              data-testid="corpus-expression-next"
+              :disabled="activeCorpusMatch.index === activeCorpusGroup.occurrences.length - 1"
+              @click="focusCorpusOccurrence(activeCorpusMatch.expression, activeCorpusMatch.index + 1)"
+            >
+              {{ t('scan.evidence.corpusExpressions.next') }}
+            </button>
+          </div>
+
           <div class="grid min-h-0 flex-1 grid-cols-1 overflow-y-auto lg:grid-cols-[18rem,1fr]">
             <aside class="border-b border-neutral-100 bg-neutral-50/70 px-6 py-6 lg:border-b-0 lg:border-r">
               <div class="rounded-3xl border border-neutral-100 bg-white p-5 shadow-sm">
@@ -1112,7 +1142,7 @@
               </div>
             </aside>
 
-            <main class="min-h-0 px-6 py-6">
+            <main ref="resultDetailBodyRef" class="min-h-0 min-w-0 px-6 py-6">
               <p
                 v-if="resultTextMismatch"
                 role="status"
@@ -1122,8 +1152,11 @@
               <EvidencePanel
                 :evidence="scanStore.result?.evidence"
                 :submitted-text="scanStore.resultInputText"
+                :corpus-matches="corpusMatches"
+                :active-corpus-match="activeCorpusMatch"
                 :initial-dimension="evidenceDimension"
                 :initial-show-all="evidenceShowAll"
+                @select-corpus-expression="focusCorpusOccurrence($event, 0, true)"
                 @update:show-all="evidenceShowAll = $event"
                 detailed
                 class="mb-6"
@@ -1155,7 +1188,7 @@
                     class="result-sentence-text min-w-0 space-y-3 text-base"
                     @mouseover="setActiveSentenceFromResultParagraph($event, sentence)"
                     @mouseleave="setActiveSentence(getSentenceDefaultActiveId(sentence))"
-                    v-html="formatHighlightedSentence(sentence)"
+                    v-html="formatHighlightedSentence(sentence, activeCorpusOccurrence?.sentenceIndex === index ? activeCorpusOccurrence : null)"
                   ></div>
                 </div>
               </div>
@@ -1259,6 +1292,7 @@ import { exportPdfReport as requestPdfReport } from '../api/modules/reports';
 import { useAuthStore } from '../store/auth';
 import { useScanStore } from '../store/scan';
 import { clampProbability, getProbabilityCardClasses, getProbabilityTextClasses } from '../utils/detectionStyles';
+import { getCorpusExpressionMatches } from '../utils/corpusExpressionMatches';
 import {
   buildHighlightedPreviewHtml,
   buildSentenceDisplayLabels,
@@ -1285,6 +1319,8 @@ const { t, locale } = useI18n();
 
 const editorRef = ref(null);
 const previewContentRef = ref(null);
+const resultDetailBodyRef = ref(null);
+const corpusNavigationRef = ref(null);
 const fileInput = ref(null);
 const newMenuRef = ref(null);
 const newMenuButtonRef = ref(null);
@@ -1299,7 +1335,6 @@ const localText = ref(scanStore.inputText || '');
 const editorMode = ref('edit');
 const isScanning = ref(false);
 const isExportingReport = ref(false);
-const evidenceEnabled = import.meta.env.VITE_EVIDENCE_ENABLED !== 'false';
 const dragActive = ref(false);
 const detectionResults = computed(() => scanStore.result);
 const highlightedPreviewHtml = ref('');
@@ -1316,6 +1351,7 @@ const renamingHistoryId = ref('');
 const renameHistoryDraft = ref('');
 const isHistoryActionPending = ref(false);
 const activeSentenceId = ref('');
+const activeCorpusMatch = ref(null);
 const isResultDetailOpen = ref(false);
 const evidenceDimension = ref('lexical');
 const evidenceShowAll = ref(false);
@@ -1471,7 +1507,7 @@ const buildReportPayload = ({
     reportType,
     locale: locale.value,
     historyId: normalizedHistoryId,
-    includeEvidence: evidenceEnabled,
+    includeEvidence: true,
     timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC',
   };
 };
@@ -1785,6 +1821,32 @@ const resultHasMergedBlocks = computed(() =>
   Boolean(scanStore.result?.sentences?.some((item) => String(item.text || '').includes('\n')))
 );
 const resultDisplaySummary = computed(() => collapseSummaryForDisplay(scanStore.result?.summary));
+const corpusMatches = computed(() => {
+  const { ai, human } = resultDisplaySummary.value;
+  return ai > 0 && human < 100
+    ? getCorpusExpressionMatches(scanStore.resultInputText, scanStore.result?.sentences ?? [], scanStore.result?.evidence?.corpusExpressions)
+    : [];
+});
+const activeCorpusGroup = computed(() => corpusMatches.value.find((group) => group.expression === activeCorpusMatch.value?.expression));
+const activeCorpusOccurrence = computed(() => activeCorpusGroup.value?.occurrences[activeCorpusMatch.value?.index]);
+watch(
+  [() => scanStore.result, () => scanStore.currentResultHistoryId, () => scanStore.resultInputText, editorText, isResultDetailOpen, isScanning],
+  () => { activeCorpusMatch.value = null; }
+);
+const focusCorpusOccurrence = async (expression, index, moveFocus = false) => {
+  const group = corpusMatches.value.find((item) => item.expression === expression);
+  const occurrence = group?.occurrences[index];
+  if (!isResultDetailOpen.value || !occurrence) return;
+
+  activeCorpusMatch.value = { expression, index };
+  activeResultTab.value = 'scan';
+  await nextTick();
+  if (activeCorpusOccurrence.value !== occurrence) return;
+
+  const mark = resultDetailBodyRef.value?.querySelector('[data-testid="corpus-expression-hit"]');
+  if (moveFocus) (corpusNavigationRef.value ?? mark)?.focus({ preventScroll: true });
+  mark?.scrollIntoView?.({ block: 'center', behavior: reducedMotion.value === 'reduce' ? 'auto' : 'smooth' });
+};
 const normalizeModelVersionLabel = (modelName) => {
   const normalized = String(modelName || '').trim();
   if (!normalized) return '';
@@ -2758,19 +2820,26 @@ const parseFeatures = (value) => {
     .filter((item) => allowedFunctionKeys.has(item));
 };
 
-const formatHighlightedSentence = (sentence) => {
+const formatHighlightedSentence = (sentence, occurrence = null) => {
   const classes = getProbabilityTextClasses(clampProbability(sentence.probability), sentence?.type);
   const startParagraph = Number(sentence?.startParagraph ?? sentence?.start_paragraph);
   const firstParagraphIndex = Number.isFinite(startParagraph) && startParagraph > 0 ? startParagraph : 1;
   const blockId = getSentenceBlockId(sentence);
-  return String(sentence?.text || '')
-    .split('\n')
-    .filter((item) => item.trim())
-    .map((item, index) => {
-      const paragraphIndex = firstParagraphIndex + index;
-      const sentenceId = buildSentenceParagraphLinkId(sentence, paragraphIndex);
+  const lines = String(sentence?.text || '').matchAll(/[^\r\n]+/g);
+  return [...lines]
+    .filter(([item]) => countVisibleCharacters(item) > 0)
+    .map((line, index) => {
+      const [item] = line;
+      const lineStart = line.index;
+      const sentenceId = buildSentenceParagraphLinkId(sentence, firstParagraphIndex + index);
       const blockAttribute = blockId && blockId !== sentenceId ? ` data-sentence-block-id="${escapeHtml(blockId)}"` : '';
-      return `<p class="font-semibold leading-relaxed ${classes}" data-sentence-id="${escapeHtml(sentenceId)}"${blockAttribute}>${escapeHtml(item)}</p>`;
+      let content = escapeHtml(item);
+      if (occurrence && occurrence.start >= lineStart && occurrence.end <= lineStart + item.length) {
+        const start = occurrence.start - lineStart;
+        const end = occurrence.end - lineStart;
+        content = `${escapeHtml(item.slice(0, start))}<mark tabindex="-1" data-testid="corpus-expression-hit" class="rounded-sm bg-slate-200 text-inherit outline outline-1 outline-slate-500">${escapeHtml(item.slice(start, end))}</mark>${escapeHtml(item.slice(end))}`;
+      }
+      return `<p class="font-semibold leading-relaxed ${classes}" data-sentence-id="${escapeHtml(sentenceId)}"${blockAttribute}>${content}</p>`;
     })
     .join('');
 };

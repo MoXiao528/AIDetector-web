@@ -73,8 +73,8 @@
                     </div>
                     <p v-if="report.key === 'human' && report.label === 'ai'" class="mt-4 border-t border-slate-100 pt-3 text-xs leading-5 text-slate-600" data-testid="example-source-note">{{ t('usageExamples.sourceMismatch') }}</p>
                   </section>
-                  <EvidencePanel v-if="evidenceEnabled && report.evidence" :key="report.key" class="order-3" :evidence="report.evidence" :submitted-text="report.text" :initial-show-all="evidenceShowAll" @update:show-all="evidenceShowAll = $event" @view-details="openEvidenceDetails" />
-                  <p v-else-if="evidenceEnabled" class="order-3 px-1 text-xs leading-5 text-slate-500">{{ t('usageExamples.missingEvidence') }}</p>
+                  <EvidencePanel v-if="report.evidence" :key="report.key" class="order-3" :evidence="report.evidence" :submitted-text="report.text" :initial-show-all="evidenceShowAll" @update:show-all="evidenceShowAll = $event" @view-details="openEvidenceDetails" />
+                  <p v-else class="order-3 px-1 text-xs leading-5 text-slate-500">{{ t('usageExamples.missingEvidence') }}</p>
                   <p class="order-4 px-1 text-xs leading-5 text-slate-500">{{ t('usageExamples.frozenNote') }}</p>
                 </aside>
               </div>
@@ -110,7 +110,6 @@ const formatParagraphLabel = (paragraph) => {
   if (paragraph.type === 'too_short') return t('scan.results.tooShort');
   return t('usageExamples.paragraphProbability', { value: Math.round(paragraph.probability * 100) });
 };
-const evidenceEnabled = import.meta.env.VITE_EVIDENCE_ENABLED !== 'false';
 const selectedKey = ref('');
 const view = ref('original');
 const evidenceDimension = ref('lexical');

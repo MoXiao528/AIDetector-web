@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it } from 'vitest';
 import { defineComponent, nextTick, type PropType } from 'vue';
 import { enableAutoUnmount, mount } from '@vue/test-utils';
 import EvidencePanel from './EvidencePanel.vue';
@@ -6,8 +6,6 @@ import type { EvidenceReason, EvidenceResult, EvidenceSignal } from '../api/modu
 import { createI18n, useI18n } from '../i18n';
 
 enableAutoUnmount(afterEach);
-beforeEach(() => vi.stubEnv('VITE_EVIDENCE_ENABLED', 'true'));
-afterEach(() => vi.unstubAllEnvs());
 
 // Independent contract fixture: all 22 public metrics in backend order.
 const metrics = {
@@ -56,6 +54,11 @@ const makeEvidence = (status: EvidenceResult['status'] = 'ready'): EvidenceResul
   };
 };
 
+const corpusHit = {
+  status: 'matched', lexiconVersion: '1.0.0', lexiconSha256: 'a'.repeat(64), expressions: ['值得关注的是'],
+} satisfies NonNullable<EvidenceResult['corpusExpressions']>;
+type CorpusExpression = { expression: string };
+
 // Exercise the existing i18n provider, including live locale changes.
 const Harness = defineComponent({
   components: { EvidencePanel },
@@ -65,17 +68,19 @@ const Harness = defineComponent({
     submittedText: { type: String, default: '' },
     initialDimension: { type: String as PropType<EvidenceSignal['dimension']>, default: 'lexical' },
     initialShowAll: { type: Boolean, default: false },
+    corpusMatches: { type: Array as PropType<CorpusExpression[]>, default: () => [] },
+    activeCorpusMatch: { type: Object as PropType<CorpusExpression | null>, default: null },
   },
   setup() {
     const { setLocale } = useI18n();
     setLocale('zh-CN');
     return { setLocale };
   },
-  template: '<EvidencePanel :evidence="evidence" :detailed="detailed" :submitted-text="submittedText" :initial-dimension="initialDimension" :initial-show-all="initialShowAll" />',
+  template: '<EvidencePanel :evidence="evidence" :detailed="detailed" :submitted-text="submittedText" :initial-dimension="initialDimension" :initial-show-all="initialShowAll" :corpus-matches="corpusMatches" :active-corpus-match="activeCorpusMatch" />',
 });
 const mountPanel = (
   evidence: EvidenceResult | null | undefined = makeEvidence(),
-  props: { detailed?: boolean; submittedText?: string; initialDimension?: EvidenceSignal['dimension']; initialShowAll?: boolean } = {},
+  props: Partial<Omit<InstanceType<typeof Harness>['$props'], 'evidence'>> = {},
 ) => mount(Harness, { props: { evidence, ...props }, global: { plugins: [createI18n()] } });
 
 const toggleAll = async (wrapper: ReturnType<typeof mountPanel>) => {
@@ -95,24 +100,58 @@ const toggleNotes = async (wrapper: ReturnType<typeof mountPanel>) => {
 };
 
 describe('EvidencePanel', () => {
-  it.each([false, true])('关闭展示时隐藏概要和详情中的所有 Evidence 内容及入口（detailed=%s）', async (detailed) => {
-    vi.stubEnv('VITE_EVIDENCE_ENABLED', 'false');
-    const evidence = makeEvidence();
-    const original = JSON.stringify(evidence);
-    const wrapper = mountPanel(evidence, { detailed });
-    expect(wrapper.find('[data-testid="evidence-panel"]').exists()).toBe(false);
-    expect(wrapper.find('button, details, a').exists()).toBe(false);
-    expect(wrapper.text()).toBe('');
-    expect(wrapper.getComponent(EvidencePanel).emitted('view-details')).toBeUndefined();
-    await wrapper.setProps({ evidence: makeEvidence('failed') });
-    expect(wrapper.text()).toBe('');
-    expect(JSON.stringify(evidence)).toBe(original);
+  it('有效表达只在详情中作为文本显示，点击发出定位事件，默认前 12 项', async () => {
+    const markup = '<img src=x onerror=alert(1)>';
+    const expressions = [markup, ...Array.from({ length: 12 }, (_, index) => `表达${index + 1}`)];
+    const corpusMatches = expressions.map((expression) => ({ expression }));
+    const wrapper = mountPanel(makeEvidence(), { detailed: false, corpusMatches });
+    const section = () => wrapper.get('[data-testid="corpus-expressions"]');
+    const expressionButtons = () => section().findAll('[data-testid="corpus-expression"]');
+    const visibleExpressions = () => expressionButtons().map((item) => item.text());
+    const toggle = () => section().get('[data-testid="corpus-expressions-toggle"]');
+    expect(wrapper.find('[data-testid="corpus-expressions"]').exists()).toBe(false);
+    await wrapper.setProps({ detailed: true });
+    expect(section().text()).toContain('疑似 AI 片段中的常见表达');
+    expect(section().text()).toContain('仅作为用词参考，不参与检测评分');
+    expect(visibleExpressions()).toEqual(expressions.slice(0, 12));
+    expect(section().find('img').exists()).toBe(false);
+    expect(expressionButtons()[0].attributes('aria-pressed')).toBe('false');
+    await expressionButtons()[0].trigger('click');
+    expect(wrapper.getComponent(EvidencePanel).emitted('select-corpus-expression')).toEqual([[markup]]);
+    await wrapper.setProps({ activeCorpusMatch: corpusMatches[0] });
+    expect(expressionButtons()[0].attributes('aria-pressed')).toBe('true');
+    expect(toggle().text()).toBe('展开全部');
+    expect(toggle().attributes('aria-expanded')).toBe('false');
+    await toggle().trigger('click');
+    expect(visibleExpressions()).toEqual(expressions);
+    expect(toggle().text()).toBe('收起');
+    expect(toggle().attributes('aria-expanded')).toBe('true');
+    await toggle().trigger('click');
+    expect(visibleExpressions()).toEqual(expressions.slice(0, 12));
+    await toggle().trigger('click');
+    const nextExpressions = ['新检测的表达', ...expressions.slice(1)];
+    await wrapper.setProps({ corpusMatches: nextExpressions.map((expression) => ({ expression })) });
+    expect(visibleExpressions()).toEqual(nextExpressions.slice(0, 12));
   });
 
-  it.each([undefined, 'true'])('未关闭或恢复展示时保留完整 Evidence 面板（开关=%s）', (enabled) => {
-    vi.stubEnv('VITE_EVIDENCE_ENABLED', enabled);
-    const wrapper = mountPanel();
-    expect(wrapper.find('[data-testid="evidence-panel"]').exists()).toBe(true);
+  it('有可定位表达时，缺少写作特点指标仍可从概要进入详情', async () => {
+    const [expression] = corpusHit.expressions;
+    const wrapper = mountPanel(makeEvidence('failed'), { detailed: false, corpusMatches: [{ expression }] });
+    expect(wrapper.find('[data-testid="corpus-expressions"]').exists()).toBe(false);
+    const detailsButton = wrapper.findAll('button').find((button) => button.text() === '查看依据');
+    expect(detailsButton).toBeDefined();
+    await detailsButton!.trigger('click');
+    expect(wrapper.getComponent(EvidencePanel).emitted('view-details')).toEqual([['lexical', false]]);
+    await wrapper.setProps({ detailed: true });
+    expect(wrapper.get('[data-testid="corpus-expression"]').text()).toBe(expression);
+  });
+
+  it.each([
+    { ...corpusHit, status: 'matched' },
+    { ...corpusHit, status: 'no_match', expressions: [] },
+  ] satisfies NonNullable<EvidenceResult['corpusExpressions']>[])('快照为 $status 但没有可定位表达时，只隐藏词库小节', (corpusExpressions) => {
+    const wrapper = mountPanel({ ...makeEvidence(), corpusExpressions });
+    expect(wrapper.find('[data-testid="corpus-expressions"]').exists()).toBe(false);
     expect(wrapper.find('[data-testid="evidence-professional"]').exists()).toBe(true);
   });
 

@@ -38,11 +38,10 @@ npm run dev
 | --- | --- | --- |
 | `VITE_API_BASE_URL` | 浏览器请求的 API 源。开发默认是 `http://localhost:8020`，留空时走同域 `/api/`。 | 启动开发服务器或生产构建时 |
 | `VITE_DEV_PROXY_TARGET` | Vite 开发代理的上游地址，仓库开发配置为 `http://localhost:8020`。 | 仅开发环境通过 Vite 代理请求 `/api/` 时 |
-| `VITE_EVIDENCE_ENABLED` | 控制写作特点展示。显式设为 `false` 时隐藏，未配置时显示可用数据。 | 启动开发服务器或生产构建时 |
 
 进程环境变量优先于 `.env` 文件。同一模式下，`.env.<模式>.local` 优先于 `.env.<模式>`。修改开发配置后重启 Vite，修改生产配置后重新构建并部署。浏览器可读取构建时写入产物的 `VITE_*` 值，密钥留在服务端。
 
-写作特点要在新检测结果中出现，需先验收检测端并设置后端 `DETECT_EVIDENCE_MODE=serve`。暂停计算时在后端设为 `off`，前端开关只影响展示。
+前端默认展示后端返回的可用写作特点，前后端不再提供 Evidence 开关；检测端是否启用语言和领域路由，按检测端 README 配置。详情中的语料表达仅展示疑似 AI 正文片段的有效命中，点击可定位原文；整体显示为 100% 人工或旧记录缺少可靠坐标时隐藏。
 
 ## 本地检查
 
@@ -54,11 +53,10 @@ npm run check
 
 ## 生产构建
 
-在根目录配置 `.env.production`，或使用优先级更高的 `.env.production.local`。下面以同域部署、关闭写作特点展示为例。
+同域部署时，在根目录的 `.env.production` 或优先级更高的 `.env.production.local` 中将 API 源设为空。
 
 ```env
 VITE_API_BASE_URL=
-VITE_EVIDENCE_ENABLED=false
 ```
 
 ```bash

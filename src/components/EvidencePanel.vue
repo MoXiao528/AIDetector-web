@@ -1,6 +1,6 @@
 <template>
   <section
-    v-if="evidenceEnabled && evidence"
+    v-if="evidence"
     :aria-label="t('scan.evidence.presentation.title')"
     :class="['min-w-0 break-words', detailed ? 'space-y-4' : 'space-y-3 rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm']"
     data-testid="evidence-panel"
@@ -11,6 +11,38 @@
         {{ statusMessage }}
       </p>
     </header>
+
+    <section
+      v-if="detailed && corpusMatches?.length"
+      :aria-label="t('scan.evidence.corpusExpressions.title')"
+      class="rounded-lg border border-blue-200 bg-blue-50 p-3"
+      data-testid="corpus-expressions"
+    >
+      <h4 class="text-sm font-semibold text-neutral-900">{{ t('scan.evidence.corpusExpressions.title') }}</h4>
+      <p class="mt-1 text-xs leading-5 text-neutral-600">{{ t('scan.evidence.corpusExpressions.hint') }}</p>
+      <ul class="mt-2 flex flex-wrap gap-2" role="list">
+        <li v-for="{ expression } in visibleCorpusExpressions" :key="expression" class="min-w-0 max-w-full">
+          <button
+            type="button"
+            :aria-pressed="activeCorpusMatch?.expression === expression"
+            class="min-h-8 max-w-full break-words rounded-md border px-2 py-1 text-left text-sm leading-5 text-blue-950 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600"
+            :class="activeCorpusMatch?.expression === expression ? 'border-blue-400 bg-blue-200' : 'border-blue-200 bg-white hover:bg-blue-100'"
+            data-testid="corpus-expression"
+            @click="emit('select-corpus-expression', expression)"
+          >{{ expression }}</button>
+        </li>
+      </ul>
+      <button
+        v-if="corpusMatches.length > corpusPreviewLimit"
+        type="button"
+        :aria-expanded="showAllExpressions"
+        class="min-h-10 rounded text-xs font-semibold text-blue-800 underline-offset-2 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-600"
+        data-testid="corpus-expressions-toggle"
+        @click="showAllExpressions = !showAllExpressions"
+      >
+        {{ t(showAllExpressions ? 'scan.evidence.corpusExpressions.showLess' : 'scan.evidence.corpusExpressions.showAll') }}
+      </button>
+    </section>
 
     <template v-if="hasSignals">
       <p v-if="!detailed && !visibleDimensions.length" class="rounded-xl bg-neutral-50 p-3 text-sm leading-6 text-neutral-600" data-testid="evidence-empty-selection">{{ t(`scan.evidence.presentation.${visibleSignals.length ? 'noRecommendedDimension' : 'noRecommended'}`) }}</p>
@@ -37,14 +69,6 @@
           </button>
         </div>
         <p v-if="hasComparisons" class="text-xs leading-5 text-neutral-500">{{ t('scan.evidence.presentation.baseline') }}</p>
-        <div class="flex items-stretch gap-2">
-          <button v-if="hiddenCount" type="button" data-testid="evidence-show-all" :aria-pressed="showAll" class="min-h-10 min-w-0 flex-1 rounded-xl border border-neutral-200 px-3 py-2 text-xs font-semibold text-primary-800 hover:bg-primary-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary-500" @click="setShowAll(!showAll)">
-            {{ t(`scan.evidence.presentation.${showAll ? 'showRecommended' : 'showAll'}`) }}
-          </button>
-          <button type="button" :class="['min-h-10 shrink-0 rounded-xl border border-primary-200 px-3 py-2 text-xs font-semibold text-primary-800 transition hover:bg-primary-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary-500', hiddenCount ? '' : 'flex-1']" @click="emit('view-details', visibleDimensions[0] || 'lexical', showAll)">
-            {{ t('scan.evidence.presentation.viewDetails') }}
-          </button>
-        </div>
       </template>
 
       <template v-else>
@@ -181,6 +205,14 @@
         <li v-for="reason in evidence.quality.reasons" :key="reason">{{ t(`scan.evidence.reasons.${reason}`) }}</li>
       </ul>
     </details>
+    <div v-if="!detailed && (hasSignals || corpusMatches?.length)" class="flex items-stretch gap-2">
+      <button v-if="hasSignals && hiddenCount" type="button" data-testid="evidence-show-all" :aria-pressed="showAll" class="min-h-10 min-w-0 flex-1 rounded-xl border border-neutral-200 px-3 py-2 text-xs font-semibold text-primary-800 hover:bg-primary-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary-500" @click="setShowAll(!showAll)">
+        {{ t(`scan.evidence.presentation.${showAll ? 'showRecommended' : 'showAll'}`) }}
+      </button>
+      <button type="button" :class="['min-h-10 shrink-0 rounded-xl border border-primary-200 px-3 py-2 text-xs font-semibold text-primary-800 transition hover:bg-primary-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary-500', hasSignals && hiddenCount ? '' : 'flex-1']" @click="emit('view-details', visibleDimensions[0] || 'lexical', showAll)">
+        {{ t('scan.evidence.presentation.viewDetails') }}
+      </button>
+    </div>
   </section>
 </template>
 
@@ -192,10 +224,11 @@ import { useI18n } from '../i18n';
 import { comparisonReasons, hasDistinctReference, isHighOverlap, observationRequirement, patternExamples, referenceBand, referenceOverlap, summaryMetrics, summaryState } from '../utils/evidencePresentation';
 
 type Dimension = EvidenceSignal['dimension'];
-const evidenceEnabled = import.meta.env.VITE_EVIDENCE_ENABLED !== 'false';
 const props = withDefaults(defineProps<{
   evidence?: EvidenceResult | null;
   submittedText?: string;
+  corpusMatches?: readonly { expression: string }[];
+  activeCorpusMatch?: { expression: string } | null;
   detailed?: boolean;
   initialDimension?: Dimension;
   initialShowAll?: boolean;
@@ -203,8 +236,15 @@ const props = withDefaults(defineProps<{
 const emit = defineEmits<{
   'view-details': [dimension: Dimension, showAll: boolean];
   'update:showAll': [showAll: boolean];
+  'select-corpus-expression': [expression: string];
 }>();
 const { t, locale } = useI18n();
+const corpusPreviewLimit = 12;
+const showAllExpressions = ref(false);
+const visibleCorpusExpressions = computed(() => showAllExpressions.value
+  ? props.corpusMatches
+  : props.corpusMatches?.slice(0, corpusPreviewLimit));
+watch(() => props.corpusMatches, () => { showAllExpressions.value = false; });
 const dimensions = Object.keys(summaryMetrics) as Dimension[];
 const dimensionIcons = { lexical: BookOpenIcon, phrase_template: ArrowPathIcon, rhythm: Bars3BottomLeftIcon, discourse: LinkIcon };
 const selectedDimension = ref<Dimension>(props.initialDimension);
